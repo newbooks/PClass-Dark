@@ -8,6 +8,38 @@ The central idea is to identify **conserved functional signatures across protein
 
 PClass-Dark complements [PClass](https://github.com/newbooks/pclass), which uses learned PLM embeddings and approximate nearest-neighbor (ANN) search to infer function from annotated reference proteins.
 
+## Installation and Interfaces
+
+The initial package version is **0.0.1** and requires Python 3.10 or newer.
+Install from this checkout:
+
+```bash
+pip install -e .
+pclass-dark --help
+pclass-dark --version
+```
+
+The CLI uses a command/subcommand hierarchy: `pclass-dark <command> [options]`.
+Currently, only help and version reporting are implemented; scientific
+subcommands will be added as the project develops. The same entry point is
+available through `python -m pclass_dark`.
+
+Reusable functionality lives in the importable `pclass_dark` package. Future
+profiling, signature selection, and classification operations will expose Python
+APIs as well as CLI subcommands so other code can integrate them directly.
+
+```python
+import pclass_dark
+
+print(pclass_dark.__version__)
+```
+
+Initial dependencies include NumPy, SciPy, and Typer. Optional PyTorch and
+Transformers dependencies can be installed with `pip install -e '.[embeddings]'`;
+embedding generation is not implemented yet. For development, use
+`pip install -e '.[dev]'` and run `pytest`. Dependencies will be refined as
+implementations are added.
+
 ## Motivation
 
 PLM embeddings encode multiple properties of protein sequences. A distance computed across the full representation may dilute a functional signal carried by only a subset of dimensions. The dimensions most informative for one function may also differ from those informative for another.

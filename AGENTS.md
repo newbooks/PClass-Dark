@@ -32,6 +32,20 @@
   operational documentation here. Record provenance and explain meaningful
   deviations from reference methods.
 
+## Command-line and Python interfaces
+
+- Provide both the `pclass-dark` command/subcommand hierarchy and importable
+  `pclass_dark` modules. Use the `src/pclass_dark/` package layout and Typer,
+  following the neighboring projects' CLI conventions.
+- Keep reusable scientific logic in library modules with explicit inputs,
+  return values, and documented exceptions. CLI subcommands should be thin
+  adapters for argument parsing, output formatting, and exit codes.
+- Expose new scientific operations through both interfaces where applicable.
+  Python integrations must not need to invoke CLI subprocesses. Imports must
+  not parse arguments, launch workers, download models, or start computation.
+- Keep packaging metadata, dependency declarations, CLI help, API documentation,
+  and README examples synchronized. Test library behavior and CLI integration.
+
 ## Implementation specifications
 
 - Before substantive implementation or algorithm changes, create or update a
