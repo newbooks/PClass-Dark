@@ -14,6 +14,8 @@ The initial package version is **0.0.1** and requires Python 3.10 or newer.
 Install from this checkout:
 
 ```bash
+git lfs install
+git lfs pull
 pip install -e .
 pclass-dark --help
 pclass-dark --version
@@ -47,6 +49,11 @@ and Swiss-Prot sequences (`accession.fasta`) under
 `pclass_dark/resources/reference/`, together with a provenance manifest.
 The current snapshot contains 455,508 accessions in 3,524 functional clusters;
 the FASTA contains 575,748 sequences, including every clustered accession.
+
+All files in the reference folder are stored using Git LFS. Install Git LFS
+before cloning, or run the commands above in an existing checkout to retrieve
+the full data. Published wheels include the full references and do not require
+Git LFS at installation time.
 
 Access the installed resources without relying on the checkout location:
 

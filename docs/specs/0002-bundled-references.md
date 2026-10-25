@@ -23,7 +23,12 @@ copies. Reject mismatched cluster/dataset generation identities.
 
 ## Distribution and updates
 
-Setuptools package-data includes reference TSV, FASTA, JSON, Markdown, and source
+All files under `src/pclass_dark/resources/reference/` are tracked recursively
+by Git LFS through `.gitattributes`. Release builders must fetch LFS objects
+and pass reference-integrity checks before packaging. Distribution archives
+contain full data, not LFS pointers; installing a wheel does not require LFS.
+
+Setuptools package-data includes reference TSV, FASTA, JSON, and source
 manifest JSON files. Access resources with `importlib.resources`; callers needing
 filesystem paths should use `as_file` within its context. Bundled resources are
 read-only inputs. No dependency on profunc at runtime is introduced.

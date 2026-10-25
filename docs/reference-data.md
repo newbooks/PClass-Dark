@@ -11,6 +11,30 @@ checksums, sizes, and coverage. `source_manifests/` preserves the profunc bundle
 cluster, and dataset manifests and cluster statistics. ProStruct's enrichment
 copies are useful for comparison but are not the authoritative update source.
 
+## Git LFS checkout and release builds
+
+All files under `src/pclass_dark/resources/reference/`, including nested
+provenance files, are tracked by Git LFS through the root `.gitattributes`.
+Install the Git LFS executable before cloning or working with these resources.
+In an existing checkout, run:
+
+```bash
+git lfs install --local
+git lfs pull
+git lfs fsck
+```
+
+Normal `git add`, `git commit`, and `git push` then store and transfer reference
+changes through LFS. Keep `.gitattributes` committed. Do not bypass the LFS
+pre-push hook. GitHub source ZIP archives may contain only pointers; use a clone
+with LFS or a published Python distribution to obtain the full data.
+
+Release builders and CI must fetch LFS objects before testing or packaging.
+Run the reference-integrity tests before building; an unresolved LFS pointer
+must never be bundled in place of a reference file. Wheels and source
+distributions built from a populated checkout contain the full data, so their
+users do not need Git LFS.
+
 ## Update procedure
 
 1. Select a completed profunc publication. Read its bundle, cluster, and dataset
@@ -47,8 +71,7 @@ copies are useful for comparison but are not the authoritative update source.
    Inspect the source archive and wheel for both full data files, the manifest,
    and source manifests. Install the wheel into a separate environment and verify
    resource checksums through `importlib.resources` from outside the checkout.
-   Ensure the files are real data rather than Git LFS pointer files if LFS is
-   used to store large reference files.
+   Ensure all reference files contain real data rather than Git LFS pointers.
 
 ## Access and interpretation
 
