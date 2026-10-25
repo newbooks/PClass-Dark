@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pclass-dark"
+version = "0.0.1"
+description = "Protein function classification using cluster-conserved PLM signatures"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Junjun Mao" }]
+keywords = ["bioinformatics", "protein-function", "protein-language-models"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "typer>=0.16",
+]
+
+[project.optional-dependencies]
+# Optional until embedding generation is implemented; GPU support depends on
+# the installed PyTorch build and hardware.
+embeddings = ["torch>=2", "transformers>=4.40"]
+dev = ["build>=1", "pytest>=8", "ruff>=0.5"]
+
+[project.urls]
+Homepage = "https://github.com/newbooks/PClass-Dark"
+Repository = "https://github.com/newbooks/PClass-Dark"
+Issues = "https://github.com/newbooks/PClass-Dark/issues"
+
+[project.scripts]
+pclass-dark = "pclass_dark.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 88
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
