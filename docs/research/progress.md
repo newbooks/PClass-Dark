@@ -18,3 +18,25 @@
 - Next: specify and implement the first scientific operation, including its
   Python API, CLI subcommand, data contracts, and tests. Refine dependencies and
   model compatibility when those requirements are known.
+
+## 2026-10-24 — Bundled authoritative profunc references
+
+- Copied the authoritative profunc membership TSV and accession FASTA unchanged
+  into `src/pclass_dark/resources/reference/`, with checksummed provenance and
+  preserved source manifests. Cluster generation:
+  `20260911T225655Z-153032271c41`; dataset generation:
+  `20260911T184540Z-d7e84090016d`.
+- Verified 455,508 unique clustered accessions across 3,524 clusters, all covered
+  by 575,748 unique nonempty FASTA sequences (209,017,843 residues). Preserved
+  120,240 unclustered records and 1,651 clustered noncanonical sequences.
+- Added setuptools resource inclusion, README access guidance,
+  [SPEC-0002](../specs/0002-bundled-references.md), and
+  [reference update instructions](../reference-data.md).
+- Validation: all four tests passed with `PYTHONPATH=src`; source distribution
+  and wheel built successfully. Verified archived resource bytes against the
+  manifest and verified installed-wheel resource checksums from outside the
+  checkout in a separate temporary virtual environment.
+- No reference transformations or scientific predictions were performed.
+  Future updates must replace the matched pair and provenance together, check
+  downstream artifact compatibility, and define noncanonical-residue handling
+  before embedding generation.

@@ -41,6 +41,14 @@ pclass-dark = "pclass_dark.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+pclass_dark = [
+    "resources/reference/*.tsv",
+    "resources/reference/*.fasta",
+    "resources/reference/*.json",
+    "resources/reference/source_manifests/*.json",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]

@@ -40,6 +40,27 @@ embedding generation is not implemented yet. For development, use
 `pip install -e '.[dev]'` and run `pytest`. Dependencies will be refined as
 implementations are added.
 
+## Bundled Reference Data
+
+The distribution includes frozen profunc cluster memberships (`clusters.tsv`)
+and Swiss-Prot sequences (`accession.fasta`) under
+`pclass_dark/resources/reference/`, together with a provenance manifest.
+The current snapshot contains 455,508 accessions in 3,524 functional clusters;
+the FASTA contains 575,748 sequences, including every clustered accession.
+
+Access the installed resources without relying on the checkout location:
+
+```python
+from importlib.resources import files
+
+reference = files("pclass_dark").joinpath("resources", "reference")
+with reference.joinpath("clusters.tsv").open() as handle:
+    header = handle.readline()
+```
+
+Treat these references as read-only. See [reference update instructions](docs/reference-data.md)
+for authoritative source paths, validation, and distribution checks.
+
 ## Motivation
 
 PLM embeddings encode multiple properties of protein sequences. A distance computed across the full representation may dilute a functional signal carried by only a subset of dimensions. The dimensions most informative for one function may also differ from those informative for another.
