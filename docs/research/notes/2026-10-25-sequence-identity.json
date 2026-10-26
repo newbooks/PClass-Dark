@@ -1,0 +1,37 @@
+{
+  "method": "Exact full sequence string equality; FASTA line wrapping removed; no residue substitution, case conversion, alignment, or homology search. Counts based on actual strings, not hash equality.",
+  "input_sha256": {
+    "clusters.tsv": "b616109726acb0e0403060725c097c19bb245062aba62beabf4fcc6d3db8f1de",
+    "accession.fasta": "83e65954018f41901c44ad522c84bc5be456c22bc07e04782527551867d64238"
+  },
+  "all_fasta": {
+    "accessions": 575748,
+    "distinct_sequences": 487476,
+    "duplicate_sequence_groups": 38466,
+    "accessions_in_duplicate_groups": 126738,
+    "redundant_accessions": 88272,
+    "largest_group": 114,
+    "duplicate_accession_percent": 22.0127555805665,
+    "redundant_accession_percent": 15.331707622084663
+  },
+  "clustered_only": {
+    "accessions": 455508,
+    "distinct_sequences": 381183,
+    "duplicate_sequence_groups": 32384,
+    "accessions_in_duplicate_groups": 106709,
+    "redundant_accessions": 74325,
+    "largest_group": 66,
+    "duplicate_accession_percent": 23.426372313987898,
+    "redundant_accession_percent": 16.31694723254037
+  },
+  "cross_cluster_identical_sequences": {
+    "groups": 1071,
+    "accessions": 5386,
+    "clusters": 739
+  },
+  "within_cluster_identical_sequences": {
+    "cluster_sequence_groups": 32009,
+    "accessions": 105249,
+    "clusters": 2010
+  }
+}

@@ -22,9 +22,9 @@ pclass-dark --version
 ```
 
 The CLI uses a command/subcommand hierarchy: `pclass-dark <command> [options]`.
-Currently, only help and version reporting are implemented; scientific
-subcommands will be added as the project develops. The same entry point is
-available through `python -m pclass_dark`.
+`setup-data` prepares references and frozen PLM embeddings. Signature discovery
+and calibration will be added in the next model-building step. The same entry
+point is available through `python -m pclass_dark`.
 
 Reusable functionality lives in the importable `pclass_dark` package. Future
 profiling, signature selection, and classification operations will expose Python
@@ -36,11 +36,58 @@ import pclass_dark
 print(pclass_dark.__version__)
 ```
 
-Initial dependencies include NumPy, SciPy, and Typer. Optional PyTorch and
-Transformers dependencies can be installed with `pip install -e '.[embeddings]'`;
-embedding generation is not implemented yet. For development, use
-`pip install -e '.[dev]'` and run `pytest`. Dependencies will be refined as
-implementations are added.
+Core dependencies include NumPy, SciPy, Typer, and filelock. Install the optional
+embedding stack with `pip install -e '.[embeddings]'`. For development, use
+`pip install -e '.[dev,embeddings]'` and run `pytest`.
+
+## Prepare Data and Embeddings
+
+```bash
+# Offline: validate references, deduplicate, filter, window, and define C/B sets.
+pclass-dark setup-data --prepare-only --workers 4
+
+# Prepare and embed; use cached model assets or download the pinned checkpoint.
+pip install -e '.[embeddings]'
+pclass-dark setup-data --device auto --batch-size 8
+
+# Require an already cached checkpoint; use CPU explicitly if desired.
+pclass-dark setup-data --offline --device cpu
+```
+
+The default output is `work/setup-data/`; change it with `--output-dir`.
+`--min-clusters 10` keeps clusters with at least 10 distinct full sequences after
+deduplication. Long proteins produce 1022-residue terminal windows named
+`N-<accession>` and `C-<accession>`. Five seeded folds are assigned separately
+within each target cluster C. Background B pools fixed samples of up to 200
+windows per other retained cluster. N/C windows and identical windows are allowed
+in different folds; these folds measure window-level internal validation.
+
+Embedding uses pinned ESM-2 150M final-layer hidden states and averages only
+residue positions, using both attention and special-token masks. Each window
+produces 640 float32 values. Automatic device selection prefers CUDA, with CPU
+fallback if CUDA initialization fails.
+
+Re-run the same command to resume. Completed 64-window shards are checksummed
+and reused; interruption can repeat only the active shard. After an out-of-memory
+error, lower `--batch-size` and re-run. Complete bundles are verified before
+reuse. `--force` archives matching prior outputs and starts intentional
+recomputation. `selection.json` identifies the completed prepared/embedding pair.
+
+The Python API provides the same workflow:
+
+```python
+from pclass_dark.setup_data import prepare_data
+from pclass_dark.cluster_sets import load_sets
+
+result = prepare_data("work/setup-data", prepare_only=True, workers=4)
+sets = load_sets(result.prepared_dir)
+```
+
+Completed bundles can be distributed under package resources. Temporary
+checkpoints and model weights are excluded. Prepared data and vector consumers
+do not need the embedding-generation dependencies. See
+[SPEC-0003](docs/specs/0003-setup-data.md) for schemas, integrity checks, and
+the release layout.
 
 ## Bundled Reference Data
 

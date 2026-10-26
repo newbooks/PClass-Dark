@@ -1,0 +1,39 @@
+{
+  "preparation_id": "94d930743f63abfa074f0b111ce7fe4a8c5558b79f35090dcb5ea6aec06ff11f",
+  "inventory_id": "cb1f4d8a94f0067d729fff579e89b854f3ab5110ba800676598471266b873ff1",
+  "counts": {
+    "cluster_identical_window_cross_fold_cases": 106,
+    "cluster_parent_cross_fold_cases": 10557,
+    "covered_residues": 145739406,
+    "deduplicated_size_bins": [
+      81,
+      1295,
+      799,
+      481,
+      354,
+      218,
+      197,
+      99
+    ],
+    "excluded_clusters": 81,
+    "omitted_residues": 2018649,
+    "original_size_bins": [
+      0,
+      1298,
+      798,
+      493,
+      348,
+      249,
+      187,
+      151
+    ],
+    "proteins_with_omitted_centers": 2104,
+    "retained_clusters": 3443,
+    "retained_memberships": 381627,
+    "retained_sequences": 380578,
+    "source_accessions": 455508,
+    "source_clusters": 3524,
+    "windows": 393548
+  },
+  "verified_reuse_seconds": 18.354009116068482
+}

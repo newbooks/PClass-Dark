@@ -35,3 +35,27 @@ def test_module_entry_point():
         check=True,
     )
     assert result.stdout.strip() == "pclass-dark 0.0.1"
+
+
+def test_setup_log_level_is_bracketed():
+    script = """
+import logging
+import sys
+from types import SimpleNamespace
+import pclass_dark.setup_data as setup
+from pclass_dark.cli import main
+
+def prepare(*args, **kwargs):
+    logging.getLogger('pclass_dark.setup_data').info(
+        'Background identities: 1/3443 targets'
+    )
+    return SimpleNamespace(prepared_dir='prepared', embedding_dir=None)
+
+setup.prepare_data = prepare
+sys.argv = ['pclass-dark', 'setup-data', '--prepare-only']
+main()
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, text=True, check=True
+    )
+    assert result.stderr.strip() == "[INFO] Background identities: 1/3443 targets"
