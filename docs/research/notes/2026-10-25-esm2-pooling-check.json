@@ -1,0 +1,30 @@
+{
+  "revision": "a695f6045e2e32885fa60af20c13cb35398ce30c",
+  "device": "cpu",
+  "contract": {
+    "model": "facebook/esm2_t30_150M_UR50D",
+    "revision": "a695f6045e2e32885fa60af20c13cb35398ce30c",
+    "assets": {
+      "model.safetensors": "c3f1da8aea53bddd32c246c86168c23b9fd72341fb9db9a94436f855f5053566",
+      "config.json": "e512f68ec444d99477703a9806639ca83da3dbc19f6c5fe428d6e5b7460972dc",
+      "vocab.txt": "0b82cc0a7c7cf9e567b1e5892d793285b9fbae822c964ca48696f7db44598e03",
+      "tokenizer_config.json": "7e9161ecdb548ec45a41cbc6b24aa4476fdd418461f491c4207baa99419a29ad",
+      "special_tokens_map.json": "3aedcd4211c0d43aec4e607ff60a63255f3174ead795e997350f09a5f8cd9ee1"
+    },
+    "torch_version": "2.9.1+rocm6.3",
+    "transformers_version": "5.13.1",
+    "layer": 30,
+    "width": 640,
+    "inference_dtype": "float32",
+    "output_dtype": "<f4",
+    "pooling": "attention-and-not-special-mean-f32-v1",
+    "residue_policy": "exact-vocab-ACDEFGHIKLMNPQRSTVWYXBZUO-v1",
+    "algorithm": "esm2-shards64-v1",
+    "window_length": 1022
+  },
+  "max_batch_difference": 9.5367431640625e-07,
+  "max_reorder_difference": 9.5367431640625e-07,
+  "long_window_residues": 1022,
+  "noncanonical": "XBZUO",
+  "gpu_available": false
+}

@@ -22,12 +22,17 @@ dependencies = [
     "numpy>=1.24",
     "scipy>=1.10",
     "typer>=0.16",
+    "filelock>=3.16,<4",
 ]
 
 [project.optional-dependencies]
-# Optional until embedding generation is implemented; GPU support depends on
-# the installed PyTorch build and hardware.
-embeddings = ["torch>=2", "transformers>=4.40"]
+# Optional for setup-data inference; completed artifacts need no PLM stack.
+embeddings = [
+    "torch>=2.6,<3",
+    "transformers>=4.40,<6",
+    "huggingface-hub>=0.26,<2",
+    "safetensors>=0.4,<1",
+]
 dev = ["build>=1", "pytest>=8", "ruff>=0.5"]
 
 [project.urls]
@@ -47,6 +52,13 @@ pclass_dark = [
     "resources/reference/*.fasta",
     "resources/reference/*.json",
     "resources/reference/source_manifests/*.json",
+    "resources/prepared/*/*.tsv",
+    "resources/prepared/*/*.fasta",
+    "resources/prepared/*/*.json",
+    "resources/embeddings/*/*.npy",
+    "resources/embeddings/*/*.tsv",
+    "resources/embeddings/*/*.json",
+    "resources/selection.json",
 ]
 
 [tool.pytest.ini_options]

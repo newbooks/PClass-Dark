@@ -1,0 +1,11 @@
+{
+  "synthetic_windows": 66,
+  "first_run_committed": 64,
+  "resumed_inference_rows": 2,
+  "batch_size_before": 8,
+  "batch_size_after": 3,
+  "max_difference_to_uninterrupted": 9.5367431640625e-07,
+  "device": "cpu",
+  "embedding_id": "40a38876522069954797675a6188ca8359d61ed3cf7a30a9b84f3782d1ad556b",
+  "preparation_id": "28c92b1dee37bcd611b7322a8bea72727816be1c99e31523c7a801b0be1f946d"
+}
