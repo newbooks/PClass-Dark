@@ -778,13 +778,22 @@ access is restricted to model/tokenizer acquisition when needed and permitted;
 ### Publication, discovery, and dependencies
 
 Use persistent nonblocking `filelock.FileLock` files under
-`<output-root>/.locks/`, keyed by preparation or embedding identity. Acquire
-preparation first, publish or verify it, then release that lock before acquiring
-embedding ownership. C/B readers take the preparation lock while snapshotting;
+`<output-root>/.locks/`. Every setup invocation first acquires the root-wide
+`setup-transaction` lock and retains it throughout preparation, embedding,
+selection publication, and any rollback. Acquire preparation/embedding identity
+locks only inside that root transaction, in that order by phase; release the
+preparation identity lock before acquiring embedding ownership. Root ownership
+is reentrant within the same thread/process, never across invocations.
+Concurrent invocations for the same output root fail promptly with SetupBusyError;
+independent output roots may run concurrently. Mutable bundle verification and
+C/B readers acquire the same root guard, so rollback-eligible generations cannot
+be exposed to another reader or selected by a reusing invocation.
+C/B readers additionally take the preparation lock while snapshotting;
 validate retained bytes without reopening replaced files. For installed
 read-only resources, `load_sets` automatically uses an immutable read; explicit
 `immutable=True` supports other release directories that cannot be replaced.
-Mutable working roots use the preparation lock. Publish whole staged
+Mutable working roots use the root transaction guard for both prepared/vector
+verification, plus the preparation lock for C/B snapshots. Publish whole staged
 bundle directories on the same filesystem after writing their manifests. On
 force, archive the old bundle under `<output-root>/.archives/` before replacement;
 leave enough recovery metadata to restore it if replacement fails. Never alter
@@ -798,8 +807,10 @@ version, and both manifest-byte digests. Prepare-only selections have null
 embedding fields; failure must not replace a previous successful selection.
 This pointer selects artifacts explicitly, never by modification time. Release
 builders copy its verified referenced bundles and selection file into package
-resources and verify relative-path resolution after installation. Concurrent
-successes may update selection last-writer-wins; identity bundles remain valid.
+resources and verify relative-path resolution after installation. Selection
+publication completes before root ownership is released; rollback also finishes
+before release on failure. A later successful invocation may update selection,
+but it cannot reuse a bundle while its publisher could still roll it back.
 A force rebuild preserves existing verified embedding shards until their own
 archive/rebuild phase. Prepare-only force never modifies embedding bundles.
 An ordinary downstream or selection-publication failure restores force-replaced
@@ -851,6 +862,10 @@ not part of distributable prepared/embedding bundles.
   hand-calculated fixtures for counts, bins, and split assignment.
 - Reuse, changed parameters, corruption, lock contention, archive/rollback,
   output overlap, interrupted publication, and paths outside the checkout.
+  Pause a force rebuild after bundle publication but before selection; prove
+  concurrent reuse and mutable readers fail busy, rollback restores old digests,
+  and a subsequent invocation succeeds. Test root reentrancy, cross-process
+  exclusion, independent roots, and read-only release access.
 - Implement the mandatory pooling tests above and checkpoint fault-injection
   tests: interruption before/after array and receipt publication, incomplete
   files, corrupted shards, reordered/missing/duplicate rows, changed input or

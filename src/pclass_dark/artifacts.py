@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import tempfile
+import threading
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from functools import wraps
@@ -167,6 +168,52 @@ def locked(root, key):
         lock.release()
 
 
+_transaction_context = threading.local()
+
+
+@contextmanager
+def transaction_guard(root):
+    """Own a working root until selection commits or rollback finishes.
+
+    Reentrant only in the same thread/process. Other invocations and mutable
+    readers fail promptly rather than observe a rollback-eligible generation.
+    """
+    root = Path(root).resolve()
+    token = (os.getpid(), str(root))
+    owned = getattr(_transaction_context, "owned", set())
+    if token in owned:
+        yield
+        return
+    with locked(root, "setup-transaction"):
+        owned.add(token)
+        _transaction_context.owned = owned
+        try:
+            yield
+        finally:
+            owned.remove(token)
+
+
+@contextmanager
+def bundle_read_guard(path, *, immutable=False):
+    """Coordinate mutable bundle readers with selection publication/rollback."""
+    path = Path(path).resolve()
+    resources = Path(__file__).resolve().parent / "resources"
+    if immutable or resources in path.parents:
+        yield
+    else:
+        with transaction_guard(path.parent.parent):
+            yield
+
+
+def guarded_bundle_reader(function):
+    @wraps(function)
+    def checked(path, *args, **kwargs):
+        with bundle_read_guard(path, immutable=kwargs.get("immutable", False)):
+            return function(path, *args, **kwargs)
+
+    return checked
+
+
 def archive(root, path):
     path = Path(path)
     if not path.exists():
@@ -201,23 +248,24 @@ def publish(root, staged, target, force=False, transaction=None):
 @contextmanager
 def publication_transaction(root):
     """Restore force-replaced bundles if a later phase or selection write fails."""
-    actions = []
-    try:
-        yield actions
-    except BaseException as exc:
-        for target, previous, new_digest in reversed(actions):
-            key = (
-                "prepared-" if target.parent.name == "prepared" else "embedding-"
-            ) + target.name
-            with locked(root, key):
-                if sha256(target / "manifest.json") != new_digest:
-                    raise IntegrityError(
-                        "Concurrent replacement prevents safe rollback"
-                    ) from exc
-                archive(root, target)
-                os.replace(previous, target)
-                sync_dir(target.parent)
-        raise
+    with transaction_guard(root):
+        actions = []
+        try:
+            yield actions
+        except BaseException as exc:
+            for target, previous, new_digest in reversed(actions):
+                key = (
+                    "prepared-" if target.parent.name == "prepared" else "embedding-"
+                ) + target.name
+                with locked(root, key):
+                    if sha256(target / "manifest.json") != new_digest:
+                        raise IntegrityError(
+                            "Concurrent replacement prevents safe rollback"
+                        ) from exc
+                    archive(root, target)
+                    os.replace(previous, target)
+                    sync_dir(target.parent)
+            raise
 
 
 @contextmanager

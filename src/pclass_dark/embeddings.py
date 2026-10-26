@@ -16,6 +16,7 @@ from .artifacts import (
     IntegrityError,
     archive,
     file_record,
+    guarded_bundle_reader,
     identity,
     locked,
     publish,
@@ -225,8 +226,9 @@ def _finite_matrix(array, rows):
             raise IntegrityError("Nonfinite embedding matrix")
 
 
+@guarded_bundle_reader
 @schema_checked
-def verify_embeddings(path, windows=None):
+def verify_embeddings(path, windows=None, *, immutable=False):
     path = Path(path)
     m = verify_bundle(path, SCHEMA)
     if m["id"] != identity(m["identity_inputs"]):

@@ -437,3 +437,60 @@ def test_malformed_receipt_is_quarantined_and_resume_recovers(
     fake_backend.calls.clear()
     assert prepare_data(root, reference_dir=reference).reused_embeddings
     assert not fake_backend.calls
+
+
+def test_force_publication_blocks_concurrent_reuse_until_rollback_finishes(
+    reference_factory, tmp_path, fake_backend, monkeypatch
+):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    import pclass_dark.setup_data as setup
+    from pclass_dark.artifacts import SetupBusyError, sha256
+    from pclass_dark.cluster_sets import load_sets
+
+    reference = reference_factory()
+    root = tmp_path / "output"
+    result = prepare_data(root, reference_dir=reference)
+    previous_selection = (root / "selection.json").read_bytes()
+    published = Event()
+    finish = Event()
+    original = setup.write_json
+
+    def fail_selection(path, value):
+        if Path(path).name == "selection.json" and not published.is_set():
+            published.set()  # Both force-rebuilt bundles are now published.
+            assert finish.wait(timeout=10)
+            raise OSError("injected selection failure after publication")
+        return original(path, value)
+
+    monkeypatch.setattr(setup, "write_json", fail_selection)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        writer = executor.submit(
+            prepare_data, root, reference_dir=reference, force=True
+        )
+        try:
+            assert published.wait(timeout=10)
+            with pytest.raises(SetupBusyError):
+                prepare_data(root, reference_dir=reference)
+            with pytest.raises(SetupBusyError):
+                load_sets(result.prepared_dir)
+            with pytest.raises(SetupBusyError):
+                verify_embeddings(result.embedding_dir)
+        finally:
+            finish.set()
+        with pytest.raises(OSError, match="selection failure"):
+            writer.result(timeout=10)
+
+    assert (root / "selection.json").read_bytes() == previous_selection
+    selected = read_json(root / "selection.json")
+    assert (
+        sha256(result.prepared_dir / "manifest.json")
+        == selected["prepared_manifest_sha256"]
+    )
+    assert (
+        sha256(result.embedding_dir / "manifest.json")
+        == selected["embedding_manifest_sha256"]
+    )
+    monkeypatch.setattr(setup, "write_json", original)
+    assert prepare_data(root, reference_dir=reference).reused_embeddings

@@ -16,6 +16,7 @@ from . import __version__
 from .artifacts import (
     IntegrityError,
     file_record,
+    guarded_bundle_reader,
     identity,
     locked,
     publication_transaction,
@@ -418,8 +419,9 @@ def _create_prepared(
     return manifest
 
 
+@guarded_bundle_reader
 @schema_checked
-def verify_prepared(path, expected_id=None):
+def verify_prepared(path, expected_id=None, *, immutable=False):
     """Validate a complete portable prepared bundle and inventory joins."""
     path = Path(path)
     m = verify_bundle(path, PREP_SCHEMA, expected_id)

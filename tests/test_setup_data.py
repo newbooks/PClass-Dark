@@ -293,3 +293,45 @@ def test_malformed_reference_manifest_is_integrity_error(reference_factory, tmp_
     artifacts.write_json(ref / "manifest.json", [])
     with pytest.raises(IntegrityError, match="Malformed artifact"):
         prepare_data(tmp_path / "out", reference_dir=ref, prepare_only=True)
+
+
+def test_transaction_guard_reentrancy_root_scope_and_process_exclusion(tmp_path):
+    import subprocess
+    import sys
+    from concurrent.futures import ThreadPoolExecutor
+
+    from pclass_dark.artifacts import transaction_guard
+
+    root = tmp_path / "root"
+    other = tmp_path / "other"
+    script = """
+import sys
+from pclass_dark.artifacts import transaction_guard, SetupBusyError
+try:
+    with transaction_guard(sys.argv[1]):
+        print('acquired')
+except SetupBusyError:
+    print('busy')
+"""
+    with transaction_guard(root), transaction_guard(root):
+        child = subprocess.run(
+            [sys.executable, "-c", script, str(root)],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert child.stdout.strip() == "busy"
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            # Root ownership does not serialize an independent output directory.
+            def independent():
+                with transaction_guard(other):
+                    return True
+
+            assert executor.submit(independent).result(timeout=5)
+    child = subprocess.run(
+        [sys.executable, "-c", script, str(root)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert child.stdout.strip() == "acquired"

@@ -165,7 +165,7 @@ def load_sets(prepared_dir, *, immutable=False):
     Set immutable=True only when the bundle cannot be concurrently replaced.
     Installed package resources are immutable automatically.
     """
-    from .artifacts import locked
+    from .artifacts import bundle_read_guard, locked
     from .setup_data import verify_prepared
 
     path = Path(prepared_dir).resolve()
@@ -173,8 +173,8 @@ def load_sets(prepared_dir, *, immutable=False):
     package_resources = Path(__file__).resolve().parent / "resources"
     immutable = immutable or package_resources in path.parents
     context = nullcontext() if immutable else locked(root, "prepared-" + path.name)
-    with context:
-        manifest, windows, memberships = verify_prepared(path)
+    with bundle_read_guard(path, immutable=immutable), context:
+        manifest, windows, memberships = verify_prepared(path, immutable=immutable)
         return validate_sets(path, manifest, windows, memberships)
 
 

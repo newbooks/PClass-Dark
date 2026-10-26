@@ -276,3 +276,17 @@
   other shards survive, and the completed result is reusable on the next retry.
 - Synchronized SPEC-0003. Validation: 53 tests passed, two opt-in real-model
   checks skipped; Ruff and whitespace checks passed. No reference data changed.
+
+## 2026-10-26 — Own publication transactions through selection and rollback
+
+- Fixed the concurrent-reuse rollback race with a root-wide setup transaction
+  guard held until selection publication succeeds or rollback finishes. Other
+  invocations and mutable C/B/vector readers fail busy while a generation can
+  still be reverted. Same-thread internal calls are reentrant; independent
+  output roots remain concurrent. Installed immutable releases need no locks.
+- Added a deterministic threaded regression pausing force publication before
+  selection, checking concurrent reuse/read rejection, then verifying restored
+  selection digests and successful subsequent reuse. Added same-root nesting,
+  cross-process exclusion/release, and independent-root tests.
+- Synchronized SPEC-0003. Validation: 55 tests passed, two opt-in checkpoint
+  checks skipped; Ruff and whitespace checks passed. No reference data changed.
