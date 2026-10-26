@@ -338,6 +338,15 @@ def _valid_shard(checkpoints, start, stop, embedding_id, inventory):
             if path.is_symlink():
                 raise IntegrityError("Symlink checkpoint")
         receipt = read_json(receipt_path)
+        if not isinstance(receipt, dict):
+            raise IntegrityError("Checkpoint receipt must be a JSON object")
+        execution = receipt.get("execution")
+        if not isinstance(execution, dict) or not isinstance(
+            execution.get("contract"), dict
+        ):
+            raise IntegrityError(
+                "Checkpoint execution and contract must be JSON objects"
+            )
         expected = {
             "schema": "pclass-dark.embedding-shard.v1",
             "embedding_id": embedding_id,
@@ -353,7 +362,7 @@ def _valid_shard(checkpoints, start, stop, embedding_id, inventory):
             or identity(
                 {
                     "inventory_id": inventory,
-                    "contract": receipt["execution"]["contract"],
+                    "contract": execution["contract"],
                 }
             )
             != embedding_id
@@ -364,7 +373,7 @@ def _valid_shard(checkpoints, start, stop, embedding_id, inventory):
         array = np.load(array_path, mmap_mode="r", allow_pickle=False)
         _finite_matrix(array, stop - start)
         return receipt
-    except (OSError, ValueError, KeyError) as exc:
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
         LOG.warning("Quarantining invalid shard %s: %s", start, exc)
         quarantine = checkpoints / ".quarantine"
         quarantine.mkdir(exist_ok=True)

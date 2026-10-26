@@ -392,3 +392,48 @@ def test_durable_commit_message_only_after_publication(
     prepare_data(tmp_path / "out", reference_dir=ref)
     messages = [r.message for r in caplog.records if "Durably committed" in r.message]
     assert messages == ["Durably committed 140/140 windows"]
+
+
+@pytest.mark.parametrize(
+    "malformation",
+    ["top_level_list", "execution_null", "execution_list", "contract_null"],
+)
+def test_malformed_receipt_is_quarantined_and_resume_recovers(
+    reference_factory, tmp_path, fake_backend, monkeypatch, malformation
+):
+    reference = reference_factory()
+    root = tmp_path / "output"
+    original = embeddings._assemble
+
+    def stop(*args, **kwargs):
+        raise OSError("injected finalization failure")
+
+    monkeypatch.setattr(embeddings, "_assemble", stop)
+    with pytest.raises(OSError):
+        prepare_data(root, reference_dir=reference)
+    assert len(fake_backend.calls) == 140
+    receipt_path = next((root / ".checkpoints").glob("*/000000000000.json"))
+    receipt = read_json(receipt_path)
+    if malformation == "top_level_list":
+        receipt = []
+    elif malformation == "execution_null":
+        receipt["execution"] = None
+    elif malformation == "execution_list":
+        receipt["execution"] = []
+    else:
+        receipt["execution"]["contract"] = None
+    artifacts.write_json(receipt_path, receipt)
+
+    fake_backend.calls.clear()
+    monkeypatch.setattr(embeddings, "_assemble", original)
+    result = prepare_data(root, reference_dir=reference)
+    assert len(fake_backend.calls) == 64  # Other committed shards remain reusable.
+    quarantined = list((receipt_path.parent / ".quarantine").iterdir())
+    assert len(quarantined) == 2
+    assert any(p.name.startswith("000000000000.json-") for p in quarantined)
+    assert any(p.name.startswith("000000000000.npy-") for p in quarantined)
+    assert verify_embeddings(result.embedding_dir)["rows"] == 140
+
+    fake_backend.calls.clear()
+    assert prepare_data(root, reference_dir=reference).reused_embeddings
+    assert not fake_backend.calls

@@ -265,3 +265,14 @@
 - Moved the durable-commit message from each shard to successful final bundle
   publication. Batch/range progress remains. Added a finalization-failure and
   resumed-success log test; synchronized SPEC-0003.
+
+## 2026-10-26 — Recover from structurally malformed checkpoint receipts
+
+- Reproduced review failures for a top-level JSON list and null/list execution
+  metadata. Require object-shaped receipt, execution, and contract fields;
+  route schema TypeError/AttributeError into quarantine as a defensive fallback.
+- Added four end-to-end receipt-corruption cases. Each proves that only the
+  affected 64-window shard is recomputed, the array and receipt are quarantined,
+  other shards survive, and the completed result is reusable on the next retry.
+- Synchronized SPEC-0003. Validation: 53 tests passed, two opt-in real-model
+  checks skipped; Ruff and whitespace checks passed. No reference data changed.

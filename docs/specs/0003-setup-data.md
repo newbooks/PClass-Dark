@@ -361,7 +361,10 @@ path. The OS releases ownership on process death; the remaining file is not
 evidence of a live lock. Never unlink or replace lock files during acquisition
 or release, and do not implement PID-based lock stealing.
 
-On restart, validate every committed shard against the expected identity,
+On restart, require the receipt root, execution metadata, and execution contract
+to be JSON objects. Structurally malformed valid JSON follows the same
+quarantine-and-recompute path as invalid JSON or corrupt arrays.
+Validate every committed shard against the expected identity,
 nonoverlapping row range, row-inventory digest, shape, dtype, finite values,
 and checksum. Preserve valid shards. Quarantine invalid arrays/receipts and
 recompute their ranges; log the reason. Ignore incomplete temporary files and
