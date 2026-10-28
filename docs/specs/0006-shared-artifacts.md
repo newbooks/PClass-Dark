@@ -81,3 +81,19 @@ still selected that checkout's shared data. Editable builds skip artifact copyin
 because they read this data in place; normal wheels/source rebuilds export the
 selected payload. Hidden temporary files as well as private directories are
 excluded by the shared-data Git ignore rule.
+
+### Research selector lifecycle
+
+When publishing a production selection, archive an existing research selector if
+its production ID or manifest digest differs from the new selection. Preserve
+all research bundles and checkpoints. Keep compatible research selectors intact.
+Perform this under the root transaction guard before replacing the production
+selector, so release readers cannot observe an incompatible pair. Before research
+publication, recheck the selected production ID and digest under the same guard;
+a concurrent production switch must prevent stale research selection publication.
+Regression validation covers switching target subsets, packaging inventory,
+compatible reuse, and production switches while research is running.
+
+Selector lifecycle validation: 18 focused production/distribution tests passed;
+full suite 138 passed, 2 opt-in tests skipped (existing Torch environment warning).
+Lint, formatting, and whitespace checks passed.

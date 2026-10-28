@@ -471,13 +471,22 @@ def _select(root, production, relative, prepared_id, embedding_id):
         read_json(production / "manifest.json"),
         read_json(relative / "manifest.json"),
     )
+    production_digest = sha256(production / "manifest.json")
+    research_selector = root / "research-selection.json"
+    if research_selector.exists():
+        research = read_json(research_selector)
+        if (
+            research.get("production_library_id") != pm["id"]
+            or research.get("production_manifest_sha256") != production_digest
+        ):
+            archive(root, research_selector)
     write_json(
         root / "selection.json",
         {
             "schema": "pclass-dark.library-selection.v2",
             "library_id": pm["id"],
             "library": str(production.relative_to(root)),
-            "manifest_sha256": sha256(production / "manifest.json"),
+            "manifest_sha256": production_digest,
             "preparation_id": prepared_id,
             "embedding_id": embedding_id,
             "relative_id": rm["id"],
@@ -833,6 +842,12 @@ def build(
                 raise IntegrityError(
                     "Input/production generation changed during research"
                 )
+            selected = read_json(root / "selection.json")
+            if (
+                selected.get("library_id") != result.library_id
+                or selected.get("manifest_sha256") != production_digest
+            ):
+                raise IntegrityError("Selected production changed during research")
             with publication_transaction(root, domain="research") as transaction:
                 if not research_reused:
                     with staging(root) as stage:

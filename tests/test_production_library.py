@@ -258,3 +258,56 @@ def test_unsupported_distribution_is_explicit(library_data, tmp_path):
         load_selected_library(result.library_dir.parent).relative.evaluate(
             "K0", np.array([0.0])
         )
+
+
+def test_production_switch_archives_stale_research_and_remains_distributable(
+    library_data, tmp_path
+):
+    from build_support import shared_files
+
+    data, *_ = library_data()
+    project = tmp_path / "release"
+    root = project / "data/library"
+    initial = build_library(data, root, cluster_ids=["K0"], cross_validate=True)
+    selector = root / "research-selection.json"
+    previous = selector.read_bytes()
+    research_manifest = sha256(initial.research_dir / "manifest.json")
+    # Reusing the same production must retain its compatible research selection.
+    build_library(data, root, cluster_ids=["K0"])
+    assert selector.read_bytes() == previous
+    with shared_files(project) as files:
+        assert any(str(dst) == "library/research-selection.json" for _, dst in files)
+    result = build_library(data, root, cluster_ids=["K1"])
+    assert not selector.exists()
+    assert sha256(initial.research_dir / "manifest.json") == research_manifest
+    archived = list((root / ".archives").glob("research-selection.json-*"))
+    assert len(archived) == 1
+    assert archived[0].read_bytes() == previous
+    assert load_selected_library(root).library.library_id == result.library_id
+    with shared_files(project) as files:
+        assert any(str(dst) == "library/selection.json" for _, dst in files)
+        assert not any(str(dst).startswith("library/research") for _, dst in files)
+
+
+def test_research_cannot_reselect_after_concurrent_production_switch(
+    library_data, tmp_path, monkeypatch
+):
+    data, *_ = library_data()
+    root = tmp_path / "library"
+    original = library_build._run
+    switched = []
+
+    def switch_after_folds(targets, make_task, workers, output_root, **kwargs):
+        paths = original(targets, make_task, workers, output_root, **kwargs)
+        if "fold_inputs" in make_task(targets[0]):
+            switched.append(build_library(data, root, cluster_ids=["K1"]))
+        return paths
+
+    monkeypatch.setattr(library_build, "_run", switch_after_folds)
+    with pytest.raises(
+        library_build.ResearchBuildError,
+        match="Selected production changed during research",
+    ):
+        build_library(data, root, cluster_ids=["K0"], cross_validate=True)
+    assert load_selected_library(root).library.library_id == switched[0].library_id
+    assert not (root / "research-selection.json").exists()

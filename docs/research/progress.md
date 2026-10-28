@@ -632,3 +632,22 @@
   probability or protein-level window aggregation behavior is claimed.
 - Documentation-only change; checked local links, formulas and whitespace. No
   runtime code, data or tests changed; no code tests required.
+
+### 2026-10-27 — Keep research selection compatible with production
+
+Fixed the release-blocking sequence of building research for one cluster subset
+and then selecting a different production subset. Production selection now
+archives an incompatible research selector under `.archives/`, preserving the
+research bundles and checkpoints; compatible selectors survive reuse. Research
+publication also checks the currently selected production under the root guard,
+preventing a research run from restoring a stale selector after a concurrent
+production switch. See [SPEC 0006](../specs/0006-shared-artifacts.md).
+
+Focused production/distribution regression tests: **18 passed** in 125.93 s.
+Coverage includes selected-artifact packaging inventory after the switch,
+archived selector and preserved research manifest, compatible reuse, and a
+production switch between research computation and publication. Ruff lint,
+formatting checks, and `git diff --check` passed. Full-suite result follows.
+
+Full regression suite: **138 passed, 2 opt-in tests skipped** in 257.37 s;
+the existing Torch `AMD_SERIALIZE_KERNEL` environment warning remains.
