@@ -574,3 +574,17 @@ caller-controlled. Installed packages read selected bundled data or existing
 user-cache data and write new outputs only to the user cache. Package builds
 export selected complete shared bundles through validated build hooks; scientific
 identities, cache safety and historical experiment paths are unchanged.
+
+### Legacy migration with empty validation folds
+
+A valid legacy fold with zero validation members has no rows in the OOF table.
+When migrating published research, represent this as an empty OOF list, verified
+against the fold signature's validation count and the current validation IDs.
+Missing OOF rows for a nonempty validation fold remain an integrity error.
+Preserve the source bundle and import both populated and empty folds without
+recomputing signatures. Regression coverage uses four proteins in two clusters
+(`min_clusters=1`), removes private checkpoints, and imports published folds.
+
+Empty-fold migration validation: the regression passed independently, followed by
+**33 passing production/legacy library tests**. Lint, formatting and whitespace
+checks passed.

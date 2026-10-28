@@ -156,11 +156,21 @@ def prepare_sources(
                         directory / "selection_trace.json.gz", "rt"
                     ) as traces:
                         trace = json.load(traces)[int(fold)]
+                    signature = read_json(directory / f"fold_{fold}.json")
+                    oof_file = cache / directory.name / f"oof_{fold}.json"
+                    if oof_file.exists():
+                        oof = read_json(oof_file)
+                    elif signature["counts"]["validation_positive_n"] == 0:
+                        oof = []
+                    else:
+                        raise IntegrityError(
+                            "Missing legacy OOF rows for nonempty validation fold"
+                        )
                     result = {
-                        "signature": read_json(directory / f"fold_{fold}.json"),
+                        "signature": signature,
                         "profiles": [_parse_profile(r, False) for r in group],
                         "trace": trace,
-                        "oof": read_json(cache / directory.name / f"oof_{fold}.json"),
+                        "oof": oof,
                     }
                     file = cache / directory.name / f"fold_{fold}.json"
                     write_json(file, result)

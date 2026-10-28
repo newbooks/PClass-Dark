@@ -366,3 +366,48 @@ def test_research_rebinds_report_after_production_scope_change(
     write_json(manifest_file, manifest)
     with pytest.raises(IntegrityError, match="Research production provenance mismatch"):
         load_research(result.research_dir)
+
+
+def test_legacy_research_imports_empty_validation_folds(
+    library_data, tmp_path, monkeypatch
+):
+    import shutil
+
+    from pclass_dark.artifacts import read_json
+    from pclass_dark.library import _build_legacy_library
+    from pclass_dark.library_reports import load_research
+
+    data, *_ = library_data(count=4, min_clusters=1)
+    root = tmp_path / "library"
+    legacy = _build_legacy_library(data, root)
+    source_digest = sha256(legacy.library_dir / "manifest.json")
+    # Require published migration; no private receipts may hide the empty folds.
+    shutil.rmtree(root / ".checkpoints")
+    monkeypatch.setattr(
+        library_build,
+        "fit_signature",
+        lambda *a, **k: pytest.fail("recomputed published legacy signature"),
+    )
+    result = build_library(data, root, cross_validate=True)
+    report = load_research(result.research_dir)
+    assert report["counts"]["targets"] == 2
+    assert report["counts"]["oof_rows"] == 4
+    assert sha256(legacy.library_dir / "manifest.json") == source_digest
+    assert load_selected_library(root).library.library_id == result.library_id
+    empty = populated = 0
+    for file in result.research_dir.glob("clusters/*/fold_*.json"):
+        signature = read_json(file)
+        count = signature["counts"]["validation_positive_n"]
+        if count == 0:
+            empty += 1
+        else:
+            populated += 1
+        assert count in (0, 1)
+    assert (empty, populated) == (6, 4)
+    receipts = list((root / ".research-checkpoints").glob("*/c_*/fold_*/complete.json"))
+    assert len(receipts) == 10
+    for file in receipts:
+        record = read_json(file)["payload"]
+        assert (
+            len(record["oof"]) == record["signature"]["counts"]["validation_positive_n"]
+        )

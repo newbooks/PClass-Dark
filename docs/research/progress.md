@@ -679,3 +679,23 @@ Final validation: **19 production-library/distribution tests passed** in 111.84 
 including the provenance-switch regression and tampered-provenance rejection.
 Ruff lint and formatting checks and `git diff --check` passed. The full suite was
 not rerun for this focused provenance fix.
+
+### 2026-10-27 — Import legacy research with empty validation folds
+
+Fixed published legacy research migration when a fold has zero validation
+members. Such folds have no OOF table rows and therefore no spooled JSON file.
+Migration now supplies an empty OOF list only after checking the signature's
+validation count is zero. A missing file for a nonempty fold remains an explicit
+integrity error, and imported results still validate exact validation IDs.
+See [SPEC 0004](../specs/0004-build-library.md).
+
+The four-protein/two-cluster regression (`min_clusters=1`) removes private legacy
+checkpoints and forbids signature recomputation. It verifies ten published fold
+imports (six empty, four populated), four OOF rows, preserved source manifest,
+valid research output, and usable selected production. Initial regression run:
+**1 passed** in 18.79 s. Broader library checks follow.
+
+Broader validation: **33 production and legacy library tests passed** in 256.29 s,
+including serial/parallel agreement, migration, resume, and integrity checks.
+Ruff lint/formatting and whitespace checks passed. Full suite not rerun for this
+focused migration fix.
