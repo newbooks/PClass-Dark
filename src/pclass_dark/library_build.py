@@ -791,8 +791,14 @@ def build(
                     )
                     for f in range(5)
                 ]
+            source_production = {
+                "id": result.library_id,
+                "manifest_sha256": production_digest,
+                "library": str(result.library_dir.relative_to(root)),
+            }
             ri = {
                 "schema": RESEARCH,
+                "source_production": source_production,
                 "cluster_ids": targets,
                 "final_fits": sorted(fit_ids.items()),
                 "fold_fits": [
@@ -857,11 +863,7 @@ def build(
                             ri,
                             contract,
                             execution,
-                            source_production={
-                                "id": result.library_id,
-                                "manifest_sha256": production_digest,
-                                "library": str(result.library_dir.relative_to(root)),
-                            },
+                            source_production=source_production,
                         )
                         load_research(stage, immutable=True)
                         publish(root, stage, research, force, transaction)

@@ -651,3 +651,31 @@ formatting checks, and `git diff --check` passed. Full-suite result follows.
 
 Full regression suite: **138 passed, 2 opt-in tests skipped** in 257.37 s;
 the existing Torch `AMD_SERIALIZE_KERNEL` environment warning remains.
+
+### 2026-10-27 — Bind research reports to their production provenance
+
+Research report identity now includes the source production ID, relative bundle
+path, and manifest digest. Previously, K0 research built against K0-only
+production could be incorrectly reused after selecting full production, leaving
+a selector that disagreed with the report manifest and blocking packaging.
+Changing production now creates a distinct report bundle. Fold checkpoints
+are report-scoped, so a production switch currently repeats fold computations;
+compatible final fits remain reusable. Report loading checks identity-bound
+provenance against the manifest; historical reports remain readable without
+being reused under the new identities. Specifications [0004](../specs/0004-build-library.md)
+and [0006](../specs/0006-shared-artifacts.md) record the contract.
+
+Added a regression covering K0-only research, full production, K0 research again,
+release inventory validation, unchanged original report, no repeated final fits,
+same-production report reuse, and rejection of conflicting provenance.
+
+The first focused run had 18 passing tests and one failing regression assertion:
+it incorrectly expected report-scoped fold checkpoints to survive a report-ID
+change without recomputation. Updated that expectation to the actual namespace
+contract (five fold fits repeated, final fit reused), and documented the resource
+cost rather than broadening this fix to change checkpoint storage.
+
+Final validation: **19 production-library/distribution tests passed** in 111.84 s,
+including the provenance-switch regression and tampered-provenance rejection.
+Ruff lint and formatting checks and `git diff --check` passed. The full suite was
+not rerun for this focused provenance fix.

@@ -237,7 +237,8 @@ Separate three dependencies:
   floor and ordering. It excludes CV request, research scope, and fold partition.
 - A production bundle identity binds selected target inventory, final fit
   identities and its versioned output contract. Output scope remains explicit.
-- A research identity additionally binds research target scope, five-fold
+- A research identity additionally binds the source production library ID,
+  root-relative path and manifest SHA-256, research target scope, five-fold
   assignments, fold-fit algorithm and result contract. It cannot change the
   already fixed production parameters or invalidate relative-score data.
 

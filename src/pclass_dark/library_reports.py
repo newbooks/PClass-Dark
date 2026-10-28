@@ -467,6 +467,12 @@ def load_research(research_dir, *, immutable=False):
             or len(manifest["source_production"]["manifest_sha256"]) != 64
         ):
             raise IntegrityError("Missing research production provenance")
+        bound_production = manifest["identity_inputs"].get("source_production")
+        if (
+            bound_production is not None
+            and bound_production != manifest["source_production"]
+        ):
+            raise IntegrityError("Research production provenance mismatch")
         _validate_research_tables(path, manifest)
         return freeze(manifest)
 

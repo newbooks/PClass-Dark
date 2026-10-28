@@ -97,3 +97,15 @@ compatible reuse, and production switches while research is running.
 Selector lifecycle validation: 18 focused production/distribution tests passed;
 full suite 138 passed, 2 opt-in tests skipped (existing Torch environment warning).
 Lint, formatting, and whitespace checks passed.
+
+Research report identities also bind their source production provenance (ID,
+root-relative path and manifest digest). Changing selected production requires a
+new report bundle. Fold checkpoints are scoped to the research report identity,
+so switching production currently repeats fold computations; matching final fits
+remain reusable. Loaders verify that the
+identity-bound provenance agrees with the report manifest. Older report bundles
+remain readable, but are not reused under the new production-bound identities.
+
+Production-bound research report validation: **19 focused production-library and
+distribution tests passed**, including report regeneration after scope changes,
+packaging, same-production reuse, and conflicting-provenance rejection.

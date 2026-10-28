@@ -311,3 +311,58 @@ def test_research_cannot_reselect_after_concurrent_production_switch(
         build_library(data, root, cluster_ids=["K0"], cross_validate=True)
     assert load_selected_library(root).library.library_id == switched[0].library_id
     assert not (root / "research-selection.json").exists()
+
+
+def test_research_rebinds_report_after_production_scope_change(
+    library_data, tmp_path, monkeypatch
+):
+    from build_support import shared_files
+
+    from pclass_dark.artifacts import IntegrityError, read_json, write_json
+    from pclass_dark.library_reports import load_research
+
+    data, *_ = library_data()
+    project = tmp_path / "release"
+    root = project / "data/library"
+    initial = build_library(data, root, cluster_ids=["K0"], cross_validate=True)
+    old_manifest = sha256(initial.research_dir / "manifest.json")
+    full = build_library(data, root)
+    original = library_build.fit_signature
+    calls = []
+
+    def fold_only(*args, **kwargs):
+        fit = kwargs["context"]["fit_id"]
+        assert fit != "final"
+        calls.append(fit)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(library_build, "fit_signature", fold_only)
+    result = build_library(data, root, cluster_ids=["K0"], cross_validate=True)
+    assert calls == [f"fold_{f}" for f in range(5)]
+    assert result.library_id == full.library_id != initial.library_id
+    assert result.research_id != initial.research_id
+    assert sha256(initial.research_dir / "manifest.json") == old_manifest
+    report = load_research(result.research_dir)
+    selector = read_json(root / "research-selection.json")
+    assert report["source_production"]["id"] == selector["production_library_id"]
+    assert (
+        report["source_production"]["manifest_sha256"]
+        == selector["production_manifest_sha256"]
+        == sha256(full.library_dir / "manifest.json")
+    )
+    with shared_files(project) as files:
+        assert any(str(dst) == "library/research-selection.json" for _, dst in files)
+    monkeypatch.setattr(
+        library_build,
+        "fit_signature",
+        lambda *a, **k: pytest.fail("recomputed same-production research"),
+    )
+    again = build_library(data, root, cluster_ids=["K0"], cross_validate=True)
+    assert again.reused and again.research_id == result.research_id
+    # Top-level provenance must agree with its identity-bound counterpart.
+    manifest_file = result.research_dir / "manifest.json"
+    manifest = read_json(manifest_file)
+    manifest["source_production"]["id"] = initial.library_id
+    write_json(manifest_file, manifest)
+    with pytest.raises(IntegrityError, match="Research production provenance mismatch"):
+        load_research(result.research_dir)
