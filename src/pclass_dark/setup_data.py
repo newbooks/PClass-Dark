@@ -601,7 +601,7 @@ def _validate_options(min_clusters, seed, workers, batch_size, model, revision, 
 
 
 def prepare_data(
-    output_dir="work/setup-data",
+    output_dir=None,
     *,
     min_clusters=10,
     seed=42,
@@ -622,7 +622,11 @@ def prepare_data(
     override for integrations/tests; the default always uses packaged resources.
     """
     _validate_options(min_clusters, seed, workers, batch_size, model, revision, device)
-    root_input = Path(output_dir).absolute()
+    from .paths import default_setup_output_dir
+
+    root_input = Path(
+        default_setup_output_dir() if output_dir is None else output_dir
+    ).absolute()
     if any(p.is_symlink() for p in (root_input, *root_input.parents)):
         raise ValueError("Symlink output paths are not supported")
     root = root_input.resolve()

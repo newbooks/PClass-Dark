@@ -109,6 +109,21 @@ def sync_dir(path):
             os.close(descriptor)
 
 
+def sync_tree(root):
+    """Flush a completed staged payload tree before committing its manifest."""
+    root = Path(root)
+    paths = [safe_file(root, str(p.relative_to(root))) for p in root.rglob("*")]
+    for path in paths:
+        if path.is_file():
+            with path.open("rb") as handle:
+                os.fsync(handle.fileno())
+    for path in sorted(
+        (p for p in paths if p.is_dir()), key=lambda p: len(p.parts), reverse=True
+    ):
+        sync_dir(path)
+    sync_dir(root)
+
+
 def file_record(path):
     path = Path(path)
     if path.is_symlink() or not path.is_file():
@@ -246,17 +261,27 @@ def publish(root, staged, target, force=False, transaction=None):
 
 
 @contextmanager
-def publication_transaction(root):
+def publication_transaction(root, *, domain=None):
     """Restore force-replaced bundles if a later phase or selection write fails."""
+    if domain not in {
+        None,
+        "prepared",
+        "embedding",
+        "library",
+        "relative_scores",
+        "research",
+    }:
+        raise ValueError("Unknown publication domain")
     with transaction_guard(root):
         actions = []
         try:
             yield actions
         except BaseException as exc:
             for target, previous, new_digest in reversed(actions):
-                key = (
-                    "prepared-" if target.parent.name == "prepared" else "embedding-"
-                ) + target.name
+                owner = domain or (
+                    "prepared" if target.parent.name == "prepared" else "embedding"
+                )
+                key = owner + "-" + target.name
                 with locked(root, key):
                     if sha256(target / "manifest.json") != new_digest:
                         raise IntegrityError(

@@ -1,0 +1,16 @@
+{
+  "scope": "one complete 158-trial round on existing fold kernels; includes cache construction, AUROC, cancellation/near-tie fallback, and proposed-gain confirmation; excludes file IO/checkpoints",
+  "cluster": "cluster_0945",
+  "fit": "fold_0",
+  "dimensions": 160,
+  "C": 732,
+  "B": 4096,
+  "reference_seconds": 1.2430014091078192,
+  "optimized_seconds": 0.36001281603239477,
+  "ratio": 3.452658777003014,
+  "identical_counts": true,
+  "source_library_id": "d5cc3bf6dda01fcbf8273bb2a47604b75173eee5941bbee2ea0ce58165ed22b7",
+  "selection_version": "first-improvement-logdiff-prefix-v2",
+  "selection_order": "first 160 dimensions from the source fold_0 individual ranking",
+  "background_subset": "first 4096 rows of the source fixed B cache, solely for timing"
+}

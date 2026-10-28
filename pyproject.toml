@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=77", "wheel"]
+requires = ["setuptools>=77", "wheel", "filelock>=3.16,<4"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -23,6 +23,7 @@ dependencies = [
     "scipy>=1.10",
     "typer>=0.16",
     "filelock>=3.16,<4",
+    "threadpoolctl>=3.2,<4",
 ]
 
 [project.optional-dependencies]
@@ -59,11 +60,27 @@ pclass_dark = [
     "resources/embeddings/*/*.tsv",
     "resources/embeddings/*/*.json",
     "resources/selection.json",
+    "resources/library/selection.json",
+    "resources/library/*/*.json",
+    "resources/library/*/*.tsv",
+    "resources/library/*/*.gz",
+    "resources/library/*/clusters/*/*.json",
+    "resources/library/*/clusters/*/*.gz",
+    "resources/library/research-selection.json",
+    "resources/library/relative-scores/*/*.json",
+    "resources/library/relative-scores/*/*.tsv",
+    "resources/library/relative-scores/*/clusters/*/*.json",
+    "resources/library/relative-scores/*/clusters/*/*.npy",
+    "resources/library/research/*/*.json",
+    "resources/library/research/*/*.tsv",
+    "resources/library/research/*/*.gz",
+    "resources/library/research/*/clusters/*/*.json",
+    "resources/library/research/*/clusters/*/*.gz",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 
 [tool.ruff]
 line-length = 88

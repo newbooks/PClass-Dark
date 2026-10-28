@@ -39,3 +39,6 @@ ENV/
 # Repository-local working directories
 /work/
 /work-*/
+
+# Shared artifact intermediates (completed bundles remain distributable)
+/data/**/.*
