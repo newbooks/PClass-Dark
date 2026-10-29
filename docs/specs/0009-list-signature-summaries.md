@@ -76,7 +76,7 @@ Column order and sources (Status is conditional):
 | Status | Signature status/reason | `ok`; otherwise the nonempty saved reason, falling back to status |
 | C_windows | `counts.training_positive_n` | Integer |
 | B_windows | `counts.background_n` | Integer |
-| Dimensions | Number of `selected_dimensions` | Integer; zero for an unsupported fit with an empty set |
+| Dims | Number of `selected_dimensions` | Integer; zero for an unsupported fit with an empty set |
 | AUROC | `training_metrics.auroc` | Fraction, fixed 3 decimals |
 | Recall% | `training_metrics.recall * 100` | Fixed 3 decimals |
 | Specificity% | `training_metrics.specificity * 100` | Fixed 3 decimals |
@@ -99,7 +99,7 @@ An illustrative row using the documented cluster_0001 snapshot:
 ```text
 Final signatures — in-sample reference metrics
 
-Cluster       Description               C_windows  B_windows  Dimensions  AUROC  Recall%  Specificity%  Precision%
+Cluster       Description               C_windows  B_windows  Dims  AUROC  Recall%  Specificity%  Precision%
 cluster_0001  NADP+ nucleosidase wi...         20     213241          13  0.997  100.000        97.348       0.352
 ```
 
@@ -113,7 +113,7 @@ libraries. Generate every row from the currently selected artifacts.
 - Format cell strings first, then compute each column's width as the maximum
   displayed width of its header and every cell. Use two spaces between columns.
 - Column headers are single whitespace-free tokens: `Cluster`, `Description`, `Status`,
-  `C_windows`, `B_windows`, `Dimensions`, `AUROC`, `Recall%`, `Specificity%`,
+  `C_windows`, `B_windows`, `Dims`, `AUROC`, `Recall%`, `Specificity%`,
   `Precision%`. This permits whitespace splitting of the table header.
 - Left-align Cluster, Description and Status. Right-align all other headers and cells,
   including unavailable numeric cells. Counts have no decimal places or grouping
@@ -409,8 +409,10 @@ Display one aligned 20-row table with headers `AUROC_bin`, `Rate_bin%`, `AUROC_n
 `Recall_n`, `Specificity_n`, `Precision_n`. The first column labels fraction
 intervals with three decimals; the second gives the same intervals on the 0–100%
 scale for the three rate metrics. Counts are integers, and empty bins remain
-visible. Interval strings contain no embedded spaces. Report valid and unavailable
-counts per metric in a second small table. All-null and empty libraries still
+visible. Interval strings contain no embedded spaces. Report total binned (valid) counts per metric in the section heading after
+`(20 bins)` as `— totals: AUROC=N, Recall=N, Specificity=N, Precision=N`.
+Omit the trailing availability table and binning explanation; unavailable counts
+remain accessible in JSON/API. All-null and empty libraries still
 show 20 zero-count bins and the correct missing counts.
 
 Include a structured `distributions` field in JSON and the immutable listing API:
@@ -435,3 +437,11 @@ metrics, with zero unavailable values in this snapshot. Installed wheel text,
 Markdown and JSON output passed from outside the checkout. Lint, formatting and
 documentation checks passed. No embedding/training-suite rerun was needed for
 this isolated descriptive aggregation and presentation change.
+
+## Compact listing presentation — 2026-10-29
+
+The metrics header is `Dims`, with integer values right-aligned using the same
+width calculation as other numeric columns. Distribution totals appear in the
+heading for text and Markdown, including zero totals for empty/all-null inputs.
+The report ends after the 20 bins. Scientific calculations and JSON/API fields
+are unchanged. Validation results are recorded in the progress log.

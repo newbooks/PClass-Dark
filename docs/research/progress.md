@@ -1048,3 +1048,18 @@ inference. One existing PyTorch environment warning concerned the value of
 `AMD_SERIALIZE_KERNEL`. The latest extended migration tests were rerun separately
 (13 passed), including release inventory and postmigration build reuse. No
 scientific values changed, no refitting occurred, and nothing was committed/pushed.
+
+### 2026-10-29 — Compact signature listing presentation
+
+Updated [SPEC-0009](../specs/0009-list-signature-summaries.md) and the text/Markdown
+`explain-signature --list` renderer: `Dimensions` is now `Dims`, retaining numeric
+right alignment. Each metric's total binned count appears in the distribution
+heading; the trailing valid/unavailable table and binning explanation are removed.
+Missing counts remain in JSON/API; scientific calculations are unchanged.
+
+Validation: `python -m pytest -q tests/test_signature_summaries.py
+ tests/test_summary_distributions.py tests/test_cli.py` — **56 passed** in 43.12 s.
+Regression coverage checks header alignment, heading totals with missing/empty
+metrics, 20 bins, unchanged JSON/API and absence of trailing explanatory content.
+Scoped Ruff lint/format and `git diff --check` passed. No fitting or experiments
+were required.
