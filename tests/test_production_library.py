@@ -138,7 +138,7 @@ def test_legacy_private_and_published_import_without_discovery(
     root = tmp_path / "library"
     legacy = _build_legacy_library(data, root)
     legacy_manifest = sha256(legacy.library_dir / "manifest.json")
-    legacy_final = (legacy.library_dir / "clusters/c_4b30/final.json").read_bytes()
+    legacy_final = (legacy.library_dir / "clusters/K0/final.json").read_bytes()
     # A private final is reusable without its surrounding six-fit target receipt.
     for path in (root / ".checkpoints").glob("*/c_*/target.json"):
         path.unlink()
@@ -150,9 +150,7 @@ def test_legacy_private_and_published_import_without_discovery(
     first = build_library(data, root, cluster_ids=["K0"])
     assert first.reuse["imported"] == 1
     assert sha256(legacy.library_dir / "manifest.json") == legacy_manifest
-    assert (
-        legacy.library_dir / "clusters/c_4b30/final.json"
-    ).read_bytes() == legacy_final
+    assert (legacy.library_dir / "clusters/K0/final.json").read_bytes() == legacy_final
     # Now use published results only for K1; no private source survives.
     shutil.rmtree(root / ".checkpoints")
     second = build_library(data, root, cluster_ids=["K1"])

@@ -22,6 +22,7 @@ dependencies = [
     "numpy>=1.24",
     "scipy>=1.10",
     "typer>=0.16",
+    "rich>=13.8.0",
     "filelock>=3.16,<4",
     "threadpoolctl>=3.2,<4",
 ]
@@ -49,6 +50,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 pclass_dark = [
+    "resources/cluster_descriptions.json",
     "resources/reference/*.tsv",
     "resources/reference/*.fasta",
     "resources/reference/*.json",

@@ -1,2 +1,5 @@
 include build_support.py
 include data/README.md
+
+include scripts/update_cluster_descriptions.py
+include scripts/migrate_library_paths.py

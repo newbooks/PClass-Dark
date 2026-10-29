@@ -27,6 +27,7 @@ from .artifacts import (
     verify_bundle,
     write_json,
 )
+from .cluster_paths import LAYOUT, cluster_directory_name, stored_cluster_name
 from .fit_records import payload_identity
 from .library_checkpoints import Checkpoints
 from .library_runtime import freeze, score_signature
@@ -168,7 +169,7 @@ def distribution_checkpoint(
 
 def write_companion(stage, production, paths):
     """Publishable companion contents from verified per-target checkpoints."""
-    from .library import _table, encoded_cluster
+    from .library import _table
 
     pm = read_json(production / "manifest.json")
     root = production.parent
@@ -186,7 +187,10 @@ def write_companion(stage, production, paths):
             cluster = target["cluster_id"]
             inputs = target["fit_inputs"]
             signature_path = (
-                production / "clusters" / encoded_cluster(cluster) / "final.json"
+                production
+                / "clusters"
+                / stored_cluster_name(cluster, pm)
+                / "final.json"
             )
             signature = read_json(signature_path)
             fit_id = signature["fit_identity"]
@@ -203,7 +207,7 @@ def write_companion(stage, production, paths):
                 or payload["status"] != signature["status"]
             ):
                 raise IntegrityError("Companion checkpoint/scientific binding mismatch")
-            destination = stage / "clusters" / encoded_cluster(cluster)
+            destination = stage / "clusters" / cluster_directory_name(cluster)
             destination.mkdir(parents=True)
             meta = {
                 "schema": CLUSTER_SCHEMA,
@@ -297,6 +301,7 @@ def write_companion(stage, production, paths):
     }
     manifest = {
         "schema": SCHEMA,
+        "cluster_directory_layout": LAYOUT,
         "id": identity(inputs),
         "identity_inputs": inputs,
         "status": "complete",
@@ -340,6 +345,7 @@ class RelativeEvidence:
 
 class RelativeScores:
     def __init__(self, path, library, manifest, metadata, immutable):
+        self._layout = manifest.get("cluster_directory_layout", "hex-v1")
         self.path, self.library = path, library
         self.relative_id = manifest["id"]
         self._digest = sha256(path / "manifest.json")
@@ -384,7 +390,9 @@ class RelativeScores:
                     "B": None,
                 }
                 if meta["status"] == "ok":
-                    arrays = _read_arrays(self.path, meta, mmap=True)
+                    arrays = _read_arrays(
+                        self.path, meta, mmap=True, layout=self._layout
+                    )
                     for key in ("C", "B"):
                         summary[key] = {
                             "n": len(arrays[key]),
@@ -428,7 +436,7 @@ class RelativeScores:
                     raise IntegrityError(
                         "Relative generation changed; reload the selected pair"
                     )
-                arrays = _read_arrays(self.path, meta)
+                arrays = _read_arrays(self.path, meta, layout=self._layout)
             size = sum(a.nbytes for a in arrays.values())
             while self._cache and (
                 len(self._cache) >= 16 or self._cache_bytes + size > 64 * 2**20
@@ -486,10 +494,13 @@ def _score_quantiles(array):
     return result
 
 
-def _read_arrays(path, meta, *, mmap=False):
-    from .library import encoded_cluster
+def _read_arrays(path, meta, *, mmap=False, layout="hex-v1"):
 
-    directory = safe_file(path, "clusters/" + encoded_cluster(meta["cluster_id"]))
+    directory = safe_file(
+        path,
+        "clusters/"
+        + stored_cluster_name(meta["cluster_id"], {"cluster_directory_layout": layout}),
+    )
     arrays = {}
     for key in ("C", "B"):
         info = meta["arrays"][key]
@@ -514,15 +525,15 @@ def _read_arrays(path, meta, *, mmap=False):
 
 @schema_checked
 def _load_relative(path, library, immutable, *, expected_targets=None):
-    from .library import encoded_cluster
 
+    preview = read_json(path / "manifest.json")
     members = None
     if expected_targets is not None:
         if len(library.signatures) != 1:
             raise IntegrityError("Scoped companion requires exactly one signature")
         members = []
         for cluster, signature in library.signatures.items():
-            prefix = "clusters/" + encoded_cluster(cluster) + "/"
+            prefix = "clusters/" + stored_cluster_name(cluster, preview) + "/"
             members.append(prefix + "distribution.json")
             if signature["status"] == "ok":
                 members.extend(prefix + key + "_log_scores.npy" for key in ("C", "B"))
@@ -558,7 +569,7 @@ def _load_relative(path, library, immutable, *, expected_targets=None):
         "total_B_values": 0,
     }
     for cluster, signature in library.signatures.items():
-        prefix = "clusters/" + encoded_cluster(cluster) + "/"
+        prefix = "clusters/" + stored_cluster_name(cluster, manifest) + "/"
         name = prefix + "distribution.json"
         required.add(name)
         meta = read_json(safe_file(path, name))
@@ -609,7 +620,10 @@ def _load_relative(path, library, immutable, *, expected_targets=None):
                     raise IntegrityError("Unexpected score array name")
                 required.add(prefix + meta["arrays"][key]["file"])
             _read_arrays(
-                path, meta, mmap=True
+                path,
+                meta,
+                mmap=True,
+                layout=manifest.get("cluster_directory_layout", "hex-v1"),
             )  # Verify one target at a time, bounded RAM.
             totals["total_C_values"] += meta["C_n"]
             totals["total_B_values"] += meta["B_n"]

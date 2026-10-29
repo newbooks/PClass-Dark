@@ -153,8 +153,8 @@ def build_library_command(
         typer.echo(f"Research: {result.research_dir}")
 
 
-def _one_cluster(values: list[str]) -> list[str]:
-    if len(values) != 1:
+def _one_cluster(values: list[str] | None) -> list[str] | None:
+    if values is not None and len(values) > 1:
         raise typer.BadParameter("Provide --cluster exactly once.")
     return values
 
@@ -164,9 +164,12 @@ def _one_cluster(values: list[str]) -> list[str]:
 )
 def explain_signature_command(
     cluster: Annotated[
-        list[str],
+        list[str] | None,
         typer.Option("--cluster", callback=_one_cluster, help="One exact cluster ID."),
-    ],
+    ] = None,
+    list_mode: bool = typer.Option(
+        False, "--list", help="List all signature summaries."
+    ),
     library_dir: str | None = typer.Option(
         None,
         help="Library root; default: repository data/library, or bundled/user data.",
@@ -176,16 +179,29 @@ def explain_signature_command(
     ),
     format: str = typer.Option("text", help="Report format: text, markdown or json."),
 ) -> None:
-    """Explain a saved cluster signature, its selection and ABC reference data."""
+    """Explain one cluster signature or list all in-sample signature summaries."""
+    if bool(cluster) == list_mode:
+        raise typer.BadParameter("Provide exactly one of --cluster or --list.")
+    if list_mode and detailed:
+        raise typer.BadParameter("--detailed applies only to --cluster.")
     if format not in ("text", "markdown", "json"):
         raise typer.BadParameter(
             "Must be text, markdown or json.", param_hint="--format"
         )
-    from .explanations import explain_signature, render_signature_explanation
+    from .explanations import (
+        explain_signature,
+        list_signature_summaries,
+        render_signature_explanation,
+        render_signature_summaries,
+    )
 
     try:
-        report = explain_signature(cluster[0], library_dir, detailed=detailed)
-        rendered = render_signature_explanation(report, format=format)
+        if list_mode:
+            listing = list_signature_summaries(library_dir)
+            rendered = render_signature_summaries(listing, format=format)
+        else:
+            report = explain_signature(cluster[0], library_dir, detailed=detailed)
+            rendered = render_signature_explanation(report, format=format)
     except KeyboardInterrupt:
         typer.echo("Interrupted.", err=True)
         raise typer.Exit(130) from None

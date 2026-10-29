@@ -90,7 +90,8 @@ contracts rather than create an alternative scientific implementation.
 
 Resolve paths with `default_library_input_dir()` and inspect root/selector
 existence before acquiring a guard, so missing inputs do not create directories.
-Use `safe_file` and `encoded_cluster` rather than interpolating unchecked paths.
+Use `safe_file` and manifest-aware `stored_cluster_name` rather than
+interpolating unchecked paths (see [SPEC-0011](0011-readable-cluster-paths.md)).
 Reject symlink roots/ancestors and artifact symlinks consistently with the existing
 artifact contracts. Reject unknown selection/manifest schemas explicitly.
 
@@ -558,3 +559,11 @@ reflecting its sequential shared-profile lookup. Prior to removing the duplicate
 lookup, that last-target measurement was 14.324 s. These are local observations,
 not cold-cache or cross-machine performance guarantees. No full-loader baseline
 was timed in this revision.
+
+## Signature listing mode
+
+[SPEC-0009](0009-list-signature-summaries.md) adds `explain-signature --list`.
+The CLI now requires either `--cluster` or `--list`; `--detailed` applies only to
+the former. Individual explanations retain their targeted validation and output.
+Listings use a separate production-summary validation scope and avoid all
+profiles, traces and relative-score artifacts.

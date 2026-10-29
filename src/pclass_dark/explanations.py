@@ -40,8 +40,8 @@ ABC = {
 
 
 @dataclass(frozen=True)
-class SignatureExplanation:
-    """Detached immutable report. ``to_dict`` returns an independent JSON tree."""
+class _ImmutableReport:
+    """Detached immutable data; ``to_dict`` returns an independent JSON tree."""
 
     data: Mapping
 
@@ -52,6 +52,11 @@ class SignatureExplanation:
 
     def to_dict(self):
         return thaw(self.data)
+
+
+@dataclass(frozen=True)
+class SignatureExplanation(_ImmutableReport):
+    """Verified single-cluster explanation snapshot."""
 
 
 def explain_signature(cluster_id, library_dir=None, *, detailed=False):
@@ -247,3 +252,41 @@ def render_signature_explanation(report, *, format="text"):
     from .explanation_render import render_narrative
 
     return render_narrative(data, markdown=format == "markdown")
+
+
+@dataclass(frozen=True)
+class SignatureSummaryListing(_ImmutableReport):
+    """Immutable production summary rows; to_dict returns a detached JSON tree."""
+
+    def __post_init__(self):
+        from .summary_distributions import metric_distributions
+
+        data = thaw(self.data)
+        data["distributions"] = metric_distributions(data["rows"])
+        object.__setattr__(self, "data", data)
+        super().__post_init__()
+
+
+def list_signature_summaries(library_dir=None):
+    """List saved production summaries without profiles, traces or relative data.
+
+    Raises IntegrityError for invalid artifacts, OSError for inaccessible files,
+    and ValueError for invalid arguments. See SPEC-0009 for validation scope.
+    """
+    from .signature_summaries import list_signature_summaries as load
+
+    return load(library_dir)
+
+
+def render_signature_summaries(listing, *, format="text"):
+    """Render an immutable listing as aligned text, Markdown or full-precision JSON."""
+    if format not in ("text", "markdown", "json"):
+        raise ValueError("format must be text, markdown or json")
+    if not isinstance(listing, SignatureSummaryListing):
+        raise ValueError("Expected SignatureSummaryListing")
+    data = listing.to_dict()
+    if format == "json":
+        return json.dumps(data, indent=2, allow_nan=False) + "\n"
+    from .signature_summary_render import render_table
+
+    return render_table(data, markdown=format == "markdown")

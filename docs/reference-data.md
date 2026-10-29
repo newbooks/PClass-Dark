@@ -89,3 +89,36 @@ These are functional clusters, not homology-separated evaluation splits.
 Unclustered FASTA records are not automatically negative examples. The snapshot
 includes noncanonical residues; embedding generation must define how it handles
 those sequences without modifying the reference files.
+
+## Updating cluster descriptions
+
+Descriptions are optional display metadata stored separately at
+`src/pclass_dark/resources/cluster_descriptions.json`. They do not change the
+reference identity, prepared artifacts or fitted signatures. Regenerate them from
+a profunc bundle matching the preserved cluster/dataset manifests and a verified
+setup-data window inventory:
+
+```bash
+python scripts/update_cluster_descriptions.py \
+  --profunc-repo ../profunc \
+  --data-dir data/setup-data \
+  --output src/pclass_dark/resources/cluster_descriptions.json
+```
+
+The script imports profunc's actual composed-GO describer and the browse command's
+modifier setting. It verifies membership/metadata/GO-graph provenance and setup
+artifacts, then exports full descriptions, source code/data hashes and matching
+C-window/row-map bindings. Prefixes such as `cluster_0001 is annotated as an` are
+removed; display truncation is applied only by the listing renderer. Source GO
+graph pickle loading occurs only in this explicit maintenance operation after
+its checksum has been verified. No profunc module or pickle is used at runtime.
+
+Regenerate after changing the reference snapshot or setup window inventory.
+Descriptions are attached only when the signature's C-window digest and row-map
+SHA-256 match the catalog; missing/incompatible entries show `—`. No resolved GO
+head also produces `—`, with a reason retained in JSON. Old catalog labels are
+never attached to a different library solely because cluster IDs match.
+
+Run catalog/listing tests, build a wheel and verify the JSON resource is included
+and installed listing works without profunc. The separate JSON is ordinary Git
+metadata, below GitHub's file-size limit; existing reference LFS rules stay intact.

@@ -839,3 +839,212 @@ with duplicate sequential lookups. Remaining late-target cost is shared compress
 profile lookup; a future index/per-cluster storage change would be needed to
 remove that cost. No such format change was made here. User data and scientific
 results were preserved; no commit or push was made.
+
+### 2026-10-28 — Draft signature summary listing specification
+
+Drafted [SPEC 0009](../specs/0009-list-signature-summaries.md) for
+`explain-signature --list`, preserving the single-cluster mode and requiring
+exactly one mode. Default columns are Cluster, Status, C/B windows, Dimensions,
+AUROC, Recall %, Specificity % and Precision %; FP is excluded. Specifies
+alphabetic ordering, aligned full-width monospace output, fixed three decimals,
+integer counts and unavailable em dashes. JSON retains full precision. Defines
+the immutable Python API, summary-only artifact validation, resource limits,
+error handling and tests. Listing deliberately avoids profiles, traces and C/B
+score arrays to retain practical startup time. Implementation remains planned;
+no code or scientific artifacts changed.
+
+Draft validation passed: local links, Markdown fence balance, trailing whitespace
+and scoped diff checks. No runtime tests were required for this documentation-only
+change.
+
+### 2026-10-28 — Review signature listing implementation readiness
+
+Reviewed [SPEC 0009](../specs/0009-list-signature-summaries.md) against current
+CLI callbacks, signature/manifest schemas and exact metric calculations. Resolved
+the optional-cluster mode dispatch, explicit Rich cell-width dependency, signed
+zero formatting, raw status versus displayed reason, metric/null reason rules,
+AUROC/confusion-count consistency and unsupported statuses. Clarified that each
+signature is parsed once while existing checksum helpers may read it separately.
+The listing still avoids profiles, traces and all relative-score data. No
+scientific decisions remain open; marked ready for implementation and updated
+the index. No runtime code changed.
+
+Readiness checks passed: local links, Markdown fence balance, trailing whitespace
+and scoped diff checks. Documentation-only revision; no code tests were required.
+
+### 2026-10-28 — Implement aligned signature summary listings
+
+Implemented [SPEC 0009](../specs/0009-list-signature-summaries.md) through
+`explain-signature --list` and importable listing/rendering APIs. CLI requires one
+of `--cluster` or `--list`; listing rejects `--detailed`, and single-cluster output
+is preserved. Alphabetic tables use the approved nine columns without FP, three
+fixed decimals for AUROC/percentages, integer counts, em dashes for unavailable
+metrics, display-cell alignment and escaped controls. JSON retains full precision.
+Rich is declared explicitly. Immutable listing and explanation types share their
+implementation base while remaining distinct public types.
+
+The summary loader verifies selected production manifests and each final JSON,
+including identity/population/representation bindings and exact displayed metric
+consistency. It does not read profiles, traces, relative arrays or research files.
+Tests remove those artifacts and instrument file reads. Unsupported statuses,
+predict-none/undefined precision, corrupt inputs, empty inventories, Unicode
+alignment and invalid CLI modes have dedicated coverage.
+
+Initial listing tests: **21 passed**. Expanded summary/explanation/CLI checks:
+**63 passed** in 135.40 s, plus a new immutable-validator-input test passed
+separately. Full regression results follow. A read-only local listing covered all
+3443 clusters in **2.369 s** with cached files; source identity/timing and output
+are saved under `/tmp/pclass-dark-signatures-list*`. No scientific fitting or
+artifact regeneration occurred.
+
+Built and installed an isolated wheel with tiny bundled library data; default
+API/CLI listing succeeded from `/tmp`, with heavy imports, network and package
+writes blocked in the API smoke check. Automated read-only bundled tests omit
+setup-data, profiles/traces and relative outputs. README, CLI help, SPEC 0008/0009
+and the index are synchronized. User changes were preserved; no commit or push.
+
+Final validation: **212 full-suite tests passed, 2 opt-in tests skipped** in
+406.73 s, with the pre-existing Torch environment warning. Ruff lint/formatting
+passed for 43 Python files, as did documentation link/fence and scoped diff
+checks. Baseline revision: `1d9b3963`, branch `issue#14`; changes are uncommitted.
+Executed `pytest -q`; earlier focused run covered `tests/test_signature_summaries.py`,
+`tests/test_explanations.py` and `tests/test_cli.py`. CPU-only listing behavior
+requires no GPU validation. No scientific data or model parameters were changed.
+
+### 2026-10-28 — Use whitespace-free signature listing headers
+
+Changed listing headers to `C_windows`, `B_windows`, `Recall%`, `Specificity%`
+and `Precision%`; the other headers already contain one token. Alignment and
+three-decimal formatting remain unchanged. Updated README and SPEC 0009, and
+added an independent whitespace-splitting regression for the exact nine headers
+and a normal data row. Human-readable title/footer and raw JSON fields are
+unchanged. No signature data or scientific calculations changed.
+
+Validation: **39 listing/CLI tests passed** in 36.78 s. Ruff lint/formatting,
+scoped whitespace and documentation checks passed. No full-suite rerun was needed
+for this display-label-only change.
+
+### 2026-10-28 — Hide redundant all-ok Status column
+
+Text and Markdown listings now omit Status when the listing is nonempty and all
+signatures have status `ok`. Mixed/unsupported and empty listings retain the
+column. Numeric columns remain right-aligned after its removal; JSON/API rows
+always retain their status/reason. Metrics, precision formatting and column order
+are unchanged. Updated README/SPEC 0009, the whitespace-splitting test and explicit
+all-ok/mixed/empty/Markdown-alignment coverage.
+
+Validation: **40 listing/CLI tests passed** in 36.91 s; lint, formatting,
+documentation and scoped whitespace checks passed. Display-only change; no full
+regression rerun or scientific artifact changes were needed.
+
+### 2026-10-29 — Add profunc-derived Description column
+
+Inspected the implementation behind `profunc browse cluster`: it calls
+`profunc.go.description.describe_go_function` on `composed_go`, using the CLI's
+modifier setting. Added an offline maintenance exporter that imports that module
+from the neighboring checkout, checks the snapshot's membership/metadata/graph
+hashes and setup artifacts, and removes the exact annotation prefix/article.
+The catalog stores 3524 source entries and 3443 retained-membership bindings.
+It is outside the identity-bearing reference directory, so no embeddings or
+signatures need rebuilding. No runtime profunc dependency was introduced.
+
+Runtime labels require matching C-window and row-map digests; incompatible/custom
+references receive no guessed label. Added Description immediately after Cluster,
+left-aligned and capped at 24 characters/display cells including literal `...`.
+JSON retains full text and an unavailable reason. Six current clusters have empty
+composed GO sets and therefore no resolvable description: cluster_0064, _0129,
+_0492, _0678, _2185 and _2884. They display `—`.
+
+Verified all 3524 catalog entries against the imported profunc describer and the
+first entry against the command's formatter. cluster_0001 is `NADP+ nucleosidase
+with NAD+ nucleosidase activity`, displayed as `NADP+ nucleosidase wi...`.
+Saved parity evidence in `/tmp/pclass-dark-profunc-description-parity.txt` and
+real output in `/tmp/pclass-dark-list-descriptions.txt`. Initial description,
+listing and CLI tests: **52 passed** in 37.49 s. Full regression results follow.
+
+The initial all-described completeness assertion found six empty composed-GO
+sets, rather than mismatched reference bindings; these are preserved as unknown
+function descriptions instead of assigning fallback biological labels. Every
+source description (including unresolved entries) matched the imported module.
+
+Final verification: **227 full-suite tests passed, 2 opt-in tests skipped** in
+380.51 s, with the existing Torch environment warning. Ruff lint/format checks
+passed for 46 Python files; documentation links/fences and scoped whitespace
+checks passed. Built both wheel and sdist with the catalog included, and verified
+installed CLI/API listing from `/tmp` without profunc/heavy PLM imports, network
+or package writes. The source archive also includes the exporter. Baseline code
+revision: `1d9b3963`, branch `issue#14`; changes remain uncommitted. No embeddings,
+signatures, authoritative reference files or model parameters were changed.
+
+### 2026-10-29 — Append 20-bin signature metric distributions
+
+Added a distribution section after `explain-signature --list` with 20 fixed bins
+for AUROC, recall, specificity and precision. It counts clusters equally using
+unrounded saved fractions, excludes null metrics with explicit availability
+counts, uses left-inclusive/right-exclusive internal bins and includes 1 in the
+last bin. Text/Markdown show an aligned combined table with fraction/percentage
+intervals; JSON and immutable Python listings preserve edges and exact counts.
+The listing constructor maintains the derived distributions consistently without
+additional artifact reads or fitting. Existing cluster-table formatting remains.
+
+Focused histogram/listing/description/CLI tests: **65 passed** in 41.91 s,
+including analytical edges/nextafter cases, zero/one, unavailable/empty data,
+rounding-sensitive values, unweighted counts, 20-row output and JSON agreement.
+Real-library output is saved at `/tmp/pclass-dark-list-metric-distributions.txt`;
+all per-metric counts/availability totals were checked against 3443 cluster rows.
+
+Real snapshot counts: each of AUROC, recall, specificity and precision has 3443
+valid values and zero unavailable entries; every 20-bin count sum matches.
+Installed-wheel text/Markdown/JSON reports were verified from `/tmp`. Lint and
+formatting passed for 48 Python files; documentation and scoped whitespace checks
+passed. This isolated descriptive aggregation/rendering change did not require
+rerunning the embedding/training suites. No scientific artifacts were modified.
+
+## 2026-10-29 — Readable published cluster paths
+
+Implemented [SPEC-0011](../specs/0011-readable-cluster-paths.md): production,
+relative-score and research bundles now write `clusters/<cluster_id>/` directories.
+Validated portable IDs reject unsafe paths/device names and case-fold collisions.
+An explicit manifest layout marker preserves legacy hexadecimal reads, including
+scoped explanation/listing and legacy research import. Private checkpoint/cache
+names remain stable for resume. Scientific fitting and pooling are unchanged.
+
+Added `pclass_dark.library_paths.migrate_library_paths()` and
+`scripts/migrate_library_paths.py`. Migration holds the transaction guard, fully
+validates old and staged bundles, hard-links immutable payloads, rewrites metadata
+atomically, retains the original generation, commits selection last and recovers
+from a durable journal. Production scientific identity stays unchanged; relative
+identity is refreshed to bind the updated production manifest. An incompatible
+research selector is archived, with research artifacts preserved unselected.
+
+Migrated the current selected library using
+`python scripts/migrate_library_paths.py data/library`, without fitting/scoring.
+Production remains `5f9117a77f64b30426661dff87533a462a8c0771c7150ae76eb903574a5e8100`;
+new relative ID is `cab57dc6d25c492f233f59197d2cc62c4bf2c05cdc89d19fbe3580863ba3e5b0`.
+Both have 3443 readable cluster directories. The complete original pair and exact
+selector are under
+`data/library/.archives/cluster-paths-693395768393481da3f98b38a140a6fa/`.
+Migration stdout: `/tmp/pclass-dark-current-library-migration.json`.
+
+Initial path refactor tests: 63 passed. Migration regression tests: 13 passed,
+including legacy full/scoped reads, byte-identical signatures/arrays, identical
+query scores/ABC evidence, listing, release inventory, repeat no-op, exception
+rollback and recovery after subprocess termination. Full-suite and real-library
+postpublication verification results follow below.
+
+Postpublication verification: all 6886 production payloads and 10329 relative
+payloads match the original manifests byte-for-byte by SHA-256. Production and
+relative selectors/manifests match, with production scientific ID preserved.
+`pclass-dark explain-signature --cluster cluster_0001` and `--list` succeeded;
+reports are `/tmp/pclass-dark-readable-cluster-0001.txt` and
+`/tmp/pclass-dark-readable-cluster-list.txt`. Release `shared_files()` inventory
+validated 17238 selected files and excluded archives. Extended migration tests
+also verify normal build reuse without fitting: 13 passed in 24.15 s. Ruff and
+format checks passed for 51 Python files; scoped whitespace checks passed.
+
+Full suite: **252 passed, 2 skipped** in 451.58 s. The skipped tests are
+opt-in real-checkpoint inference tests; this path/storage change does not alter
+inference. One existing PyTorch environment warning concerned the value of
+`AMD_SERIALIZE_KERNEL`. The latest extended migration tests were rerun separately
+(13 passed), including release inventory and postmigration build reuse. No
+scientific values changed, no refitting occurred, and nothing was committed/pushed.

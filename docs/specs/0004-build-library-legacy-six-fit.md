@@ -939,3 +939,7 @@ allows scoring-only backfill, and preserves the disposable-cache cleanup policy.
 It is not implemented. It adds neither probability calibration nor automatic
 cluster assignment; [reasoning and interpretation](../research/notes/2026-10-27-relative-score-reasoning.md)
 are recorded separately.
+
+Storage update (2026-10-29): the historical hex layout above remains readable;
+new published legacy-format bundles also use validated cluster IDs under
+[SPEC-0011](0011-readable-cluster-paths.md). Scientific legacy behavior is unchanged.

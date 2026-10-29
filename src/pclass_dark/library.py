@@ -40,6 +40,12 @@ from .artifacts import (
     verify_bundle,
     write_json,
 )
+from .cluster_paths import (
+    LAYOUT,
+    cluster_directory_name,
+    stored_cluster_name,
+    validate_cluster_directories,
+)
 from .cluster_sets import validate_sets
 from .embeddings import verify_embeddings
 from .library_checkpoints import Checkpoints
@@ -310,7 +316,7 @@ def _write_outputs(stage, paths, identity_inputs, contract, *, execution=None):
             cluster, fits = target["cluster_id"], target["fits"]
             if len(fits) != 6:
                 raise IntegrityError("Incomplete target result")
-            directory = stage / "clusters" / encoded_cluster(cluster)
+            directory = stage / "clusters" / cluster_directory_name(cluster)
             directory.mkdir(parents=True)
             final_status = fits[5]["signature"]["status"]
             counts[
@@ -429,6 +435,7 @@ def _write_outputs(stage, paths, identity_inputs, contract, *, execution=None):
             )
     manifest = {
         "schema": SCHEMA,
+        "cluster_directory_layout": LAYOUT,
         "status": "complete",
         "id": identity(identity_inputs),
         "identity_inputs": identity_inputs,
@@ -476,7 +483,7 @@ def _load_library(path, *, cluster_id=None):
     required = set(HEADERS)
     signatures = {}
     for cluster in targets:
-        prefix = "clusters/" + encoded_cluster(cluster) + "/"
+        prefix = "clusters/" + stored_cluster_name(cluster, manifest) + "/"
         required.add(prefix + "selection_trace.json.gz")
         with gzip.open(
             safe_file(path, prefix + "selection_trace.json.gz"), "rt", encoding="utf-8"
@@ -668,8 +675,7 @@ def _build_legacy_library(
         ):
             raise ValueError("Unknown, duplicate, or empty target cluster selection")
         targets.sort()
-        for cluster in targets:
-            encoded_cluster(cluster)
+        validate_cluster_directories(targets)
         numerical = {
             "engine": "cpu-logdiff-reference-fallback-exact-count-v2",
             "numpy": np.__version__,

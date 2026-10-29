@@ -154,7 +154,7 @@ The production scientific bundle contains:
 manifest.json
 dimension_final.tsv.gz
 cluster_metrics.tsv
-clusters/c_<utf8-hex>/
+clusters/<cluster_id>/
     final.json
     selection_trace.json.gz
 ```
@@ -200,7 +200,7 @@ research/<research-id>/
     cluster_metrics.tsv
     cluster_summary.tsv
     out_of_fold_positive_scores.tsv.gz
-    clusters/c_<utf8-hex>/
+    clusters/<cluster_id>/
         fold_0.json ... fold_4.json
         selection_trace.json.gz
 ```
@@ -591,3 +591,8 @@ checks passed.
 
 CLI help accepts both `pclass-dark build-library -h` and
 `pclass-dark build-library --help`, with identical output and exit status zero.
+
+Published cluster directories now use validated cluster IDs; readers retain legacy
+hex-layout compatibility. See [SPEC-0011](0011-readable-cluster-paths.md) for
+layout metadata, migration, checksum rebinding and backup contracts. Internal
+checkpoint directory names remain unchanged.
