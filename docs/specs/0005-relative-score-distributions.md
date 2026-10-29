@@ -496,3 +496,9 @@ caller-controlled. Installed packages read selected bundled data or existing
 user-cache data and write new outputs only to the user cache. Package builds
 export selected complete shared bundles through validated build hooks; scientific
 identities, cache safety and historical experiment paths are unchanged.
+
+The user-facing build progress label is `ABC match evidence`, for example
+`Cluster cluster_0001 ABC match evidence: computing or reusing reference distributions`.
+This denotes preparation of the fixed-signature C/B reference distributions;
+it does not imply probability calibration. Artifact names and APIs retain their
+`relative_scores` terminology.

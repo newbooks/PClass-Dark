@@ -699,3 +699,34 @@ Broader validation: **33 production and legacy library tests passed** in 256.29 
 including serial/parallel agreement, migration, resume, and integrity checks.
 Ruff lint/formatting and whitespace checks passed. Full suite not rerun for this
 focused migration fix.
+
+### 2026-10-28 — Short help options for data and library commands
+
+Added `-h` as an alias of `--help` for `setup-data` and `build-library`.
+README and specifications 0003/0004 document both forms. Parameterized CLI tests
+verify identical output and successful exit for both subcommands: **6 CLI tests
+passed**. Ruff lint/formatting and whitespace checks passed. Existing untracked
+setup-data artifacts were left untouched.
+
+### 2026-10-28 — Label reference distribution progress as ABC match evidence
+
+Renamed the per-cluster build progress message to `ABC match evidence: computing
+or reusing reference distributions`. This is a display-only change; distribution
+construction, artifact names and APIs remain unchanged. SPEC 0005 records the
+label and distinguishes this step from probability calibration. The existing
+production-distribution test now checks the message for both fixture clusters.
+
+Validation: production-distribution regression **1 passed**; Ruff lint/formatting
+and whitespace checks passed.
+
+### 2026-10-28 — Draft explain-signature specification
+
+Drafted [SPEC 0008](../specs/0008-explain-signature.md) using the user-reviewed
+cluster_0001 narrative. Defines the CLI and importable report/rendering API,
+window membership explanation, Gaussian similarity terminology, ranked-prefix
+candidate selection, removal history, composite score/threshold, in-sample
+metrics and reference distributions for ABC evidence. Scope excludes query
+examples, prediction, biological mechanism claims and probability calibration.
+Documents provenance/integrity checks, immutable installed use, unavailable
+artifacts, resource limits, deterministic formats and implementation tests.
+Implementation remains planned. No scientific code or local artifacts changed.

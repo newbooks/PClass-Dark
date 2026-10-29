@@ -588,3 +588,6 @@ recomputing signatures. Regression coverage uses four proteins in two clusters
 Empty-fold migration validation: the regression passed independently, followed by
 **33 passing production/legacy library tests**. Lint, formatting and whitespace
 checks passed.
+
+CLI help accepts both `pclass-dark build-library -h` and
+`pclass-dark build-library --help`, with identical output and exit status zero.

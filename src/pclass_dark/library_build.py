@@ -401,7 +401,8 @@ def target_job(task):
                 }
                 if phase == "production":
                     LOG.info(
-                        "Cluster %s relative_scores: computing or reusing scores",
+                        "Cluster %s ABC match evidence: "
+                        "computing or reusing reference distributions",
                         cluster,
                     )
                     relative, rel_reused = distribution_checkpoint(

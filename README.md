@@ -22,6 +22,9 @@ pclass-dark --version
 ```
 
 The CLI uses a command/subcommand hierarchy: `pclass-dark <command> [options]`.
+Both `pclass-dark setup-data -h` and `pclass-dark build-library -h` show
+subcommand help; `--help` is also supported.
+
 `setup-data` prepares references and frozen PLM embeddings. `build-library`
 discovers and evaluates cluster signatures. The same entry
 point is available through `python -m pclass_dark`.

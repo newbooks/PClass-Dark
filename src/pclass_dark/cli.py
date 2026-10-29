@@ -37,7 +37,7 @@ def main() -> None:
     app()
 
 
-@app.command("setup-data")
+@app.command("setup-data", context_settings={"help_option_names": ["-h", "--help"]})
 def setup_data(
     output_dir: str | None = typer.Option(
         None, help="Destination; default: repository data/setup-data, or user cache."
@@ -98,7 +98,7 @@ def setup_data(
         typer.echo(f"Embeddings: {result.embedding_dir}")
 
 
-@app.command("build-library")
+@app.command("build-library", context_settings={"help_option_names": ["-h", "--help"]})
 def build_library_command(
     data_dir: str | None = typer.Option(
         None, help="Input; default: repository data/setup-data, or bundled/user data."

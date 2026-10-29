@@ -10,8 +10,9 @@ from pclass_dark.relative_scores import load_selected_library
 
 
 def test_default_final_only_and_relative_distributions(
-    library_data, tmp_path, monkeypatch
+    library_data, tmp_path, monkeypatch, caplog
 ):
+    caplog.set_level(20, logger="pclass_dark.library_build")
     data, _, _, matrix, contract = library_data()
     original = library_build.fit_signature
     calls = []
@@ -24,6 +25,11 @@ def test_default_final_only_and_relative_distributions(
     monkeypatch.setattr(library_build, "fit_signature", final_only)
     root = tmp_path / "library"
     result = build_library(data, root)
+    for cluster in ("K0", "K1"):
+        assert (
+            f"Cluster {cluster} ABC match evidence: "
+            "computing or reusing reference distributions"
+        ) in caplog.messages
     assert len(calls) == 2
     assert result.research_dir is None
     from pclass_dark.artifacts import read_json

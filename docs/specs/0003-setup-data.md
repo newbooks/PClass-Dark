@@ -947,3 +947,6 @@ caller-controlled. Installed packages read selected bundled data or existing
 user-cache data and write new outputs only to the user cache. Package builds
 export selected complete shared bundles through validated build hooks; scientific
 identities, cache safety and historical experiment paths are unchanged.
+
+CLI help accepts both `pclass-dark setup-data -h` and
+`pclass-dark setup-data --help`, with identical output and exit status zero.
