@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-27",
+  "policy": "After durable complete target plus all six verified complete fit receipts; preserve partial clusters and compact results.",
+  "roots": [
+    {
+      "path": "work/work/library",
+      "targets": 86,
+      "files": 63898,
+      "bytes": 599585475933,
+      "skipped_partial_targets": 10
+    },
+    {
+      "path": "work/library-benchmark",
+      "targets": 1,
+      "files": 743,
+      "bytes": 6990014444,
+      "skipped_partial_targets": 0
+    }
+  ],
+  "notes": [
+    "No prepared reference data, embeddings, model assets, target results, fit complete receipts, profile blocks, or compact selection receipts removed.",
+    "Deleted only kernels.[CBV].npy, kernels.json, prefix-NNNN.[CB].npy, prefix-NNNN.json after integrity validation and under output/target locks."
+  ],
+  "released_bytes": 606575490377,
+  "released_GiB": 564.917447396554
+}

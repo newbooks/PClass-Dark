@@ -1,3 +1,6 @@
 src/pclass_dark/resources/reference/** filter=lfs diff=lfs merge=lfs -text
 src/pclass_dark/resources/prepared/** filter=lfs diff=lfs merge=lfs -text
 src/pclass_dark/resources/embeddings/** filter=lfs diff=lfs merge=lfs -text
+src/pclass_dark/resources/library/** filter=lfs diff=lfs merge=lfs -text
+data/** filter=lfs diff=lfs merge=lfs -text
+data/README.md -filter diff merge text

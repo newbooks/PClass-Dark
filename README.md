@@ -22,13 +22,16 @@ pclass-dark --version
 ```
 
 The CLI uses a command/subcommand hierarchy: `pclass-dark <command> [options]`.
-`setup-data` prepares references and frozen PLM embeddings. Signature discovery
-and calibration will be added in the next model-building step. The same entry
+Both `pclass-dark setup-data -h` and `pclass-dark build-library -h` show
+subcommand help; `--help` is also supported.
+
+`setup-data` prepares references and frozen PLM embeddings. `build-library`
+discovers and evaluates cluster signatures. The same entry
 point is available through `python -m pclass_dark`.
 
-Reusable functionality lives in the importable `pclass_dark` package. Future
-profiling, signature selection, and classification operations will expose Python
-APIs as well as CLI subcommands so other code can integrate them directly.
+Reusable functionality lives in the importable `pclass_dark` package. Data
+preparation, signature discovery, library loading, and signature scoring expose
+Python APIs so other code can integrate them directly.
 
 ```python
 import pclass_dark
@@ -39,6 +42,40 @@ print(pclass_dark.__version__)
 Core dependencies include NumPy, SciPy, Typer, and filelock. Install the optional
 embedding stack with `pip install -e '.[embeddings]'`. For development, use
 `pip install -e '.[dev,embeddings]'` and run `pytest`.
+
+## Shared Data and Distribution
+
+In an editable/source checkout, default paths come from the imported package's
+repo location, not the directory you run the command from:
+
+- `<repo>/data/setup-data/`: prepared references and embeddings.
+- `<repo>/data/library/`: signatures, C/B distributions and optional research.
+
+These commands work from the repo root, `work/`, or another directory:
+
+```bash
+pclass-dark setup-data --workers 8
+pclass-dark build-library --workers 8
+```
+
+Explicit `--data-dir`/`--output-dir` options override the defaults; explicit
+relative paths still use your current directory. Clearing `work/` no longer
+removes the shared artifacts. Existing custom `work/` outputs are not moved
+implicitly; pass their paths explicitly if you want to keep using them.
+
+Completed shared artifacts are tracked with Git LFS. `python -m build` includes
+only the selected complete bundles in the wheel and source archive, validating
+manifests/checksums and coordinating with active writers. Checkpoints, archives,
+staging files, locks and model weights are excluded. A stage without a selection
+contributes no generated data yet; building does not run the scientific commands.
+See [data instructions](data/README.md) and [SPEC-0006](docs/specs/0006-shared-artifacts.md).
+
+A normal installed wheel reads bundled artifacts through the same APIs, including
+`load_selected_library()` without a path. New writable output goes under
+`$XDG_CACHE_HOME/pclass-dark/` or `~/.cache/pclass-dark/`; an existing cache selection
+takes precedence over bundled data. Package files are never used as writable
+output. Git LFS is needed for obtaining LFS files from Git, not for reading
+artifacts already included in an installed wheel.
 
 ## Prepare Data and Embeddings
 
@@ -54,7 +91,8 @@ pclass-dark setup-data --device auto --batch-size 8
 pclass-dark setup-data --offline --device cpu
 ```
 
-The default output is `work/setup-data/`; change it with `--output-dir`.
+The default output is `<repo>/data/setup-data/`, independent of your current
+directory; change it with `--output-dir`.
 `--min-clusters 10` keeps clusters with at least 10 distinct full sequences after
 deduplication. Long proteins produce 1022-residue terminal windows named
 `N-<accession>` and `C-<accession>`. Five seeded folds are assigned separately
@@ -79,12 +117,12 @@ The Python API provides the same workflow:
 from pclass_dark.setup_data import prepare_data
 from pclass_dark.cluster_sets import load_sets
 
-result = prepare_data("work/setup-data", prepare_only=True, workers=4)
+result = prepare_data(prepare_only=True, workers=4)
 sets = load_sets(result.prepared_dir)
 ```
 
-Completed bundles can be distributed under package resources. Temporary
-checkpoints and model weights are excluded. Prepared data and vector consumers
+Completed selected shared bundles are copied into package resources during
+builds. Temporary checkpoints and model weights are excluded. Prepared data and vector consumers
 do not need the embedding-generation dependencies. See
 [SPEC-0003](docs/specs/0003-setup-data.md) for schemas, integrity checks, and
 the release layout.
@@ -114,6 +152,94 @@ with reference.joinpath("clusters.tsv").open() as handle:
 
 Treat these references as read-only. See [reference update instructions](docs/reference-data.md)
 for authoritative source paths, validation, and distribution checks.
+
+## Build a Signature Library
+
+```bash
+# Default: one signature fitted using all cluster members, plus C/B distributions.
+pclass-dark build-library --workers 4 --memory-mib 4096
+
+# Build a smaller scope; backgrounds still use all original source clusters.
+pclass-dark build-library --cluster cluster_0945
+
+# Optional research: five rotations for a selected cluster, reusing production.
+pclass-dark build-library --cross-validate --cluster cluster_0945
+```
+
+The default output is `<repo>/data/library/`, independent of your current directory. Discovery uses a CPU float64 backend,
+bounded multiprocessing, and existing 640-dimensional embeddings. It requires
+no model download or embedding dependencies. Each free worker immediately takes
+the next cluster. Re-running resumes verified checkpoints; compatible final fits
+from older six-fit runs are imported without repeating discovery when their
+provenance and algorithm dependencies can be proved. `--force` explicitly
+archives and recomputes the requested work.
+
+Each production signature is fitted using all C windows and the fixed capped B.
+Dimensions are ranked by individual training AUROC; the top two are protected.
+Backward selection accepts the first strict training AUROC improvement in rank
+order and restarts. Cached totals, bounded partial sums, reusable buffers, and
+numerical fallbacks accelerate scoring. The acceptance threshold maximizes
+training balanced accuracy. Default metrics are **in-sample**, with no implied
+held-out validation or stability estimate.
+
+After the final signature is fixed, `build-library` scores its exact C and B
+pools and preserves sorted composite log-score distributions. For a query:
+
+- **B upper-tail fraction:** how often sampled nonmembers score at least as high.
+- **C percentile:** the fraction of known members scoring at or below the query.
+
+These are empirical comparisons, not membership probabilities or density-based
+typicality. Final C is in-sample, and B was also used during selection. A high C
+percentile can occur above every observed member score. Background evidence and
+member compatibility should be interpreted together; automatic assignment,
+combined ranking/calibration, and query N/C aggregation remain future work.
+
+Future top-cluster query results will use **A — Acceptance** (Yes/No),
+**B — Background score ↓** (background upper-tail percentage; lower is better),
+and **C — Cluster score ↑** (member percentile; higher score rank among members).
+The planned initial ranking orders accepted clusters by ascending B and displays
+C as supporting evidence. These are not membership probabilities. See
+[SPEC-0007](docs/specs/0007-query-ranking-presentation.md) for the planned
+presentation and tie handling; this ranking is not yet implemented.
+
+```python
+from pclass_dark.library import build_library
+from pclass_dark.relative_scores import load_selected_library
+
+result = build_library(workers=4, memory_mib=4096)
+pair = load_selected_library()
+# query_vectors: finite (n, 640) embeddings; query_contract describes their pipeline.
+log_scores, accepted = pair.library.score(
+    "cluster_0945", query_vectors, embedding_contract=query_contract
+)
+evidence = pair.relative.evaluate("cluster_0945", log_scores)
+print(evidence.background_tail_fraction, evidence.cluster_percentile_le)
+```
+
+Production scientific outputs and the `relative-scores/` companion are selected
+as a verified pair by `selection.json`. Distributions can be backfilled from
+completed signatures without PLM inference, threshold fitting, or discovery.
+`--cross-validate` adds separate `research/` reports and `research-selection.json`:
+five fold signatures, stability summaries, training/held-out-positive metrics,
+and OOF scores. It does not modify production parameters or its selector, and
+production remains readable while research runs. Research is window-level and
+reuses B; it is not independent homology-controlled validation.
+
+After each production target's final result and distributions are durable,
+disposable Gaussian/prefix caches are removed. Research cleans each completed
+fold. Unfinished fits retain their caches. Complete results, profiles, compact
+checkpoints and C/B distributions survive cleanup. The maintenance API
+`pclass_dark.library_cleanup.clean_library_cache(output_dir)` also recognizes
+legacy and new completion gates. Final B arrays total approximately 5.5 GiB for
+the current reference collection; private/staged copies and reports add storage.
+
+Completed selected production, relative and optional research artifacts are
+automatically bundled under `pclass_dark/resources/library/` with their selectors. Loading and scoring
+need neither setup-data matrices nor PLM imports or writes to installed files.
+Private checkpoints and model weights are excluded. See
+[SPEC-0004](docs/specs/0004-build-library.md),
+[SPEC-0005](docs/specs/0005-relative-score-distributions.md), and the
+[score-interpretation notes](docs/research/notes/2026-10-27-relative-score-reasoning.md).
 
 ## Motivation
 
@@ -184,7 +310,7 @@ The methods are complementary. PClass-Dark aims to extend functional coverage be
 
 ## Project Status and Scope
 
-**Research and early development.** ProStruct provides preliminary work on structural feature signatures; PClass-Dark will investigate whether the same profiling and composition strategy transfers to PLM embeddings. Signature selection, scoring, calibration, and benchmark results for this representation remain to be established.
+**Research and early development.** ProStruct provides preliminary work on structural feature signatures; PClass-Dark will investigate whether the same profiling and composition strategy transfers to PLM embeddings. Data preparation and signature discovery/scoring are implemented. Production calibration and independent predictive benchmarks remain to be established.
 
 PClass-Dark is intended to predict membership in functional clusters represented by the reference dataset. Its goal is to recover known functional information beyond reliable nearest-neighbor similarity. It does not inherently discover biological functions absent from the reference annotations.
 

@@ -290,3 +290,443 @@
   cross-process exclusion/release, and independent-root tests.
 - Synchronized SPEC-0003. Validation: 55 tests passed, two opt-in checkpoint
   checks skipped; Ruff and whitespace checks passed. No reference data changed.
+
+## 2026-10-26 — Draft build-library signature-discovery specification
+
+- Added SPEC-0004 for 640-dimensional PLM signatures using four C folds for
+  discovery, one held-out C fold for validation, and unchanged compact B capped
+  at 200 windows per other source cluster, preserving the approved setup policy.
+- Specified fold-fitted means/spreads, five R/D and individual-AUROC values per
+  dimension, AUROC ranking, arithmetic Gaussian composites, and ProStruct's
+  protected-core/prefix/candidate/backward-removal algorithm generalized to 640.
+- Defined training/validation metric and fold-stability reporting, residue-only
+  pooling provenance, output proposals, integrity/performance requirements, and
+  tests. Proposed training-only balanced-accuracy thresholds; production refit
+  versus fold-ensemble and query confidence/assignment remain explicit decisions.
+- Documentation-only draft. Checked local ProStruct implementations and setup
+  contracts; no code, reference changes, or discovery experiment performed.
+
+## 2026-10-26 — Approve build-library threshold and production refit
+
+- User approved maximizing balanced accuracy for evaluation thresholds and
+  refitting the final signature on all C members. Updated SPEC-0004 accordingly.
+- Each rotation selects its cutoff using training C versus fixed B only and
+  applies it unchanged to validation. The final fit reruns discovery and cutoff
+  selection using full C versus the same B; its diagnostics are in-sample and
+  are not included as a sixth fold. Added final.json and explicit refit tests.
+- Query confidence, cross-cluster competition, and N/C aggregation remain open;
+  technical schemas/resource/checkpoint details still require finalization.
+  Documentation checks passed; no code or experiment run.
+
+## 2026-10-26 — Finalize build-library technical specification
+
+- Revised SPEC-0004 to implementation-ready without changing approved science:
+  exact AUROC pair-count comparisons, training-only balanced-accuracy cutoff
+  ties, rank-ordered float64 composite arithmetic, per-fit insufficiency states,
+  and full-C refit separated from five-fold aggregates.
+- Defined CLI/API, explicit table and signature schemas, representation/library
+  identities, deterministic compression, complete release layout, NumPy scoring,
+  bounded CPU/mapped-cache execution, and an initial reference backend. Discovery
+  needs no Torch or model download; setup remains the PLM/GPU stage.
+- Specified profile/prefix blocks and per-trial backward checkpoints, dependency
+  validation, malformed-receipt recovery, input/output transaction ownership,
+  selection/rollback rules, immutable release reads, and performance gates.
+- Added acceptance cases for numerical equivalence, within-fit resume,
+  concurrency, serialization, and installed scoring. Query confidence,
+  cross-cluster competition, and query-window aggregation remain out of scope;
+  any performance shortcut changing selection science requires user input.
+- Documentation-only revision. Checked links, headings, code fences, and
+  whitespace. No code, computational benchmark, or scientific run performed.
+
+## 2026-10-26 — Proofread SPEC-0004 for implementation readiness
+
+- Confirmed the approved fold-wise discovery, fixed background, training-only
+  balanced-accuracy threshold, and all-C final refit remain consistent.
+- Closed technical gaps: persisted exact per-dimension AUROC counts, explicit
+  predict-none serialization, empty-validation aggregate handling, unsupported
+  OOF rows, partial-profile dependencies, and sequential per-target scheduling.
+- Made library reader/rollback guard roots explicit: `<library-dir>.parent`,
+  rather than setup-data's deeper parent.parent layout. Added associated tests
+  to the required acceptance list and clarified safe prefix-cache reuse.
+- SPEC-0004 remains ready for implementation; no new scientific decision is
+  required. Documentation links, fences, tables, field contracts, and whitespace
+  checked. No runtime code or scientific calculations were executed.
+
+## 2026-10-26 — Implement build-library
+
+- Implemented [SPEC-0004](../specs/0004-build-library.md): five C-fold rotations,
+  fixed capped B, all 640 dimension profiles, exact AUROC ranking, protected-core
+  arithmetic Gaussian composition/backward selection, training balanced-accuracy
+  thresholds, and a separate all-C refit.
+- Added CLI/Python discovery and immutable NumPy scoring APIs, bounded process
+  workers, resumable within-fit caches, strict input/receipt integrity, complete
+  library reports, and guarded publication/rollback. Added explicit publication
+  domain support to the shared transaction helper.
+- Full suite: 79 passed, 2 opt-in real-checkpoint tests skipped; subsequent
+  publication regressions: 4 passed. Ruff passed. Built staged wheel/source
+  archives with a small complete library; installed scoring outside the checkout
+  worked with PLM imports blocked and no package writes.
+- Completed the scoped real-data build for cluster_0945 (915 C / 213,061 B),
+  including five rotations and final refit; [benchmark and limitations](notes/2026-10-26-build-library-benchmark.md).
+  Validation AUROC 0.994898 ± 0.001078 is an internal diagnostic; final in-sample
+  precision was 0.097486 at the balanced-accuracy threshold. No full-cluster
+  production build or independent predictive evaluation was performed.
+- Synchronized README, packaging/LFS rules, specification, and index. Query
+  assignment, cross-cluster calibration, and N/C score aggregation remain future
+  scientific work. No commit or push performed.
+- Final post-change full-suite rerun: **79 passed, 2 skipped** in 147.35 s,
+  with one environment warning from Torch about AMD_SERIALIZE_KERNEL. Ruff lint,
+  format checks, documentation links/fences, and `git diff --check` passed.
+  Rebuilt wheel/source archives after final changes and repeated installed
+  scoring; the real-data library also passed loading/integrity/scoring checks.
+
+## 2026-10-26 — Clarify signature progress messages
+
+- Changed fit-start wording to “computing signature”. Removal-trial progress now
+  includes the cluster and fit (`fold_0`–`fold_4` or `final`), since iterations are
+  local to each signature fit. Checkpoint behavior and selection are unchanged.
+- Verified fold/final logging, selection mathematics, backward-trial resume, and
+  end-to-end library construction: 12 tests passed. Ruff and whitespace checks
+  passed; synchronized SPEC-0004.
+
+## 2026-10-26 — Accelerate backward signature selection
+
+- Implemented the user-approved first-improvement policy: visit remaining
+  non-core dimensions in individual-rank order, accept the first strict gain,
+  restart, and stop on a complete non-improving round. Resume receipts validate
+  the visited prefix and accepted decision rather than assuming all trials ran.
+- Added bounded per-subset running-prefix caches, cached total log sums, stable
+  `expm1` leave-one-out subtraction, cancellation and near-tie reference
+  fallbacks, and reference confirmation of every proposed gain. Reuse output
+  buffers in composite, prefix, deletion, and runtime scoring; prefix resume
+  copies read-only mapped checkpoints before in-place updates.
+- Versioned library/numerical identities and fit/selection dependencies to keep
+  old best-improvement results and checkpoints separate. Raised conservative
+  workspace admission estimates for the bounded prefix caches. Old complete
+  libraries remain readable; setup-data embeddings remain reusable.
+- Final suite: **91 passed, 2 opt-in tests skipped**, one existing Torch
+  environment warning, 142.86 s. Tests cover first-versus-best paths, cancellation,
+  underflow, ties, seeded reference-equivalent selections, buffer/cache reuse,
+  version invalidation, interrupted trials, held-out isolation, and parallel
+  determinism. Ruff, formatting, whitespace, and documentation checks passed.
+- Rebuilt wheel/source archives and verified installed scoring outside the
+  checkout with PLM imports blocked and no package writes.
+- Focused real-kernel timing: **3.45× faster** for a complete 158-trial round,
+  identical AUROC counts. [Reproduction details and scope](notes/2026-10-26-removal-optimization.md).
+  A new end-to-end run could not acquire the setup-data transaction lock; the
+  other invocation was left undisturbed. No whole-library speedup claim, full
+  production build, commit, or push performed.
+
+## 2026-10-26 — Keep library workers continuously occupied
+
+- Replaced target batch barriers with a rolling, bounded future queue. Each
+  completion admits the next cluster without waiting for slower active targets;
+  descriptors and expanded background indices are created only at submission.
+- Report durable completions individually and restore original target order
+  before report assembly, preserving scientific identities, checkpoint reuse,
+  deterministic artifacts, and the admitted workspace/worker bounds.
+- Added event-controlled tests proving refill while an earlier target remains
+  blocked, bounded descriptor creation, and failure propagation without further
+  submissions. Pending work is cancelled on scheduler exit.
+- All 17 library tests passed in 318.43 s, including real spawned-process
+  serial/parallel consistency, checkpoint recovery, and publication regressions.
+  Ruff lint/format, documentation links/fences, and whitespace checks passed.
+  Updated README and SPEC-0004. No commit or push performed.
+
+## 2026-10-27 — Reclaim completed-cluster caches and bound disk growth
+
+- Added cluster-completion cleanup after atomic, fsynced `target.json`
+  publication. Verify all six complete fit receipts against target results,
+  payload hashes, task/library/cluster/fit bindings, profile coverage, and trace
+  identities before unlinking known Gaussian/prefix arrays and their receipts.
+- Preserve complete results, profiles, compact selection checkpoints, published
+  artifacts, and unfinished cluster caches. Cleanup is idempotent and retryable
+  after partial unlink failure. Maintenance API `clean_library_cache(output_dir)`
+  uses output-root and target locks; runtime cleanup holds its target lock.
+- Executed user-authorized cleanup of 86 completed target checkpoints in
+  `work/work/library` and one in `work/library-benchmark`: **564.917 GiB**
+  reclaimed across 64,641 disposable files. Preserved 10 unfinished targets.
+  Run directory shrank from 585 GiB to 26 GiB; benchmark directory to 22 MiB.
+  Available disk rose from about 224 MiB to about 565 GiB. Exact counters:
+  [cleanup record](notes/2026-10-27-library-cache-cleanup.json).
+- Cluster-level cleanup keeps six-fit arrays only for active/unfinished clusters:
+  roughly 50–60 GiB for eight active workers with this dataset, plus compact
+  results and reports. Scientific identities and embedding data are unchanged.
+- Full suite: **102 passed, 2 opt-in tests skipped** in 160.73 s, with the existing
+  Torch environment warning. Strengthened recovery test also passed separately:
+  a damaged complete receipt regenerated only its fit's deleted arrays; intact
+  fits resumed without arrays. Tests cover automatic cleanup, integrity gates,
+  unknown-file preservation, symlink rejection, root/target locks, and retry
+  after partial deletion. Ruff lint/format, docs, and whitespace checks passed.
+- Synchronized README/SPEC-0004; annotated earlier benchmark notes to record
+  removal of their disposable caches. No production build restart, commit, or
+  push performed.
+
+## 2026-10-27 — Draft final-signature relative-score distribution extension
+
+- Created [SPEC-0005](../specs/0005-relative-score-distributions.md), a planned
+  `build-library` stage computing sorted final-signature composite log scores on
+  the exact final C and fixed B pools after signature definition. Existing five
+  rotations and all-C refit remain unchanged.
+- Defined explicit empirical B-tail/C-percentile formulas, inclusive ties,
+  finite-sample resolution, unsupported cases, data provenance, artifact schemas,
+  independent companion publication, bounded scoring, integrity/resume rules,
+  installed APIs, and tests. Keep scientific library/checkpoint identities stable
+  and backfill old results without discovery, threshold fitting, or PLM inference.
+- Recorded [reasoning](notes/2026-10-27-relative-score-reasoning.md): B comparison
+  uses C only indirectly; direct C comparison adds member compatibility. Reused
+  B and in-sample final C are descriptive, not calibrated membership probabilities.
+  Fold diagnostics are separate and are not pooled into final-score references.
+- Linked the draft from README, SPEC-0004, and the spec index. This is documentation
+  only; no implementation, discovery run, data changes, or runtime tests performed.
+- Checked local links, code fences, trailing whitespace, and `git diff --check`
+  for all six changed documents; all passed.
+
+## 2026-10-27 — Revise production discovery to final-only by default
+
+- Rewrote [SPEC-0004](../specs/0004-build-library.md) as an unimplemented revised
+  target: one all-C fit plus final C/B distributions by default; optional
+  `--cross-validate` research with five rotations, usually cluster-scoped.
+  Preserved the prior implemented contract and its evidence in the explicitly
+  [historical six-fit specification](../specs/0004-build-library-legacy-six-fit.md).
+- Separated production, distribution and research identities/publication, with
+  final-fit dependencies independent of research mode. Defined validated reuse
+  of legacy final receipts/bundles, including incomplete surrounding clusters,
+  unchanged model payloads/scores, provenance and conflict handling. Research
+  cannot replace production parameters or block initial production availability.
+- Revised completion/report/cleanup contracts to remove six-fit assumptions;
+  no fabricated CV metrics on default runs. Retained first-improvement numerics,
+  fixed B, all 640 profiles, rolling workers and mandatory integrity protections.
+- Synchronized SPEC-0005 stage order, migration wording and optional research;
+  updated README/index and the relative-score reasoning record. These are planned
+  changes only: no runtime code, data, tests, discovery or deployment changed.
+- Documentation links, code fences and trailing whitespace checked across seven
+  changed documents; `git diff --check` passed. Runtime tests were not needed
+  for this documentation-only revision.
+
+## 2026-10-27 — Review SPEC-0004/0005 implementation readiness
+
+- Reviewed both specs against current orchestrator/loader, receipts, publication
+  locks, report headers, packaging and actual private final checkpoint metadata.
+  Found and closed technical gaps; both specs are now marked ready to implement,
+  with no new scientific decision needed and no runtime implementation claim.
+- Fixed concrete v2 production/signature, research, companion and selector
+  contracts; stable scientific-payload hashing; research-independent production
+  metadata; exact force/scope/reuse/error semantics; and typed cleanup gates.
+- Documented the private-legacy proof limitation: receipts omit the full library
+  identity preimage. Require a verified published recipe or reconstructed exact
+  legacy hash/dependency; preserve/log unprovable sources instead of guessing.
+  Recorded the misleading legacy largest-strict label under first-improvement.
+- Resolved distribution-stage ordering, stable private-array versus destination
+  wrapper bindings, finite/tied/empty-query behavior, unsupported counts, bounded
+  runtime LRU cache and mutable lazy-read integrity checks. Defined one-way
+  production-to-companion-to-selector dependency to avoid identity cycles.
+- Required release of the production root guard during optional research so
+  publication genuinely makes production queryable before CV finishes; added
+  concurrent-reader and generation-change acceptance tests. Clarified which
+  provenance differences are excluded from deterministic-byte comparisons.
+- Updated index/README status links. Documentation-only review: no source code,
+  input data, model computation or runtime tests changed/executed.
+- Local links, code fences, trailing whitespace and `git diff --check` passed
+  for the five updated documents.
+
+## 2026-10-27 — Implement final-only production, relative scores and optional research
+
+- Implemented SPEC-0004/0005: one all-C fit by default, exact C/B empirical score
+  distributions after final definition, and separate `--cross-validate` research.
+  Maintained the scientific first-improvement algorithm, fixed pools, thresholds,
+  residue-only representation and bounded rolling multiprocessing.
+- Added stable per-fit/payload identities, source provenance, proved legacy
+  recipe reconstruction, published/private final import and v2 scoring-only
+  backfill. Complete legacy final fits are reusable without six-fit target
+  markers; unknown sources remain preserved. No PLM or threshold refit on import.
+- Added independent production/relative/research schemas, paired and research
+  selectors, explicit transaction domains, report/parameter/rank validations,
+  staged file-tree fsync, mode-aware cleanup, and immutable NumPy evidence APIs.
+  Production remains readable by other threads while CV runs; CV failure retains
+  the published production pair. Distribution caches are bounded/thread-safe.
+- Full suite: **127 passed, 2 opt-in tests skipped** in 239.88 s; one existing Torch
+  environment warning. Subsequent hardened checks: **34 focused passed**, **3
+  publication/rollback passed**, and **2 production/research metadata passed**.
+  Ruff lint/format, whitespace and docs checks passed.
+- Isolated real-data import/scoring/CV check: cluster_0001, 20 C/213,241 B windows,
+  all six fits imported, zero discovery fits computed; 20.97 s. Bitwise original/
+  migrated query parity for 32 vectors; no Gaussian caches after completion.
+  [Record](notes/2026-10-27-final-only-backfill.md). No full production sweep or
+  user-run restart performed.
+- Built source/wheel with a small complete production/relative/research release.
+  Installed loading/scoring/evidence worked outside the checkout with PLM imports
+  blocked, setup-data matrices absent, and package writes denied. Updated README,
+  package-data patterns, specs, index and reasoning record. No commit or push.
+
+## 2026-10-27 — Clean the unfinished legacy run for an all-C restart
+
+- Located the user run in `work/work/library` with setup inputs in
+  `work/work/setup-data`. Acquired both transaction guards in canonical order;
+  all examined per-cluster writer locks were free. Did not stop/restart any job.
+- Revalidated the actual prepared/embedding data and reconstructed supported
+  legacy identity recipes. Verified **194 current first-improvement final fits**
+  through the same import/content/dependency checks used by the new builder.
+- Removed **4,110 disposable files**: 2,752 Gaussian/prefix arrays and 1,358
+  associated cache receipts, totaling **37.763 GiB**. These were legacy fit
+  caches, including incomplete folds that default production will not execute.
+  Retained profiles and compact trial/decision state so optional research can
+  reuse completed results or reconstruct missing intermediates later.
+- Preserved **199 final receipts** (194 supported plus five older-version copies),
+  **1,021 completed fold receipts**, target records, all other compact state,
+  setup-data matrices, sequences and references. Fingerprinted 1,419 complete/
+  target records before/after deletion; all were unchanged. No Gaussian/prefix
+  array files remain in this legacy tree.
+- The run directory shrank from about 44 GiB to **5.8 GiB**; available filesystem
+  space increased to about **586 GiB**. No full new production build was launched.
+  [Summary/provenance](notes/2026-10-27-all-c-restart-cleanup.json); detailed deleted
+  file inventory is `work/all-c-restart-cleanup-2026-10-27.json`.
+- Maintenance/data cleanup only, no runtime code changes. The import validators,
+  retained-record hash checks, cache absence checks and documentation whitespace
+  checks passed; no additional code tests were required. Restart normally using
+  the same input/output roots, without `--force` or `--cross-validate`.
+
+## 2026-10-27 — Share artifacts independently of cwd and export them in packages
+
+- Implemented [SPEC-0006](../specs/0006-shared-artifacts.md): source/editable CLI
+  and Python defaults resolve through imported package location to repository
+  `data/setup-data` and `data/library`, regardless of cwd. Explicit overrides
+  retain their existing semantics. Created the shared folder instructions.
+- Installed packages prefer available user-cache selections then bundled data,
+  and write new output only below the user cache. Selected-library loading now
+  accepts no path. Fixed immutable detection for the setup resource root itself
+  so builds from bundled embeddings do not attempt package-directory locks.
+- Added setuptools hooks exporting only selected completed prepared/embedding,
+  scientific/relative/research bundles through manifest-bound copies. Source
+  archives carry the selected shared data/build helper; their wheel rebuilds
+  export the same resource payload. Writer locks, checksum/binding checks,
+  generation fingerprints and stale-output cleanup protect release assembly.
+- Added Git LFS coverage for completed data and ignore rules for private hidden
+  checkpoint/staging/archive/lock directories. README remains ordinary text.
+  No full data preparation/inference/discovery or migration of custom work paths
+  performed; existing work folders were left untouched.
+- Full suite **135 passed, 2 opt-in tests skipped** in 202.13 s, with the existing
+  Torch environment warning. After the installed-root fix, **13 focused path,
+  release-validation and CLI tests passed**. Ruff lint/format and docs/whitespace
+  checks passed. The base editable install resolves the new absolute repo paths.
+- Built source/wheel from a small complete shared fixture: 49 resource files,
+  setup embeddings and library companions included, private dummy cache excluded.
+  Installed verification outside checkout passed with PLM imports blocked and
+  package writes denied: bundled reads/query evidence, cache-only build output,
+  and cache-only setup prepare-only output. No commit or push performed.
+- Verified an isolated editable install outside its checkout; it resolved shared
+  source data correctly. Editable builds skip generated-data copies. Rebuilt the
+  source/wheel after this hook refinement and ignored hidden temporary files as
+  well as private directories.
+
+## 2026-10-27 — Document future A/B/C query ranking presentation
+
+- Added planned [SPEC-0007](../specs/0007-query-ranking-presentation.md) and linked
+  it from the specification index and README. Adopted A — Acceptance (Yes/No),
+  B — Background score ↓, and C — Cluster score ↑ for top query matches.
+- Recorded existing cutoff, plus-one background fraction and inclusive member
+  percentile semantics, with percentage display and lay explanations. Described
+  an initial accepted-candidate/B-ascending ranking heuristic, supporting C
+  evidence, ties, unavailable data and no-match handling.
+- Marked ranking as future work requiring held-out validation; no calibrated
+  probability or protein-level window aggregation behavior is claimed.
+- Documentation-only change; checked local links, formulas and whitespace. No
+  runtime code, data or tests changed; no code tests required.
+
+### 2026-10-27 — Keep research selection compatible with production
+
+Fixed the release-blocking sequence of building research for one cluster subset
+and then selecting a different production subset. Production selection now
+archives an incompatible research selector under `.archives/`, preserving the
+research bundles and checkpoints; compatible selectors survive reuse. Research
+publication also checks the currently selected production under the root guard,
+preventing a research run from restoring a stale selector after a concurrent
+production switch. See [SPEC 0006](../specs/0006-shared-artifacts.md).
+
+Focused production/distribution regression tests: **18 passed** in 125.93 s.
+Coverage includes selected-artifact packaging inventory after the switch,
+archived selector and preserved research manifest, compatible reuse, and a
+production switch between research computation and publication. Ruff lint,
+formatting checks, and `git diff --check` passed. Full-suite result follows.
+
+Full regression suite: **138 passed, 2 opt-in tests skipped** in 257.37 s;
+the existing Torch `AMD_SERIALIZE_KERNEL` environment warning remains.
+
+### 2026-10-27 — Bind research reports to their production provenance
+
+Research report identity now includes the source production ID, relative bundle
+path, and manifest digest. Previously, K0 research built against K0-only
+production could be incorrectly reused after selecting full production, leaving
+a selector that disagreed with the report manifest and blocking packaging.
+Changing production now creates a distinct report bundle. Fold checkpoints
+are report-scoped, so a production switch currently repeats fold computations;
+compatible final fits remain reusable. Report loading checks identity-bound
+provenance against the manifest; historical reports remain readable without
+being reused under the new identities. Specifications [0004](../specs/0004-build-library.md)
+and [0006](../specs/0006-shared-artifacts.md) record the contract.
+
+Added a regression covering K0-only research, full production, K0 research again,
+release inventory validation, unchanged original report, no repeated final fits,
+same-production report reuse, and rejection of conflicting provenance.
+
+The first focused run had 18 passing tests and one failing regression assertion:
+it incorrectly expected report-scoped fold checkpoints to survive a report-ID
+change without recomputation. Updated that expectation to the actual namespace
+contract (five fold fits repeated, final fit reused), and documented the resource
+cost rather than broadening this fix to change checkpoint storage.
+
+Final validation: **19 production-library/distribution tests passed** in 111.84 s,
+including the provenance-switch regression and tampered-provenance rejection.
+Ruff lint and formatting checks and `git diff --check` passed. The full suite was
+not rerun for this focused provenance fix.
+
+### 2026-10-27 — Import legacy research with empty validation folds
+
+Fixed published legacy research migration when a fold has zero validation
+members. Such folds have no OOF table rows and therefore no spooled JSON file.
+Migration now supplies an empty OOF list only after checking the signature's
+validation count is zero. A missing file for a nonempty fold remains an explicit
+integrity error, and imported results still validate exact validation IDs.
+See [SPEC 0004](../specs/0004-build-library.md).
+
+The four-protein/two-cluster regression (`min_clusters=1`) removes private legacy
+checkpoints and forbids signature recomputation. It verifies ten published fold
+imports (six empty, four populated), four OOF rows, preserved source manifest,
+valid research output, and usable selected production. Initial regression run:
+**1 passed** in 18.79 s. Broader library checks follow.
+
+Broader validation: **33 production and legacy library tests passed** in 256.29 s,
+including serial/parallel agreement, migration, resume, and integrity checks.
+Ruff lint/formatting and whitespace checks passed. Full suite not rerun for this
+focused migration fix.
+
+### 2026-10-28 — Short help options for data and library commands
+
+Added `-h` as an alias of `--help` for `setup-data` and `build-library`.
+README and specifications 0003/0004 document both forms. Parameterized CLI tests
+verify identical output and successful exit for both subcommands: **6 CLI tests
+passed**. Ruff lint/formatting and whitespace checks passed. Existing untracked
+setup-data artifacts were left untouched.
+
+### 2026-10-28 — Label reference distribution progress as ABC match evidence
+
+Renamed the per-cluster build progress message to `ABC match evidence: computing
+or reusing reference distributions`. This is a display-only change; distribution
+construction, artifact names and APIs remain unchanged. SPEC 0005 records the
+label and distinguishes this step from probability calibration. The existing
+production-distribution test now checks the message for both fixture clusters.
+
+Validation: production-distribution regression **1 passed**; Ruff lint/formatting
+and whitespace checks passed.
+
+### 2026-10-28 — Draft explain-signature specification
+
+Drafted [SPEC 0008](../specs/0008-explain-signature.md) using the user-reviewed
+cluster_0001 narrative. Defines the CLI and importable report/rendering API,
+window membership explanation, Gaussian similarity terminology, ranked-prefix
+candidate selection, removal history, composite score/threshold, in-sample
+metrics and reference distributions for ABC evidence. Scope excludes query
+examples, prediction, biological mechanism claims and probability calibration.
+Documents provenance/integrity checks, immutable installed use, unavailable
+artifacts, resource limits, deterministic formats and implementation tests.
+Implementation remains planned. No scientific code or local artifacts changed.

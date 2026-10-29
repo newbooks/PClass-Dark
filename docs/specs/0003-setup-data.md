@@ -36,14 +36,14 @@ draft in which embedding was outside setup-data.
 Provide both a thin Typer subcommand and a reusable library API:
 
 ```bash
-pclass-dark setup-data --output-dir work/setup-data --min-clusters 10
+pclass-dark setup-data --min-clusters 10
 ```
 
 ```python
 from pclass_dark.setup_data import prepare_data
 
 result = prepare_data(
-    output_dir="work/setup-data",
+    output_dir=None,  # Shared repository data/setup-data, or installed user cache.
     min_clusters=10,
     seed=42,
     workers=1,
@@ -60,7 +60,7 @@ Command options (also keyword arguments to `prepare_data`):
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--output-dir` | `work/setup-data` | Derived dataset destination, relative to invocation directory |
+| `--output-dir` | `<repo>/data/setup-data` | Shared destination independent of cwd; explicit relative overrides use cwd |
 | `--min-clusters` | `10` | Minimum unique full-sequence members per retained cluster |
 | `--seed` | `42` | Nonnegative seed for random window assignment to five folds |
 | `--workers` | `1` | Positive CPU worker count for suitable independent preparation work |
@@ -937,3 +937,16 @@ Evidence and identities are in `docs/research/notes/2026-10-25-setup-data.md`
 and its linked JSON records. Full preparation is available locally under
 `work/setup-data/selection.json`; the real-model resume fixture is under
 `work/real-model-resume/`. These working directories are ignored by Git.
+
+## Shared path and distribution update — 2026-10-27
+
+[SPEC-0006](0006-shared-artifacts.md) supersedes earlier cwd-relative defaults.
+CLI and Python omitted paths resolve to `<repo>/data/setup-data` and
+`<repo>/data/library` in a checkout, regardless of cwd. Explicit overrides remain
+caller-controlled. Installed packages read selected bundled data or existing
+user-cache data and write new outputs only to the user cache. Package builds
+export selected complete shared bundles through validated build hooks; scientific
+identities, cache safety and historical experiment paths are unchanged.
+
+CLI help accepts both `pclass-dark setup-data -h` and
+`pclass-dark setup-data --help`, with identical output and exit status zero.

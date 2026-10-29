@@ -4,6 +4,7 @@ import subprocess
 import sys
 from importlib.metadata import version
 
+import pytest
 from typer.testing import CliRunner
 
 import pclass_dark
@@ -59,3 +60,13 @@ main()
         [sys.executable, "-c", script], capture_output=True, text=True, check=True
     )
     assert result.stderr.strip() == "[INFO] Background identities: 1/3443 targets"
+
+
+@pytest.mark.parametrize("command", ["setup-data", "build-library"])
+def test_subcommand_short_help_matches_long_help(command):
+    short = runner.invoke(app, [command, "-h"])
+    long = runner.invoke(app, [command, "--help"])
+    assert short.exit_code == long.exit_code == 0
+    assert short.stdout == long.stdout
+    assert "--help" in short.stdout and "-h" in short.stdout
+    assert "--workers" in short.stdout
