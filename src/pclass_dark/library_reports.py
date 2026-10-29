@@ -198,10 +198,21 @@ def final_results(path, requested):
 
 
 @schema_checked
-def load_production(path):
+def load_production(path, *, cluster_id=None):
     from .library import FINAL_PROFILE, HEADERS, Library, encoded_cluster
 
-    manifest = verify_bundle(path, PRODUCTION)
+    members = None
+    if cluster_id is not None:
+        preview = read_json(safe_file(path, "manifest.json"))
+        if cluster_id not in preview["identity_inputs"]["cluster_ids"]:
+            raise ValueError(f"Unknown cluster: {cluster_id}")
+        prefix = "clusters/" + encoded_cluster(cluster_id) + "/"
+        members = [
+            "dimension_final.tsv.gz",
+            prefix + "final.json",
+            prefix + "selection_trace.json.gz",
+        ]
+    manifest = verify_bundle(path, PRODUCTION, members=members)
     inputs = manifest["identity_inputs"]
     contract = representation_contract(manifest["representation_contract"])
     targets = inputs["cluster_ids"]
@@ -211,20 +222,26 @@ def load_production(path):
         or identity(contract) != inputs["representation_contract_id"]
     ):
         raise IntegrityError("Production identity/target/representation mismatch")
-    required = {"dimension_final.tsv.gz", "cluster_metrics.tsv"}
+    requested = targets if cluster_id is None else [cluster_id]
+    fits = dict(inputs["final_fits"])
+    if len(fits) != len(inputs["final_fits"]) or set(fits) != set(targets):
+        raise IntegrityError("Production fit inventory mismatch")
+    required = {"dimension_final.tsv.gz"}
+    if cluster_id is None:
+        required.add("cluster_metrics.tsv")
     signatures = {}
     counts = {
-        "targets": len(targets),
+        "targets": len(requested),
         "available_final": 0,
         "unsupported_final": 0,
-        "dimension_final_rows": 640 * len(targets),
+        "dimension_final_rows": 640 * len(requested),
     }
-    for cluster, result in final_results(path, set(targets)):
+    for cluster, result in final_results(path, set(requested)):
         signature = result["signature"]
         validate_signature(
             signature, library_id=manifest["id"], cluster_id=cluster, fit_id="final"
         )
-        fit_id = dict(inputs["final_fits"])[cluster]
+        fit_id = fits[cluster]
         if (
             signature["schema"] != "pclass-dark.signature.v2"
             or signature["fit_identity"] != fit_id
@@ -254,23 +271,27 @@ def load_production(path):
         counts[
             "available_final" if signature["status"] == "ok" else "unsupported_final"
         ] += 1
-    if (
-        set(signatures) != set(targets)
-        or set(manifest["files"]) != required
-        or manifest["counts"] != counts
+        if cluster_id is not None:
+            break
+    if set(signatures) != set(requested) or not required <= set(manifest["files"]):
+        raise IntegrityError("Production inventory/count mismatch")
+    if cluster_id is None and (
+        set(manifest["files"]) != required or manifest["counts"] != counts
     ):
         raise IntegrityError("Production inventory/count mismatch")
-    for name, header in {
-        "dimension_final.tsv.gz": ["cluster_id", *FINAL_PROFILE],
-        "cluster_metrics.tsv": HEADERS["cluster_metrics.tsv"],
-    }.items():
+    headers = {"dimension_final.tsv.gz": ["cluster_id", *FINAL_PROFILE]}
+    if cluster_id is None:
+        headers["cluster_metrics.tsv"] = HEADERS["cluster_metrics.tsv"]
+    for name, header in headers.items():
         opener = gzip.open if name.endswith(".gz") else open
         with opener(path / name, "rt", newline="") as handle:
             if next(csv.reader(handle, delimiter="\t"), None) != header:
                 raise IntegrityError("Production report header mismatch")
-    _verify_metrics(
-        path / "cluster_metrics.tsv", {(c, "final"): s for c, s in signatures.items()}
-    )
+    if cluster_id is None:
+        _verify_metrics(
+            path / "cluster_metrics.tsv",
+            {(c, "final"): s for c, s in signatures.items()},
+        )
     return Library(
         manifest["id"],
         MappingProxyType(signatures),
@@ -279,6 +300,7 @@ def load_production(path):
         source_root=path.parent,
         manifest_sha256=sha256(path / "manifest.json"),
         source_path=path,
+        target_result=freeze(result) if cluster_id is not None else None,
     )
 
 

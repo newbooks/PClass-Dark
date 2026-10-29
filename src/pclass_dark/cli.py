@@ -151,3 +151,45 @@ def build_library_command(
         typer.echo(f"Relative scores: {result.relative_dir}")
     if result.research_dir is not None:
         typer.echo(f"Research: {result.research_dir}")
+
+
+def _one_cluster(values: list[str]) -> list[str]:
+    if len(values) != 1:
+        raise typer.BadParameter("Provide --cluster exactly once.")
+    return values
+
+
+@app.command(
+    "explain-signature", context_settings={"help_option_names": ["-h", "--help"]}
+)
+def explain_signature_command(
+    cluster: Annotated[
+        list[str],
+        typer.Option("--cluster", callback=_one_cluster, help="One exact cluster ID."),
+    ],
+    library_dir: str | None = typer.Option(
+        None,
+        help="Library root; default: repository data/library, or bundled/user data.",
+    ),
+    detailed: bool = typer.Option(
+        False, help="Include all profiles, prefixes and trials."
+    ),
+    format: str = typer.Option("text", help="Report format: text, markdown or json."),
+) -> None:
+    """Explain a saved cluster signature, its selection and ABC reference data."""
+    if format not in ("text", "markdown", "json"):
+        raise typer.BadParameter(
+            "Must be text, markdown or json.", param_hint="--format"
+        )
+    from .explanations import explain_signature, render_signature_explanation
+
+    try:
+        report = explain_signature(cluster[0], library_dir, detailed=detailed)
+        rendered = render_signature_explanation(report, format=format)
+    except KeyboardInterrupt:
+        typer.echo("Interrupted.", err=True)
+        raise typer.Exit(130) from None
+    except (ValueError, RuntimeError, OSError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(rendered, nl=False)

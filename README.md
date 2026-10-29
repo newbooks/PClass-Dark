@@ -22,8 +22,7 @@ pclass-dark --version
 ```
 
 The CLI uses a command/subcommand hierarchy: `pclass-dark <command> [options]`.
-Both `pclass-dark setup-data -h` and `pclass-dark build-library -h` show
-subcommand help; `--help` is also supported.
+Use `-h` or `--help` after any subcommand to show its options.
 
 `setup-data` prepares references and frozen PLM embeddings. `build-library`
 discovers and evaluates cluster signatures. The same entry
@@ -240,6 +239,42 @@ Private checkpoints and model weights are excluded. See
 [SPEC-0004](docs/specs/0004-build-library.md),
 [SPEC-0005](docs/specs/0005-relative-score-distributions.md), and the
 [score-interpretation notes](docs/research/notes/2026-10-27-relative-score-reasoning.md).
+
+## Explain a Signature
+
+```bash
+pclass-dark explain-signature --cluster cluster_0001
+pclass-dark explain-signature --cluster cluster_0001 --detailed
+pclass-dark explain-signature --cluster cluster_0001 --format markdown > signature.md
+pclass-dark explain-signature --cluster cluster_0001 --format json > signature.json
+```
+
+The report explains window membership, individual dimension evidence, candidate
+selection and removal history, Gaussian similarity and the composite threshold,
+in-sample metrics, and reference distributions for ABC match evidence. It uses
+the selected library from the shared default location; use `--library-dir` to
+select another library root. It does not need setup-data matrices, model weights
+or network access, and does not evaluate a query or assign probabilities.
+The command validates only the requested cluster's signature, trace and C/B
+arrays, together with their manifest/provenance bindings. The shared compressed
+profile table is still checksummed; locating a late cluster requires sequential
+lookup. Unrelated clusters are outside this validation scope. `--detailed`
+includes all profiles, prefixes and recorded removal trials.
+
+```python
+from pclass_dark.explanations import explain_signature, render_signature_explanation
+
+report = explain_signature("cluster_0001")
+print(render_signature_explanation(report), end="")
+evidence = report.to_dict()  # Detached structured data for integrations.
+```
+
+The report is immutable; rendering performs no artifact reads. Relative-score
+objects also provide `summarize(cluster_id)` for verified, bounded-memory C/B
+quantiles. `load_selected_library(cluster_id="cluster_0001")` and
+`load_library(path, cluster_id="cluster_0001")` expose targeted loading to Python
+integrations; omitting `cluster_id` retains full-library validation. See [SPEC-0008](docs/specs/0008-explain-signature.md) for the report
+schema, availability rules and interpretation.
 
 ## Motivation
 
