@@ -349,7 +349,7 @@ def test_unsupported_and_empty_libraries(library_data, tmp_path):
 
 def test_corrupt_summary_fails_without_partial_output(summary_library):
     root, result = summary_library
-    (result.library_dir / "clusters/c_4b31/final.json").write_text("{}")
+    (result.library_dir / "clusters/K1/final.json").write_text("{}")
     with pytest.raises(IntegrityError):
         list_signature_summaries(root)
     response = CliRunner().invoke(
@@ -440,7 +440,7 @@ def test_old_selection_and_missing_signature(summary_library):
     selected["schema"] = "pclass-dark.library-selection.v1"
     write_json(root / "selection.json", selected)
     assert list_signature_summaries(root).to_dict()["counts"]["clusters"] == 2
-    (result.library_dir / "clusters/c_4b30/final.json").unlink()
+    (result.library_dir / "clusters/K0/final.json").unlink()
     with pytest.raises((IntegrityError, OSError)):
         list_signature_summaries(root)
 

@@ -90,7 +90,8 @@ contracts rather than create an alternative scientific implementation.
 
 Resolve paths with `default_library_input_dir()` and inspect root/selector
 existence before acquiring a guard, so missing inputs do not create directories.
-Use `safe_file` and `encoded_cluster` rather than interpolating unchecked paths.
+Use `safe_file` and manifest-aware `stored_cluster_name` rather than
+interpolating unchecked paths (see [SPEC-0011](0011-readable-cluster-paths.md)).
 Reject symlink roots/ancestors and artifact symlinks consistently with the existing
 artifact contracts. Reject unknown selection/manifest schemas explicitly.
 

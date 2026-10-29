@@ -15,6 +15,7 @@ from .artifacts import (
     verify_files,
 )
 from .cluster_descriptions import description_for, load_catalog
+from .cluster_paths import stored_cluster_name
 from .fit_records import thaw
 from .library_runtime import representation_contract, validate_signature
 
@@ -203,7 +204,6 @@ def list_signature_summaries(library_dir=None):
 
 @schema_checked
 def _load_rows(root, immutable):
-    from .library import encoded_cluster
 
     selected = read_json(safe_file(root, "selection.json"))
     require(
@@ -290,7 +290,7 @@ def _load_rows(root, immutable):
         catalog = load_catalog()
         rows = []
         for cluster in targets:
-            name = "clusters/" + encoded_cluster(cluster) + "/final.json"
+            name = "clusters/" + stored_cluster_name(cluster, manifest) + "/final.json"
             record = records[name]
             require(
                 isinstance(record, dict)

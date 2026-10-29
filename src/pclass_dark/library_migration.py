@@ -18,6 +18,7 @@ from .artifacts import (
     sha256,
     write_json,
 )
+from .cluster_paths import stored_cluster_name
 from .fit_records import validate_result
 from .signatures import SELECTION_VERSION
 
@@ -121,7 +122,7 @@ def prepare_sources(
                     signature_file = (
                         path
                         / "clusters"
-                        / ("c_" + cluster.encode().hex())
+                        / stored_cluster_name(cluster, manifest)
                         / f"fold_{fold}.json"
                     )
                     digest = sha256(signature_file)
@@ -151,13 +152,17 @@ def prepare_sources(
                 ):
                     if cluster not in selected:
                         continue
-                    directory = path / "clusters" / ("c_" + cluster.encode().hex())
+                    directory = (
+                        path / "clusters" / stored_cluster_name(cluster, manifest)
+                    )
                     with gzip.open(
                         directory / "selection_trace.json.gz", "rt"
                     ) as traces:
                         trace = json.load(traces)[int(fold)]
                     signature = read_json(directory / f"fold_{fold}.json")
-                    oof_file = cache / directory.name / f"oof_{fold}.json"
+                    oof_file = (
+                        cache / ("c_" + cluster.encode().hex()) / f"oof_{fold}.json"
+                    )
                     if oof_file.exists():
                         oof = read_json(oof_file)
                     elif signature["counts"]["validation_positive_n"] == 0:
@@ -172,7 +177,7 @@ def prepare_sources(
                         "trace": trace,
                         "oof": oof,
                     }
-                    file = cache / directory.name / f"fold_{fold}.json"
+                    file = cache / ("c_" + cluster.encode().hex()) / f"fold_{fold}.json"
                     write_json(file, result)
                     sources.setdefault((cluster, f"fold_{fold}"), []).append(
                         {

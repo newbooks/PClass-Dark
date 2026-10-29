@@ -21,6 +21,7 @@ from .artifacts import (
     verify_bundle,
     write_json,
 )
+from .cluster_paths import LAYOUT, cluster_directory_name, stored_cluster_name
 from .fit_records import payload_identity, rebound_signature, validate_result
 from .library_runtime import freeze, representation_contract, validate_signature
 from .signature_metrics import METRICS
@@ -72,6 +73,7 @@ def _manifest(stage, schema, inputs, contract, counts, execution):
     sync_tree(stage)
     manifest = {
         "schema": schema,
+        "cluster_directory_layout": LAYOUT,
         "id": identity(inputs),
         "identity_inputs": inputs,
         "status": "complete",
@@ -90,7 +92,7 @@ def _manifest(stage, schema, inputs, contract, counts, execution):
 
 
 def write_production(stage, paths, inputs, contract, execution):
-    from .library import FINAL_PROFILE, HEADERS, _gzip_json, _table, encoded_cluster
+    from .library import FINAL_PROFILE, HEADERS, _gzip_json, _table
 
     counts = {
         "targets": len(paths),
@@ -109,7 +111,7 @@ def write_production(stage, paths, inputs, contract, execution):
         for path in paths:
             target, result = read_target(path)
             cluster = target["cluster_id"]
-            directory = stage / "clusters" / encoded_cluster(cluster)
+            directory = stage / "clusters" / cluster_directory_name(cluster)
             directory.mkdir(parents=True)
             signature = rebound_signature(
                 result, identity(inputs), target["fit_id"], target.get("source")
@@ -173,15 +175,14 @@ def final_results(path, requested):
     """Stream a legacy/current final table once, preserving complete fit payloads."""
     import itertools
 
-    from .library import encoded_cluster
-
+    manifest = read_json(path / "manifest.json")
     with gzip.open(path / "dimension_final.tsv.gz", "rt", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         for cluster, rows in itertools.groupby(reader, key=lambda r: r["cluster_id"]):
             rows = list(rows)
             if cluster not in requested:
                 continue
-            directory = path / "clusters" / encoded_cluster(cluster)
+            directory = path / "clusters" / stored_cluster_name(cluster, manifest)
             signature = read_json(directory / "final.json")
             with gzip.open(directory / "selection_trace.json.gz", "rt") as trace_file:
                 traces = json.load(trace_file)
@@ -199,14 +200,14 @@ def final_results(path, requested):
 
 @schema_checked
 def load_production(path, *, cluster_id=None):
-    from .library import FINAL_PROFILE, HEADERS, Library, encoded_cluster
+    from .library import FINAL_PROFILE, HEADERS, Library
 
     members = None
     if cluster_id is not None:
         preview = read_json(safe_file(path, "manifest.json"))
         if cluster_id not in preview["identity_inputs"]["cluster_ids"]:
             raise ValueError(f"Unknown cluster: {cluster_id}")
-        prefix = "clusters/" + encoded_cluster(cluster_id) + "/"
+        prefix = "clusters/" + stored_cluster_name(cluster_id, preview) + "/"
         members = [
             "dimension_final.tsv.gz",
             prefix + "final.json",
@@ -262,7 +263,7 @@ def load_production(path, *, cluster_id=None):
             sigma_floor=inputs["sigma_floor"],
             validation_ids=[],
         )
-        prefix = "clusters/" + encoded_cluster(cluster) + "/"
+        prefix = "clusters/" + stored_cluster_name(cluster, manifest) + "/"
         with gzip.open(path / prefix / "selection_trace.json.gz", "rt") as handle:
             if len(json.load(handle)) != 1:
                 raise IntegrityError("Production requires exactly one final trace")
@@ -307,7 +308,7 @@ def load_production(path, *, cluster_id=None):
 def write_research(stage, paths, inputs, contract, execution, *, source_production):
     from contextlib import ExitStack
 
-    from .library import HEADERS, STATS, _gzip_json, _stat, _table, encoded_cluster
+    from .library import HEADERS, STATS, _gzip_json, _stat, _table
 
     names = set(HEADERS) - {"dimension_final.tsv.gz"}
     counts = {
@@ -324,7 +325,7 @@ def write_research(stage, paths, inputs, contract, execution, *, source_producti
         for path in paths:
             target = read_json(path)
             cluster = target["cluster_id"]
-            directory = stage / "clusters" / encoded_cluster(cluster)
+            directory = stage / "clusters" / cluster_directory_name(cluster)
             directory.mkdir(parents=True)
             fits, traces = [], []
             for reference in target["fits"]:
@@ -453,7 +454,7 @@ def load_research(research_dir, *, immutable=False):
     """Verify a separate five-fold report bundle, never a production scorer."""
     from contextlib import nullcontext
 
-    from .library import HEADERS, encoded_cluster
+    from .library import HEADERS
 
     path = Path(research_dir).absolute()
     resources = Path(__file__).resolve().parent / "resources"
@@ -464,7 +465,7 @@ def load_research(research_dir, *, immutable=False):
             raise IntegrityError("Research identity mismatch")
         required = set(HEADERS) - {"dimension_final.tsv.gz"}
         for cluster in manifest["identity_inputs"]["cluster_ids"]:
-            prefix = "clusters/" + encoded_cluster(cluster) + "/"
+            prefix = "clusters/" + stored_cluster_name(cluster, manifest) + "/"
             required.add(prefix + "selection_trace.json.gz")
             with gzip.open(path / prefix / "selection_trace.json.gz", "rt") as handle:
                 traces = json.load(handle)
@@ -502,7 +503,7 @@ def load_research(research_dir, *, immutable=False):
 def _validate_research_tables(path, manifest):
     import itertools
 
-    from .library import HEADERS, encoded_cluster
+    from .library import HEADERS
 
     signatures = {}
     fold_ids = dict(manifest["identity_inputs"]["fold_fits"])
@@ -540,7 +541,7 @@ def _validate_research_tables(path, manifest):
             dimensions, key=lambda r: (r["cluster_id"], r["fold_id"])
         ):
             seen.append((cluster, fold))
-            directory = path / "clusters" / encoded_cluster(cluster)
+            directory = path / "clusters" / stored_cluster_name(cluster, manifest)
             signature = read_json(directory / f"fold_{fold}.json")
             with gzip.open(directory / "selection_trace.json.gz", "rt") as handle:
                 trace = json.load(handle)[int(fold)]

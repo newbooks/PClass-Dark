@@ -34,6 +34,7 @@ from .artifacts import (
     transaction_guard,
     write_json,
 )
+from .cluster_paths import validate_cluster_directories
 from .fit_records import payload_identity, validate_result
 from .library_checkpoints import Checkpoints
 from .library_cleanup import DISPOSABLE
@@ -566,8 +567,7 @@ def build(
             or any(c not in sets.clusters for c in targets)
         ):
             raise ValueError("Unknown, duplicate, or empty target cluster selection")
-        for cluster in targets:
-            encoded_cluster(cluster)
+        validate_cluster_directories(targets)
         base = _legacy_base(pm, em, contract, prepared, embedding, epsilon, sigma_floor)
         bg = read_json(prepared / "background_members.json")["backgrounds"]
         fit_inputs = {

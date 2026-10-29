@@ -999,3 +999,52 @@ Installed-wheel text/Markdown/JSON reports were verified from `/tmp`. Lint and
 formatting passed for 48 Python files; documentation and scoped whitespace checks
 passed. This isolated descriptive aggregation/rendering change did not require
 rerunning the embedding/training suites. No scientific artifacts were modified.
+
+## 2026-10-29 — Readable published cluster paths
+
+Implemented [SPEC-0011](../specs/0011-readable-cluster-paths.md): production,
+relative-score and research bundles now write `clusters/<cluster_id>/` directories.
+Validated portable IDs reject unsafe paths/device names and case-fold collisions.
+An explicit manifest layout marker preserves legacy hexadecimal reads, including
+scoped explanation/listing and legacy research import. Private checkpoint/cache
+names remain stable for resume. Scientific fitting and pooling are unchanged.
+
+Added `pclass_dark.library_paths.migrate_library_paths()` and
+`scripts/migrate_library_paths.py`. Migration holds the transaction guard, fully
+validates old and staged bundles, hard-links immutable payloads, rewrites metadata
+atomically, retains the original generation, commits selection last and recovers
+from a durable journal. Production scientific identity stays unchanged; relative
+identity is refreshed to bind the updated production manifest. An incompatible
+research selector is archived, with research artifacts preserved unselected.
+
+Migrated the current selected library using
+`python scripts/migrate_library_paths.py data/library`, without fitting/scoring.
+Production remains `5f9117a77f64b30426661dff87533a462a8c0771c7150ae76eb903574a5e8100`;
+new relative ID is `cab57dc6d25c492f233f59197d2cc62c4bf2c05cdc89d19fbe3580863ba3e5b0`.
+Both have 3443 readable cluster directories. The complete original pair and exact
+selector are under
+`data/library/.archives/cluster-paths-693395768393481da3f98b38a140a6fa/`.
+Migration stdout: `/tmp/pclass-dark-current-library-migration.json`.
+
+Initial path refactor tests: 63 passed. Migration regression tests: 13 passed,
+including legacy full/scoped reads, byte-identical signatures/arrays, identical
+query scores/ABC evidence, listing, release inventory, repeat no-op, exception
+rollback and recovery after subprocess termination. Full-suite and real-library
+postpublication verification results follow below.
+
+Postpublication verification: all 6886 production payloads and 10329 relative
+payloads match the original manifests byte-for-byte by SHA-256. Production and
+relative selectors/manifests match, with production scientific ID preserved.
+`pclass-dark explain-signature --cluster cluster_0001` and `--list` succeeded;
+reports are `/tmp/pclass-dark-readable-cluster-0001.txt` and
+`/tmp/pclass-dark-readable-cluster-list.txt`. Release `shared_files()` inventory
+validated 17238 selected files and excluded archives. Extended migration tests
+also verify normal build reuse without fitting: 13 passed in 24.15 s. Ruff and
+format checks passed for 51 Python files; scoped whitespace checks passed.
+
+Full suite: **252 passed, 2 skipped** in 451.58 s. The skipped tests are
+opt-in real-checkpoint inference tests; this path/storage change does not alter
+inference. One existing PyTorch environment warning concerned the value of
+`AMD_SERIALIZE_KERNEL`. The latest extended migration tests were rerun separately
+(13 passed), including release inventory and postmigration build reuse. No
+scientific values changed, no refitting occurred, and nothing was committed/pushed.

@@ -13,3 +13,5 @@
 - [0009: List cluster signature summaries](0009-list-signature-summaries.md) — implemented: alphabetic aligned tables, in-sample metrics, three-decimal formatting.
 
 - [0010: Portable profunc cluster descriptions](0010-cluster-descriptions.md) — implemented: composed-GO descriptions, reference bindings and 24-character display limits.
+
+- [0011: Readable cluster directory names](0011-readable-cluster-paths.md) — readable public outputs and guarded migration with original-generation backups.

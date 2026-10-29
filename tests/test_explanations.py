@@ -138,7 +138,7 @@ def test_summary_quantiles_and_generation_checks(explanation_library):
     root, result = explanation_library
     relative = load_selected_library(root).relative
     summary = relative.summarize("K0")
-    directory = result.relative_dir / "clusters/c_4b30"
+    directory = result.relative_dir / "clusters/K0"
     for key in ("C", "B"):
         logs = np.load(directory / f"{key}_log_scores.npy")
         expected = np.quantile(
@@ -192,7 +192,7 @@ def test_independent_quantile_and_rendering_edge_cases(explanation_library):
 
 def test_corrupt_companion_and_signature_fail_without_partial_cli(explanation_library):
     root, result = explanation_library
-    file = result.relative_dir / "clusters/c_4b30/C_log_scores.npy"
+    file = result.relative_dir / "clusters/K0/C_log_scores.npy"
     file.write_bytes(b"corrupt")
     with pytest.raises(IntegrityError):
         explain_signature("K0", root)
@@ -299,7 +299,7 @@ def test_trace_binding_and_missing_companion_are_errors(explanation_library):
     # Intentionally remove the companion dependency, then corrupt a signature.
     selector["schema"] = "pclass-dark.library-selection.v1"
     write_json(root / "selection.json", selector)
-    (result.library_dir / "clusters/c_4b30/final.json").write_text("{}")
+    (result.library_dir / "clusters/K0/final.json").write_text("{}")
     with pytest.raises(IntegrityError):
         explain_signature("K0", root)
 
@@ -402,7 +402,7 @@ def test_targeted_explanation_does_not_read_other_cluster_files(
     def record(file):
         if isinstance(file, (str, bytes, os.PathLike)):
             path = Path(os.fsdecode(file))
-            assert "c_4b31" not in path.parts, f"Read unrelated cluster file: {path}"
+            assert "K1" not in path.parts, f"Read unrelated cluster file: {path}"
             assert path.name not in {"cluster_metrics.tsv", "summary.tsv"}, path
             accessed.append(path)
 
@@ -429,8 +429,8 @@ def test_unrelated_corruption_does_not_block_targeted_report(explanation_library
     root, result = explanation_library
     # Remove all of the other cluster's signature/trace/relative files and
     # redundant shared reports. They are outside the requested evidence scope.
-    shutil.rmtree(result.library_dir / "clusters/c_4b31")
-    shutil.rmtree(result.relative_dir / "clusters/c_4b31")
+    shutil.rmtree(result.library_dir / "clusters/K1")
+    shutil.rmtree(result.relative_dir / "clusters/K1")
     (result.library_dir / "cluster_metrics.tsv").unlink()
     (result.relative_dir / "summary.tsv").unlink()
     assert explain_signature("K0", root).to_dict()["status"] == "ok"
@@ -458,9 +458,9 @@ def test_targeted_dependencies_remain_verified(explanation_library, member):
         write_json(root / "selection.json", selected)
     else:
         file = {
-            "trace": result.library_dir / "clusters/c_4b30/selection_trace.json.gz",
-            "distribution": result.relative_dir / "clusters/c_4b30/distribution.json",
-            "background": result.relative_dir / "clusters/c_4b30/B_log_scores.npy",
+            "trace": result.library_dir / "clusters/K0/selection_trace.json.gz",
+            "distribution": result.relative_dir / "clusters/K0/distribution.json",
+            "background": result.relative_dir / "clusters/K0/B_log_scores.npy",
             "profiles": result.library_dir / "dimension_final.tsv.gz",
         }[member]
         file.write_bytes(b"corrupt")

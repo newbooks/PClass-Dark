@@ -162,7 +162,7 @@ Required layout, relative to the library output root:
 relative-scores/<distribution-id>/
     manifest.json
     summary.tsv
-    clusters/c_<hex>/
+    clusters/<cluster_id>/
         distribution.json
         C_log_scores.npy
         B_log_scores.npy
@@ -525,3 +525,8 @@ The companion's redundant shared summary and other clusters' data are not opened
 in scoped mode. Target metadata/arrays retain all existing checksum, scientific
 binding, shape, dtype and sorted/finite checks. Scoped explanations identify this
 validation scope in their source metadata; this is not a full release audit.
+
+Published cluster directories now use validated cluster IDs; readers retain legacy
+hex-layout compatibility. See [SPEC-0011](0011-readable-cluster-paths.md) for
+layout metadata, migration, checksum rebinding and backup contracts. Internal
+checkpoint directory names remain unchanged.

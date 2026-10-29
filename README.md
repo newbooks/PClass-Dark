@@ -69,6 +69,16 @@ staging files, locks and model weights are excluded. A stage without a selection
 contributes no generated data yet; building does not run the scientific commands.
 See [data instructions](data/README.md) and [SPEC-0006](docs/specs/0006-shared-artifacts.md).
 
+Published signatures use `data/library/<library-id>/clusters/<cluster-id>/final.json`,
+for example `clusters/cluster_0001/final.json`. Relative-score and research
+bundles use the same cluster directory names. Older hexadecimal layouts remain
+readable. To migrate an existing selection without refitting, run
+`python scripts/migrate_library_paths.py data/library` from the repository root.
+The operation validates the selected pair and preserves its original generation
+under `data/library/.archives/`; those immutable backups share unchanged payloads
+with the migrated generation and must not be edited in place. See
+[SPEC-0011](docs/specs/0011-readable-cluster-paths.md).
+
 A normal installed wheel reads bundled artifacts through the same APIs, including
 `load_selected_library()` without a path. New writable output goes under
 `$XDG_CACHE_HOME/pclass-dark/` or `~/.cache/pclass-dark/`; an existing cache selection
