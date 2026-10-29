@@ -502,3 +502,26 @@ The user-facing build progress label is `ABC match evidence`, for example
 This denotes preparation of the fixed-signature C/B reference distributions;
 it does not imply probability calibration. Artifact names and APIs retain their
 `relative_scores` terminology.
+
+### Signature explanation summaries
+
+`RelativeScores.summarize(cluster_id)` provides immutable, detached C/B summaries
+for SPEC-0008. It checks the production/companion generation and verifies the
+target arrays, reading them via read-only memory maps with bounded validation
+scans. It interpolates the fixed seven quantiles in sorted log-score space,
+retains log scores, and flags exponentiation underflow. It does not evaluate a
+query or change persisted arrays. Existing `evaluate` behavior and array schemas
+remain unchanged; full companion loading now verifies mapped arrays one target
+at a time rather than allocating each target's populations.
+
+### Explicit target-scoped loading
+
+`load_selected_library(root=None, cluster_id="...")` verifies the requested
+production signature and relative data only, while checking selected manifests,
+source provenance and the identity-bound global target inventory. Its returned
+library/relative objects expose only that cluster; library counts describe the
+loaded subset. Ordinary calls without `cluster_id` retain full-library validation.
+The companion's redundant shared summary and other clusters' data are not opened
+in scoped mode. Target metadata/arrays retain all existing checksum, scientific
+binding, shape, dtype and sorted/finite checks. Scoped explanations identify this
+validation scope in their source metadata; this is not a full release audit.

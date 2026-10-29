@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import shutil
 import threading
 import time
@@ -348,6 +349,50 @@ class RelativeScores:
         self._cache_bytes = 0
         self._lock = threading.RLock()
 
+    @schema_checked
+    def summarize(self, cluster_id):
+        """Return verified C/B log-space linear quantiles for one cluster.
+
+        Raises ValueError for an unknown ID, IntegrityError for a changed/corrupt
+        generation, and OSError for inaccessible files. No query is evaluated.
+        """
+        if not isinstance(cluster_id, str) or not cluster_id:
+            raise ValueError("cluster_id must be a nonempty string")
+        with self._lock:
+            meta = self._metadata.get(cluster_id)
+            if meta is None:
+                raise ValueError(f"Unknown cluster: {cluster_id}")
+            with (
+                nullcontext()
+                if self._immutable
+                else transaction_guard(self.library.source_root)
+            ):
+                if (
+                    sha256(self.path / "manifest.json") != self._digest
+                    or sha256(self.library.source_path / "manifest.json")
+                    != self.library.manifest_sha256
+                ):
+                    raise IntegrityError(
+                        "Relative generation changed; reload the selected pair"
+                    )
+                summary = {
+                    "status": meta["status"],
+                    "reason": meta["reason"],
+                    "relative_id": self.relative_id,
+                    "quantile_method": "linear-in-log-space-v1",
+                    "C": None,
+                    "B": None,
+                }
+                if meta["status"] == "ok":
+                    arrays = _read_arrays(self.path, meta, mmap=True)
+                    for key in ("C", "B"):
+                        summary[key] = {
+                            "n": len(arrays[key]),
+                            "role": meta[key + "_role"],
+                            "quantiles": _score_quantiles(arrays[key]),
+                        }
+                return freeze(summary)
+
     def evaluate(self, cluster_id, log_scores):
         with self._lock:
             return self._evaluate(cluster_id, log_scores)
@@ -418,7 +463,30 @@ class RelativeScores:
         )
 
 
-def _read_arrays(path, meta):
+def _score_quantiles(array):
+    """Interpolate a verified nonempty sorted array without a population copy."""
+    result = []
+    for q in (0.0, 0.25, 0.5, 0.75, 0.95, 0.99, 1.0):
+        h = (len(array) - 1) * q
+        i, j = math.floor(h), math.ceil(h)
+        value = (
+            float(array[i])
+            if i == j
+            else float((1 - (h - i)) * array[i] + (h - i) * array[j])
+        )
+        score = math.exp(value)
+        result.append(
+            {
+                "q": q,
+                "log_score": value,
+                "score": score,
+                "score_underflow": score == 0.0,
+            }
+        )
+    return result
+
+
+def _read_arrays(path, meta, *, mmap=False):
     from .library import encoded_cluster
 
     directory = safe_file(path, "clusters/" + encoded_cluster(meta["cluster_id"]))
@@ -428,8 +496,10 @@ def _read_arrays(path, meta):
         file = safe_file(directory, info["file"])
         if file_record(file) != {k: info[k] for k in ("sha256", "size_bytes")}:
             raise IntegrityError("Relative score file checksum mismatch")
-        array = np.load(file, allow_pickle=False)
+        array = np.load(file, allow_pickle=False, mmap_mode="r" if mmap else None)
         _validate_array(array, meta[key + "_n"])
+        if not len(array):
+            raise IntegrityError("Available relative scores must be nonempty")
         if (
             tuple(info["shape"]) != array.shape
             or info["dtype"] != array.dtype.str
@@ -443,10 +513,20 @@ def _read_arrays(path, meta):
 
 
 @schema_checked
-def _load_relative(path, library, immutable):
+def _load_relative(path, library, immutable, *, expected_targets=None):
     from .library import encoded_cluster
 
-    manifest = verify_bundle(path, SCHEMA)
+    members = None
+    if expected_targets is not None:
+        if len(library.signatures) != 1:
+            raise IntegrityError("Scoped companion requires exactly one signature")
+        members = []
+        for cluster, signature in library.signatures.items():
+            prefix = "clusters/" + encoded_cluster(cluster) + "/"
+            members.append(prefix + "distribution.json")
+            if signature["status"] == "ok":
+                members.extend(prefix + key + "_log_scores.npy" for key in ("C", "B"))
+    manifest = verify_bundle(path, SCHEMA, members=members)
     if (
         identity(manifest["identity_inputs"]) != manifest["id"]
         or manifest["source_production"]["id"] != library.library_id
@@ -455,7 +535,9 @@ def _load_relative(path, library, immutable):
         raise IntegrityError("Companion/production identity mismatch")
     bindings = {b["cluster_id"]: b for b in manifest["identity_inputs"]["targets"]}
     if (
-        set(bindings) != set(library.signatures)
+        set(bindings)
+        != set(library.signatures if expected_targets is None else expected_targets)
+        or not set(library.signatures) <= set(bindings)
         or len(bindings) != len(manifest["identity_inputs"]["targets"])
         or manifest["identity_inputs"]["score_rule"] != SCORE_RULE
         or manifest["identity_inputs"]["evidence_rule"] != EVIDENCE_RULE
@@ -526,11 +608,17 @@ def _load_relative(path, library, immutable):
                 if meta["arrays"][key]["file"] != f"{key}_log_scores.npy":
                     raise IntegrityError("Unexpected score array name")
                 required.add(prefix + meta["arrays"][key]["file"])
-            _read_arrays(path, meta)  # Validate one target at a time; don't retain all.
+            _read_arrays(
+                path, meta, mmap=True
+            )  # Verify one target at a time, bounded RAM.
             totals["total_C_values"] += meta["C_n"]
             totals["total_B_values"] += meta["B_n"]
         totals["available" if available else "unsupported"] += 1
         metadata[cluster] = meta
+    if expected_targets is not None:
+        # The returned object intentionally contains only the requested metadata.
+        # Other clusters' files and redundant shared reports are outside this scope.
+        return RelativeScores(path, library, manifest, freeze(metadata), immutable)
     if set(manifest["files"]) != required or manifest["counts"] != totals:
         raise IntegrityError("Relative file inventory/count mismatch")
     import csv
@@ -567,11 +655,17 @@ class SelectedLibrary:
 
 
 @schema_checked
-def load_selected_library(output_root=None, *, immutable=False):
-    """Load a guarded production/relative pair, or raw-score legacy selection."""
+def load_selected_library(output_root=None, *, immutable=False, cluster_id=None):
+    """Load a guarded pair; optionally verify only one v2 production target.
+
+    With cluster_id, shared manifests/profiles and only the requested target's
+    files are checked. Without it, retain the complete library audit.
+    """
     from .library import _library_immutable, load_library
     from .paths import default_library_input_dir
 
+    if cluster_id is not None and (not isinstance(cluster_id, str) or not cluster_id):
+        raise ValueError("cluster_id must be a nonempty string")
     root = Path(
         default_library_input_dir() if output_root is None else output_root
     ).absolute()
@@ -586,7 +680,7 @@ def load_selected_library(output_root=None, *, immutable=False):
         path = safe_file(root, selected["library"])
         if sha256(path / "manifest.json") != selected["manifest_sha256"]:
             raise IntegrityError("Selected production manifest mismatch")
-        library = load_library(path, immutable=immutable)
+        library = load_library(path, immutable=immutable, cluster_id=cluster_id)
         if library.library_id != selected["library_id"]:
             raise IntegrityError("Selected production ID mismatch")
         relative = None
@@ -597,9 +691,32 @@ def load_selected_library(output_root=None, *, immutable=False):
                 != selected["relative_manifest_sha256"]
             ):
                 raise IntegrityError("Selected relative manifest mismatch")
-            relative = load_relative_scores(
-                directory, library=library, immutable=immutable
-            )
+            if cluster_id is None:
+                relative = load_relative_scores(
+                    directory, library=library, immutable=immutable
+                )
+            else:
+                if (
+                    directory
+                    != library.source_root / "relative-scores" / directory.name
+                ):
+                    raise IntegrityError(
+                        "Companion is outside bound relative-scores root"
+                    )
+                with (
+                    nullcontext()
+                    if immutable
+                    else transaction_guard(library.source_root)
+                ):
+                    if sha256(path / "manifest.json") != library.manifest_sha256:
+                        raise IntegrityError("Production generation changed")
+                    production = read_json(path / "manifest.json")
+                    relative = _load_relative(
+                        directory,
+                        library,
+                        immutable,
+                        expected_targets=production["identity_inputs"]["cluster_ids"],
+                    )
             if relative.relative_id != selected["relative_id"]:
                 raise IntegrityError("Selected relative ID mismatch")
             if any(

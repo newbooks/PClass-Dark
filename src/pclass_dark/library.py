@@ -14,7 +14,7 @@ import platform
 from collections import defaultdict
 from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from contextlib import ExitStack, contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
 
@@ -107,6 +107,9 @@ class Library:
     manifest_sha256: str | None = None
     source_path: Path | None = None
     immutable: bool = False
+    target_result: MappingProxyType | None = field(
+        default=None, repr=False, compare=False
+    )
 
     def score(self, cluster_id, vectors, *, embedding_contract):
         return score_signature(
@@ -449,14 +452,18 @@ def _library_immutable(path, immutable):
 
 
 @schema_checked
-def _load_library(path):
+def _load_library(path, *, cluster_id=None):
     if (
         read_json(safe_file(path, "manifest.json")).get("schema")
         == "pclass-dark.library.v2"
     ):
         from .library_reports import load_production
 
-        return load_production(path)
+        return load_production(path, cluster_id=cluster_id)
+    if cluster_id is not None:
+        raise IntegrityError(
+            "Legacy library: run pclass-dark build-library to migrate first"
+        )
     manifest = verify_bundle(path, SCHEMA)
     if identity(manifest["identity_inputs"]) != manifest["id"]:
         raise IntegrityError("Library identity mismatch")
@@ -513,15 +520,22 @@ def _load_library(path):
     )
 
 
-def load_library(library_dir, *, immutable=False):
-    """Verify a library under its actual parent-root guard, then detach parameters."""
+def load_library(library_dir, *, immutable=False, cluster_id=None):
+    """Verify a library under its actual parent-root guard, then detach parameters.
+
+    cluster_id limits v2 verification and returned signatures/counts to one
+    target; the shared profile table is still checksummed. None audits all targets.
+    Scoped loads retain the immutable parsed fit in target_result to avoid rereads.
+    """
+    if cluster_id is not None and (not isinstance(cluster_id, str) or not cluster_id):
+        raise ValueError("cluster_id must be a nonempty string")
     path = Path(library_dir).absolute()
     if _library_immutable(path.resolve(), immutable):
         from dataclasses import replace
 
-        return replace(_load_library(path), immutable=True)
+        return replace(_load_library(path, cluster_id=cluster_id), immutable=True)
     with transaction_guard(path.parent):
-        return _load_library(path)
+        return _load_library(path, cluster_id=cluster_id)
 
 
 def _read_inputs(root, immutable):

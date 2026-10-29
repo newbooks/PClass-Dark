@@ -153,7 +153,8 @@ def verify_files(root, records):
             raise IntegrityError(f"Checksum/size mismatch: {path}")
 
 
-def verify_bundle(path, schema, expected_id=None):
+def verify_bundle(path, schema, expected_id=None, *, members=None):
+    """Verify a bundle, optionally restricting file checks to explicit members."""
     path = Path(path)
     manifest = read_json(safe_file(path, "manifest.json"))
     if (
@@ -162,7 +163,13 @@ def verify_bundle(path, schema, expected_id=None):
         or (expected_id is not None and manifest.get("id") != expected_id)
     ):
         raise IntegrityError(f"Incomplete or incompatible bundle: {path}")
-    verify_files(path, manifest.get("files"))
+    records = manifest.get("files")
+    if members is not None:
+        members = tuple(members)
+        if not isinstance(records, dict) or any(m not in records for m in members):
+            raise IntegrityError("Missing requested artifact file inventory")
+        records = {m: records[m] for m in members}
+    verify_files(path, records)
     return manifest
 
 

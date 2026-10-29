@@ -730,3 +730,112 @@ examples, prediction, biological mechanism claims and probability calibration.
 Documents provenance/integrity checks, immutable installed use, unavailable
 artifacts, resource limits, deterministic formats and implementation tests.
 Implementation remains planned. No scientific code or local artifacts changed.
+
+### 2026-10-28 — Review explain-signature implementation readiness
+
+Revised [SPEC 0008](../specs/0008-explain-signature.md) against actual loaders,
+selection/production schemas, fit traces and relative arrays. Clarified the
+versioned report shape and immutable API result, exact artifact loading and
+snapshot guards, v1-selector/v2-production no-companion support versus legacy
+production rejection, malformed-field errors, supported selection version,
+integer-based trace checks and core-only termination. Defined a target summary
+API with bounded verified array reads and explicit log-space quantile/underflow
+behavior. Corrected the overly strict transitive-import requirement: reports
+need no setup-data artifacts or heavy PLM runtime, while lightweight modules may
+be imported by existing loaders. Added implementation sequence and refined tests.
+No scientific decisions remain open; marked ready for implementation, with the
+command still unimplemented. Existing data and code changes were left untouched.
+
+Readiness validation passed: local documentation links, fenced-block balance,
+trailing-whitespace and scoped diff checks. Documentation-only revision; no code
+tests or artifact regeneration were required.
+
+### 2026-10-28 — Implement explain-signature
+
+Implemented [SPEC 0008](../specs/0008-explain-signature.md): required single
+`--cluster`, default shared/bundled library resolution, text/Markdown/JSON,
+`--detailed`, and both help aliases. The immutable Python report and pure renderer
+explain window counts, dimension evidence, ranked candidates, exact recorded
+first-improvement decisions, Gaussian/composite scoring, threshold, in-sample
+metrics, and C/B distributions for ABC match evidence. They do not evaluate a
+query or infer biochemical functions. No signature or threshold is refitted.
+
+Added integer-based trace consistency checks and target-only relative summaries
+with checksummed read-only memory maps and bounded sorted/finite validation.
+Intentionally absent companions, unsupported signatures and undefined metrics
+are distinguished from malformed or incompatible artifacts. Reports detach their
+evidence before rendering and coordinate with publication guards.
+
+Development checks exposed two test assumptions: publication readers correctly
+report the existing `Setup busy` error, and all-equal scores select predict-none
+under the highest-cutoff tie rule (precision is undefined, not 50%). Corrected
+these expectations. A network blocker in an initial installed-input test broke
+SSL class initialization; changed it to block connection attempts instead.
+
+Manually verified real cluster_0001 from the full 3443-target selected local
+library: 20 C windows, 213241 B windows, 15 candidates, removals 567 then 279,
+13 final dimensions, AUROC 0.9966748889753847, cutoff 0.549914086149925,
+TP=20/FP=5656/TN=207585/FN=0. Output: `/tmp/pclass-dark-cluster0001.md`.
+This read-only CPU check used saved artifacts and no embedding or fitting run.
+
+Built/installed an isolated wheel with a tiny synthetic library only; default
+Python and CLI use passed from `/tmp` with no setup-data artifacts, no heavy PLM
+imports/network access and no package writes. Packaging/install logs and smoke
+script are under `/tmp/pclass-dark-explain-*`. README and SPEC 0005 document the
+new interfaces. Full regression and final formatting checks follow.
+
+Validation completed: **167 full-suite tests passed, 2 opt-in tests skipped**
+in 322.73 s, with the pre-existing Torch `AMD_SERIALIZE_KERNEL` environment
+warning. A final focused run on the latest display/error changes and added
+argument/symlink coverage passed **49 tests** in 51.55 s. Ruff lint and format
+checks passed for 40 Python files; scoped whitespace and documentation
+link/fence checks passed. Baseline revision: `7750d424`, branch `issue#11`;
+changes remain uncommitted. Existing user data changes were preserved. This
+read/format feature uses CPU only; no GPU behavior was added or required.
+
+### 2026-10-28 — Target explain-signature validation to the requested cluster
+
+Replaced the explanation's full-library audit with explicit target-scoped loading.
+`load_library(..., cluster_id=...)` and `load_selected_library(..., cluster_id=...)`
+verify target signatures/traces/profile rows and C/B arrays using existing
+scientific validators. Selected manifest identity/digests, production provenance,
+full identity target inventory and target setup bindings remain checked. The
+shared compressed profile table is checksummed and scanned only as far as needed;
+redundant shared metrics/relative summaries and unrelated cluster files are not
+opened. Existing loader defaults still perform full validation. Reports record
+`source.validation_scope="cluster"`. No artifacts, selection algorithms or scores
+are changed, and no validation cache or alternate data format is introduced.
+
+Initial focused regression: **49 passed** in 41.69 s. Added tests for target/full
+evidence parity, instrumented file reads, unrelated missing artifacts, full-audit
+failure on that same corruption, and requested dependency corruption. README and
+SPEC 0005/0008 now describe the explicit scope and remaining shared-table cost.
+
+Read-only local benchmark: cluster_0001 assembled in **0.250 s**, and the complete
+CLI including Python startup took **0.443 s**, with existing filesystem cache.
+The selected 3443-target library and the signature's 13 dimensions, saved AUROC
+0.9966748889753847 and cutoff 0.549914086149925 were unchanged. Artifacts:
+`/tmp/pclass-dark-cluster0001-targeted.md` and
+`/tmp/pclass-dark-targeted-benchmark.txt`. No full-loader timing comparison or
+cold-cache speedup is claimed. Final regression results follow.
+
+The first last-cluster check (`cluster_3524`) took 14.324 s because report assembly
+repeated the shared profile lookup after validation. Scoped library loads now
+retain their immutable 640-profile `target_result` for immediate reuse, avoiding
+that second pass. This is request-local parsed evidence, not a persistent
+validation cache; full loads keep the field null. Added a file-open count check
+and snapshot immutability/evidence-parity assertions.
+
+Final targeted validation: **180 full-suite tests passed, 2 opt-in tests skipped**
+in 348.13 s (the existing Torch environment warning). After request-local parsed
+row reuse, **57 focused tests passed** in 73.63 s. Rebuilt/installed the final
+wheel and verified default bundled Python/CLI reports from `/tmp`, with heavy PLM
+imports/network/package writes prohibited and no setup-data artifacts. Ruff lint,
+formatting and scoped whitespace/documentation checks passed.
+
+Final warm-cache timings: cluster_0001 CLI including startup **0.415 s**;
+last target cluster_3524 API assembly **7.244 s**, down from the measured 14.324 s
+with duplicate sequential lookups. Remaining late-target cost is shared compressed
+profile lookup; a future index/per-cluster storage change would be needed to
+remove that cost. No such format change was made here. User data and scientific
+results were preserved; no commit or push was made.

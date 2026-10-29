@@ -8,4 +8,4 @@
 - [0006: Shared repository artifacts and package distribution](0006-shared-artifacts.md) — implemented; cwd-independent defaults and selected artifact export.
 - [0007: Query ranking and A/B/C presentation](0007-query-ranking-presentation.md) — planned: Acceptance, Background score ↓, Cluster score ↑ for top matching clusters.
 
-- [0008: Explain a cluster signature](0008-explain-signature.md) — draft: evidence-based narrative, selection history, metrics and ABC reference distributions.
+- [0008: Explain a cluster signature](0008-explain-signature.md) — implemented: verified narrative, selection history, metrics and ABC reference distributions.
