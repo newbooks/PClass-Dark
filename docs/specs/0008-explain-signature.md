@@ -558,3 +558,11 @@ reflecting its sequential shared-profile lookup. Prior to removing the duplicate
 lookup, that last-target measurement was 14.324 s. These are local observations,
 not cold-cache or cross-machine performance guarantees. No full-loader baseline
 was timed in this revision.
+
+## Signature listing mode
+
+[SPEC-0009](0009-list-signature-summaries.md) adds `explain-signature --list`.
+The CLI now requires either `--cluster` or `--list`; `--detailed` applies only to
+the former. Individual explanations retain their targeted validation and output.
+Listings use a separate production-summary validation scope and avoid all
+profiles, traces and relative-score artifacts.

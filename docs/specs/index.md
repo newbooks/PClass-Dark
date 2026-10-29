@@ -9,3 +9,7 @@
 - [0007: Query ranking and A/B/C presentation](0007-query-ranking-presentation.md) — planned: Acceptance, Background score ↓, Cluster score ↑ for top matching clusters.
 
 - [0008: Explain a cluster signature](0008-explain-signature.md) — implemented: verified narrative, selection history, metrics and ABC reference distributions.
+
+- [0009: List cluster signature summaries](0009-list-signature-summaries.md) — implemented: alphabetic aligned tables, in-sample metrics, three-decimal formatting.
+
+- [0010: Portable profunc cluster descriptions](0010-cluster-descriptions.md) — implemented: composed-GO descriptions, reference bindings and 24-character display limits.
