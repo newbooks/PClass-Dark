@@ -9,7 +9,7 @@ HEADERS = (
     "Status",
     "C_windows",
     "B_windows",
-    "Dimensions",
+    "Dims",
     "AUROC",
     "Recall%",
     "Specificity%",
@@ -117,7 +117,7 @@ def render_table(data, *, markdown=False):
 
 
 def render_distributions(distributions, *, markdown=False):
-    """Render all 20 bins and per-metric availability without recomputing scores."""
+    """Render all 20 bins and heading totals without recomputing scores."""
     keys = ("auroc", "recall", "specificity", "precision")
     headers = (
         "AUROC_bin",
@@ -140,7 +140,12 @@ def render_distributions(distributions, *, markdown=False):
             ]
         )
     title = "In-sample metric distributions — cluster counts (20 bins)"
-    lines = [("## " if markdown else "") + title, ""]
+    totals = ", ".join(
+        f"{key.upper() if key == 'auroc' else key.capitalize()}="
+        f"{distributions['metrics'][key]['valid']}"
+        for key in keys
+    )
+    lines = [("## " if markdown else "") + title + " — totals: " + totals, ""]
 
     def table(headings, values, left_columns):
         widths = [
@@ -171,24 +176,4 @@ def render_distributions(distributions, *, markdown=False):
         lines.extend(line(row) for row in values)
 
     table(headers, rows, 2)
-    lines.extend(
-        [
-            "",
-            "One count per cluster per available metric; "
-            "values are binned before rounding.",
-            "",
-        ]
-    )
-    table(
-        ("Metric", "Valid_n", "Unavailable_n"),
-        [
-            [
-                key.upper() if key == "auroc" else key.capitalize(),
-                str(distributions["metrics"][key]["valid"]),
-                str(distributions["metrics"][key]["unavailable"]),
-            ]
-            for key in keys
-        ],
-        1,
-    )
     return "\n".join(lines)

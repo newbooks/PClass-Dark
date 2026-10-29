@@ -554,12 +554,13 @@ def test_headers_and_ordinary_rows_are_whitespace_separated():
         "Description",
         "C_windows",
         "B_windows",
-        "Dimensions",
+        "Dims",
         "AUROC",
         "Recall%",
         "Specificity%",
         "Precision%",
     ]
+    assert lines[3].index("2", lines[3].index("6") + 1) == lines[2].index("Dims") + 3
     assert lines[3].split() == [
         "K",
         "—",

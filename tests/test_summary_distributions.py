@@ -85,7 +85,13 @@ def test_reports_append_twenty_bins_and_preserve_api_json():
         assert len(bins) == 20
         assert "[0.000,0.050)" in bins[0] and "[0.000,5.000)" in bins[0]
         assert "[0.950,1.000]" in bins[-1] and "[95.000,100.000]" in bins[-1]
-        assert "Unavailable_n" in section and "Precision" in section
+        assert (
+            "(20 bins) — totals: AUROC=1, Recall=1, Specificity=1, Precision=0"
+            in section
+        )
+        assert "Unavailable_n" not in section and "Valid_n" not in section
+        assert "One count per cluster" not in section
+        assert section.rstrip().endswith(bins[-1].rstrip())
     data = listing.to_dict()
     assert data["distributions"]["metrics"]["precision"]["unavailable"] == 1
     assert json.loads(render_signature_summaries(listing, format="json")) == data
@@ -93,3 +99,13 @@ def test_reports_append_twenty_bins_and_preserve_api_json():
         listing.data["distributions"]["metrics"]["precision"]["counts"][0] = 99
     data["distributions"]["metrics"]["precision"]["counts"][0] = 99
     assert listing.to_dict()["distributions"]["metrics"]["precision"]["counts"][0] == 0
+
+
+@pytest.mark.parametrize("rows", [[], [row(None)]])
+@pytest.mark.parametrize("markdown", [False, True])
+def test_distribution_heading_zero_totals(rows, markdown):
+    from pclass_dark.signature_summary_render import render_distributions
+
+    output = render_distributions(metric_distributions(rows), markdown=markdown)
+    assert "(20 bins) — totals: AUROC=0, Recall=0, Specificity=0, Precision=0" in output
+    assert len(output.splitlines()) == (24 if markdown else 23)
