@@ -492,7 +492,7 @@ def test_installed_bundled_summary_without_unused_files(summary_library, tmp_pat
 import builtins, importlib.abc, json, os, pathlib, socket, sys
 class Block(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, *args):
-        blocked = {'torch','transformers','huggingface_hub','profunc'}
+        blocked = {'torch','transformers','huggingface_hub'}
         if fullname.split('.')[0] in blocked:
             raise AssertionError('heavy import: '+fullname)
 sys.meta_path.insert(0, Block())

@@ -1,40 +1,24 @@
 """Portable profunc description metadata, membership binding and display limits."""
 
-import copy
 import json
-from importlib.resources import files
 
 import pytest
 from rich.cells import cell_len
 
-from pclass_dark.artifacts import IntegrityError, identity
 from pclass_dark.cluster_descriptions import (
-    SCHEMA,
     clean_description,
     description_for,
     load_catalog,
-    validate_catalog,
 )
 from pclass_dark.explanations import SignatureSummaryListing, render_signature_summaries
 from pclass_dark.signature_summary_render import short_description
 
 
 def catalog():
-    result = {
-        "schema": SCHEMA,
-        "status": "complete",
-        "source": {},
-        "row_map_sha256": "a" * 64,
-        "clusters": {
-            "K": {
-                "description": "ATP-dependent test function",
-                "composed_go": ["GO:0000001"],
-                "C_ids_sha256": "b" * 64,
-            }
-        },
+    return {
+        "reference": {"clusters.tsv": {"sha256": "a" * 64, "size_bytes": 10}},
+        "clusters": {"K": {"description": "ATP-dependent test function"}},
     }
-    result["id"] = identity(result)
-    return result
 
 
 @pytest.mark.parametrize("article", ["a ", "an ", ""])
@@ -68,22 +52,21 @@ def test_description_limit_includes_ellipsis(value, expected):
     assert "\n" not in short_description("abc\n" + "x" * 25)
 
 
-def test_catalog_binding_and_corruption():
-    data = validate_catalog(catalog())
-    signature = {
-        "cluster_id": "K",
-        "input_identity": {"row_map_sha256": "a" * 64, "C_ids_sha256": "b" * 64},
-    }
+def test_live_reference_binding():
+    data = catalog()
+    signature = {"cluster_id": "K", "input_identity": {}}
+    assert description_for(signature, data)[1] == "missing_profunc_reference_binding"
+    signature["input_identity"]["reference"] = data["reference"]
     assert description_for(signature, data) == ("ATP-dependent test function", None)
-    signature["input_identity"]["C_ids_sha256"] = "c" * 64
-    assert description_for(signature, data) == (None, "description_reference_mismatch")
+    signature["input_identity"]["reference"] = {}
+    assert description_for(signature, data)[1] == "description_reference_mismatch"
     assert description_for(signature, None) == (None, "no_description_catalog")
+    signature["input_identity"]["reference"] = data["reference"]
     signature["cluster_id"] = "unknown"
-    assert description_for(signature, data) == (None, "cluster_not_in_catalog")
-    bad = copy.deepcopy(data)
-    bad["clusters"]["K"]["description"] = "tampered"
-    with pytest.raises(IntegrityError):
-        validate_catalog(bad)
+    assert description_for(signature, data)[1] == "cluster_not_in_catalog"
+    signature["cluster_id"] = "K"
+    data["clusters"]["K"]["description"] = None
+    assert description_for(signature, data)[1] == "unresolved_function_description"
 
 
 def test_description_column_retains_full_json_text():
@@ -115,36 +98,53 @@ def test_description_column_retains_full_json_text():
     assert "Description" in render_signature_summaries(listing, format="markdown")
 
 
-def test_packaged_catalog_matches_reference_provenance():
+def test_live_catalog_calls_profunc_modules(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    import profunc.cli.inspect
+    import profunc.cluster_listing
+    import profunc.go.description
+    import profunc.go.inspect
+
+    import pclass_dark.reference_data as reference_data
+
+    runtime = SimpleNamespace(dataset=tmp_path, clusters=tmp_path, manifest={})
+    monkeypatch.setattr(reference_data, "resolve_profunc", lambda: runtime)
+    monkeypatch.setattr(
+        reference_data,
+        "profunc_reference_contract",
+        lambda runtime: catalog()["reference"],
+    )
+    monkeypatch.setattr(
+        profunc.go.inspect, "_load_go_graph", lambda path: {"terms": {"GO:1": {}}}
+    )
+    monkeypatch.setattr(
+        profunc.cluster_listing,
+        "load_cluster_records",
+        lambda path: [SimpleNamespace(cluster_id="K", composed_go="GO:1")],
+    )
+    calls = []
+
+    def describe(cluster, terms, graph, **kwargs):
+        calls.append((cluster, terms, graph, kwargs))
+        return SimpleNamespace(
+            head=True, summary="K is annotated as an updated enzyme."
+        )
+
+    monkeypatch.setattr(profunc.go.description, "describe_go_function", describe)
+    result = load_catalog()
+    assert result["clusters"]["K"]["description"] == "updated enzyme"
+    assert calls == [
+        (
+            "K",
+            ["GO:1"],
+            {"GO:1": {}},
+            {"max_modifiers": profunc.cli.inspect.CLUSTER_DESCRIPTION_MAX_MODIFIERS},
+        )
+    ]
+
+
+def test_live_runtime_catalog_smoke():
     data = load_catalog()
-    assert len(data["clusters"]) == 3524
-    reference = json.loads(
-        files("pclass_dark").joinpath("resources/reference/manifest.json").read_text()
-    )
-    assert (
-        data["source"]["reference_membership_sha256"]
-        == reference["files"]["clusters.tsv"]["sha256"]
-    )
-    assert (
-        data["source"]["reference_fasta_sha256"]
-        == reference["files"]["accession.fasta"]["sha256"]
-    )
-    first = data["clusters"]["cluster_0001"]
-    assert first["description"] and not first["description"].startswith(
-        "cluster_0001 is annotated as "
-    )
-    assert first["C_ids_sha256"] is not None
-
-
-def test_optional_missing_catalog_and_row_map_mismatch(tmp_path, monkeypatch):
-    monkeypatch.setattr("pclass_dark.cluster_descriptions.files", lambda name: tmp_path)
-    assert load_catalog() is None
-    data = catalog()
-    signature = {
-        "cluster_id": "K",
-        "input_identity": {"row_map_sha256": "c" * 64, "C_ids_sha256": "b" * 64},
-    }
-    assert description_for(signature, data)[1] == "description_reference_mismatch"
-    signature["input_identity"]["row_map_sha256"] = "a" * 64
-    data["clusters"]["K"]["description"] = None
-    assert description_for(signature, data) == (None, "unresolved_function_description")
+    assert data["clusters"]
+    assert data["clusters"]["cluster_0001"]["description"]

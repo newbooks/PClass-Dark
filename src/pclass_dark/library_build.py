@@ -119,7 +119,15 @@ def _legacy_base(pm, em, contract, prepared, embedding, epsilon, floor):
 
 
 def _fit_inputs(
-    cluster, cids, summary, base, *, fold=None, validation=None, partition=None
+    cluster,
+    cids,
+    summary,
+    base,
+    *,
+    reference,
+    fold=None,
+    validation=None,
+    partition=None,
 ):
     result = {
         "schema": "pclass-dark.fit-identity.v1",
@@ -133,6 +141,7 @@ def _fit_inputs(
         "representation_contract_id": base["representation_contract_id"],
         "matrix_sha256": base["matrix"]["sha256"],
         "row_map_sha256": base["row_map"]["sha256"],
+        "reference": reference,
         "order": "ascending-window-id-v1",
         "C_ids_sha256": identity(list(cids)),
         "C_n": len(cids),
@@ -570,8 +579,13 @@ def build(
         validate_cluster_directories(targets)
         base = _legacy_base(pm, em, contract, prepared, embedding, epsilon, sigma_floor)
         bg = read_json(prepared / "background_members.json")["backgrounds"]
+        reference = {
+            n: {k: r[k] for k in ("sha256", "size_bytes")}
+            for n, r in pm["reference"]["files"].items()
+        }
         fit_inputs = {
-            c: _fit_inputs(c, sets.cluster_members(c), bg[c], base) for c in targets
+            c: _fit_inputs(c, sets.cluster_members(c), bg[c], base, reference=reference)
+            for c in targets
         }
         fit_ids = {c: identity(fit_inputs[c]) for c in targets}
         inputs = {
@@ -786,6 +800,7 @@ def build(
                         [w for w in cids if folds[c][w] != f],
                         bg[c],
                         base,
+                        reference=reference,
                         fold=f,
                         validation=[w for w in cids if folds[c][w] == f],
                         partition=partition,

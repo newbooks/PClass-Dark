@@ -27,6 +27,11 @@ The expected discovery-work reduction is approximately six fits to one per targe
 not a guaranteed sixfold command speedup. Fit difficulty, scoring, IO, validation,
 and publication overhead vary. No new timing results are claimed by this revision.
 
+The CLI `--workers` default is 8 (updated 2026-10-29). Explicit
+`--workers 1` retains serial execution. Python API defaults remain 1; existing
+worker admission limits still apply. CLI default/override regression validation
+is recorded in the progress log.
+
 ## Commands and Python API
 
 ```bash

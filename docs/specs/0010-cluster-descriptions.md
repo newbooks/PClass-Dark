@@ -1,4 +1,14 @@
-# SPEC-0010: Portable profunc cluster descriptions
+# SPEC-0010: Portable profunc cluster descriptions (retired)
+
+**Retired:** The copied reference/catalog artifacts and exporter have been
+removed. The text below records the superseded implementation; it is not a
+current operating procedure. Use [SPEC-0012](0012-profunc-dependency.md) and
+[reference instructions](../reference-data.md).
+
+
+Current reference resolution and descriptions are superseded by
+[SPEC-0012](0012-profunc-dependency.md); bundled-copy behavior below is historical.
+
 
 - Date: 2026-10-29.
 - Status: Implemented (2026-10-29); verification recorded below.

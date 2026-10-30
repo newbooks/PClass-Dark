@@ -63,3 +63,21 @@ def test_active_writer_rejects_release(shared_project):
 def test_no_completed_artifacts_is_a_valid_source_build(tmp_path):
     with shared_files(tmp_path) as files:
         assert files == []
+
+
+def test_build_removes_retired_static_reference_resources(tmp_path, monkeypatch):
+    from build_support import SharedBuildPy
+    from setuptools import Distribution
+
+    monkeypatch.chdir(tmp_path)
+    resources = tmp_path / "build/pclass_dark/resources"
+    stale = resources / "reference/manifest.json"
+    stale.parent.mkdir(parents=True)
+    stale.write_text("{}")
+    (resources / "cluster_descriptions.json").write_text("{}")
+    command = SharedBuildPy(Distribution({"packages": []}))
+    command.ensure_finalized()
+    command.build_lib = str(tmp_path / "build")
+    command.run()
+    assert not (resources / "reference").exists()
+    assert not (resources / "cluster_descriptions.json").exists()
