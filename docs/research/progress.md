@@ -1466,3 +1466,24 @@ Cleanup suite **77 passed** (104.02 s; `/tmp/pclass-clean-partial-embedding.log`
 the final full-range fixture also passed independently (1 test, 13.29 s;
 `/tmp/pclass-clean-partial-embedding-focused.log`). Ruff and scoped Git whitespace
 checks passed. No project-data cleanup, commit or push.
+
+
+### 2026-10-30 — Make rollback finalization restartable
+
+Resolved review P2: after restoring precommit candidates, recovery deleted sidecars
+and peer while the coordinator still said prepared/detaching. An interruption
+then made subsequent validation require metadata already removed. Recovery now
+persists terminal rolled_back before any metadata removal, including cancellation
+of prepared transactions without peers. Validation accepts terminal rollback with
+missing sidecars/peer; recovery resumes only marker finalization and reports zero
+removed bytes/artifacts. Root/coordinator identity and allowed-path checks remain.
+Updated [SPEC-0013](../specs/0013-build-library-clean.md).
+
+Validation: eight fault cases passed (16.21 s;
+`/tmp/pclass-clean-rollback-focused.log`) across prepared/no-peer, prepared/peer
+and detaching paths, interrupted after terminal publication, sidecar removal and
+peer removal. Tests verify exact restored inventories, unchanged selections,
+zero removals, cleared markers, idempotent recovery and unblocked readers/writers.
+Full cleanup/CLI suites **104 passed** (107.61 s;
+`/tmp/pclass-clean-rollback-final.log`). Ruff and scoped Git whitespace checks
+passed. No project-data cleanup, commit or push.

@@ -239,7 +239,8 @@ def _validate_journal(roots):
         or j.get("identity")
         != identity({k: v for k, v in j.items() if k != "identity"})
         or not re.fullmatch(r"[0-9a-f]{32}", j.get("token", ""))
-        or j.get("state") not in {"prepared", "detaching", "committed", "done"}
+        or j.get("state")
+        not in {"prepared", "detaching", "committed", "done", "rolled_back"}
         or j.get("roots")
         != {k: {"path": str(p), **_root_identity(p)} for k, p in roots.items()}
     ):
@@ -251,7 +252,8 @@ def _validate_journal(roots):
         raise IntegrityError("Invalid cleanup journal inventory")
     previous = set()
     skip_trees = j["schema"].endswith(".v2") and (
-        j["state"] == "done" or (j["state"] == "prepared" and not peer.exists())
+        j["state"] in {"done", "rolled_back"}
+        or (j["state"] == "prepared" and not peer.exists())
     )
     for index, entry in enumerate(entries):
         tree = None if skip_trees else _tree(j, index)
@@ -294,7 +296,7 @@ def _validate_journal(roots):
             "plan_id": j["plan_id"],
         }:
             raise IntegrityError("Cleanup peer does not match coordinator")
-    elif j["state"] not in {"prepared", "done"}:
+    elif j["state"] not in {"prepared", "done", "rolled_back"}:
         raise IntegrityError("Cleanup peer missing after detachment began")
     return j
 
@@ -441,6 +443,9 @@ def _recover(roots):
     j = _validate_journal(roots)
     if j is None:
         return None
+    if j["state"] == "rolled_back":
+        _finish_markers(roots, j)
+        return _result(j, "rolled_back")
     if j["state"] == "prepared" and not (roots["setup"] / PEER).exists():
         # Nothing may be detached until the peer is durable. Setup writers could
         # have changed inputs after this crash; cancel without touching them.
@@ -451,6 +456,7 @@ def _recover(roots):
                 p.name not in sidecar_names for p in token.iterdir()
             ):
                 raise IntegrityError("Detached data exists without a durable peer")
+        _state(roots, j, "rolled_back")
         _finish_markers(roots, j)
         return _result(j, "rolled_back")
     if j["state"] in {"committed", "done"}:
@@ -475,6 +481,7 @@ def _recover(roots):
             raise IntegrityError("Precommit candidate changed; refusing rollback")
         if b.exists():
             move(root, quarantine, original)
+    _state(roots, j, "rolled_back")
     _finish_markers(roots, j)
     return _result(j, "rolled_back")
 

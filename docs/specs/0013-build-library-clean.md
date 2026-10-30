@@ -319,7 +319,7 @@ Use a two-root journal, not two independent commits:
 Legacy journal schema `pclass-dark.cleanup-journal.v1` contains `token`, `plan_id`,
 canonical roots and their lstat device/inode identities, gate snapshot, inventory
 hash, ordered candidates (root, original path, quarantine index, full verified
-file/dir inventories), and `state` (`prepared|detaching|committed|done`). Its
+file/dir inventories), and `state` (`prepared|detaching|committed|done|rolled_back`). Its
 `identity` hashes all other fields. Each state update is atomic write/replace and
 fsync. Peer schema `pclass-dark.cleanup-peer.v1` contains token, canonical library
 root and plan ID; it does not bind the changing journal state/hash. Write
@@ -356,8 +356,11 @@ Under both guards:
 `recover_cleanup` uses caller-supplied/resolved roots; it does not blindly follow
 an arbitrary peer path into another workspace. Validate schema/hash/root binding
 and allowed inventories before touching data. Before `committed`, restore all
-moved directories in reverse order, validate, remove empty quarantine and markers,
-and return `rolled_back`. With `committed`, resume direct removal of remaining
+moved directories in reverse order and validate, then durably persist terminal
+`rolled_back` before removing any sidecar, quarantine container or peer. Recovery
+from terminal rolled_back finishes only metadata removal, tolerating sidecars and
+peer already removed, and returns `rolled_back`. The same terminal transition is
+required when cancelling a prepared transaction without a peer. With `committed`, resume direct removal of remaining
 trash directories and return `complete`. With `done`, finish marker/container
 removal. After commit the exact individual-file inventory is historical accounting;
 all contents of the committed trash tree are removable. Recreated original paths,
@@ -669,3 +672,21 @@ Validation: cleanup suite **77 passed** in 104.02 s
 also passed separately (`/tmp/pclass-clean-partial-embedding-focused.log`),
 covering preview, direct execution and clean orchestration with unchanged shards
 and retained owning preparations. Ruff and scoped whitespace checks passed.
+
+## Rollback-finalization correction (2026-10-30)
+
+Persist a terminal `rolled_back` coordinator state after all precommit originals
+are restored, and before deleting any sidecar/peer. Apply the same terminal state
+to prepared-without-peer cancellation. Recovery from rolled_back only finalizes
+metadata; it does not require already removed sidecars or peer, inspect selected
+pipeline changes, or repeat candidate restoration. Keep root/coordinator identity
+and candidate-path checks. Test interruption after sidecar removal, peer removal,
+and terminal state publication for prepared and detaching recovery paths.
+
+Implemented and validated: eight rollback-finalization fault cases passed,
+covering prepared without peer, prepared with peer, and detaching transactions.
+Each interrupts after terminal-state publication, first sidecar removal, or peer
+removal as applicable; subsequent recovery preserves exact original inventories,
+clears all markers and permits readers/writers. Cleanup/CLI suites **104 passed**
+in 107.61 s (`/tmp/pclass-clean-rollback-final.log`). Ruff and scoped whitespace
+checks passed. No project-data cleanup was executed.

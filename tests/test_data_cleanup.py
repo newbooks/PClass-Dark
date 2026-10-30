@@ -1076,3 +1076,79 @@ def test_partial_embedding_without_assembly_survives_cleanup(generations):
     assert (sha256(array), sha256(receipt)) == hashes
     assert old.prepared_dir.exists() and new.prepared_dir.exists()
     assert not (data / "embeddings" / embedding_id).exists()
+
+
+@pytest.mark.parametrize(
+    "stage,point",
+    [
+        ("prepared", "state"),
+        ("prepared", "sidecar"),
+        ("prepared_peer", "state"),
+        ("prepared_peer", "sidecar"),
+        ("prepared_peer", "peer"),
+        ("detaching", "state"),
+        ("detaching", "sidecar"),
+        ("detaching", "peer"),
+    ],
+)
+def test_rollback_finalization_is_resumable(generations, monkeypatch, stage, point):
+    from pathlib import Path
+
+    import pclass_dark.data_cleanup as cleanup
+    from pclass_dark.artifacts import identity, transaction_guard
+    from pclass_dark.cleanup_io import inventory
+
+    class Crash(BaseException):
+        pass
+
+    data, root, old, new, *_ = generations
+    plan = plan_cleanup(data, root)
+    before = sha256(data / "selection.json"), sha256(root / "selection.json")
+    original_state = cleanup._state
+    original_write = cleanup.write_json
+    original_unlink = Path.unlink
+
+    def state(roots, journal, value):
+        if value == ("detaching" if stage == "prepared_peer" else "committed"):
+            raise OSError("start rollback before committing")
+        original_state(roots, journal, value)
+        if value == "rolled_back" and point == "state":
+            raise Crash("after durable terminal state")
+
+    def write(path, value):
+        if stage == "prepared" and path.name == cleanup.PEER:
+            raise OSError("cancel prepared transaction without peer")
+        original_write(path, value)
+
+    def unlink(path, *args, **kwargs):
+        original_unlink(path, *args, **kwargs)
+        if (point == "sidecar" and path.name == "inventory-0.json") or (
+            point == "peer" and path.name == cleanup.PEER
+        ):
+            raise Crash("during rollback metadata removal")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(cleanup, "_state", state)
+        patch.setattr(cleanup, "write_json", write)
+        patch.setattr(Path, "unlink", unlink)
+        with pytest.raises(Crash):
+            execute_cleanup(plan)
+    assert read_json(root / cleanup.JOURNAL)["state"] == "rolled_back"
+    for entry in plan.entries:
+        if entry.disposition == "remove":
+            base = data if entry.root == "setup" else root
+            assert identity(inventory(base / entry.path)) == entry.tree_sha256
+    result = recover_cleanup(data, root)
+    assert result.status == "rolled_back"
+    assert result.removed == () and result.logical_bytes_removed == 0
+    assert not result.recovery_required
+    assert old.prepared_dir.exists() and new.prepared_dir.exists()
+    assert (sha256(data / "selection.json"), sha256(root / "selection.json")) == before
+    assert not (root / cleanup.JOURNAL).exists()
+    assert not (data / cleanup.PEER).exists()
+    assert not (root / ".cleanup").exists()
+    assert not (data / ".cleanup").exists()
+    assert recover_cleanup(data, root) is None
+    load_selected_library(root)
+    with transaction_guard(data), transaction_guard(root):
+        pass
