@@ -984,6 +984,16 @@ class Planner:
                         covered.update(path.parent / name for name in m["files"])
                     if path.name == "complete.json":
                         m = self.receipt(path)
+                        covered.update(path.parent / name for name in m["files"])
+                        signature = m["payload"].get("signature")
+                        if signature is not None:
+                            _, fit_files = self.fit(
+                                path.parent,
+                                signature["library_id"],
+                                signature["input_identity"],
+                                signature["fit_id"],
+                            )
+                            covered.update(path.parent / name for name in fit_files)
                     self.retained_metadata(node, m)
                     covered.add(path)
                 # Loose unrecognized files may hold unbounded dependency records.
@@ -991,6 +1001,18 @@ class Planner:
                     if file.is_file() and file not in covered:
                         raise IntegrityError("Unrecognized loose retained-history file")
                 if namespace == ".archives":
+                    tree = node.tree
+                    known_files = {p.relative_to(base).as_posix() for p in covered}
+                    known_dirs = {"."}
+                    for name in known_files:
+                        known_dirs.update(p.as_posix() for p in Path(name).parents)
+                    if {f["path"] for f in tree["files"]} != known_files or {
+                        d["path"] for d in tree["directories"]
+                    } != known_dirs:
+                        raise IntegrityError(
+                            "Unrecognized nested archive files or directories; "
+                            "no data changed"
+                        )
                     # The full selected replacement passed gate(); these are
                     # fallback copies, not permanent roots of the retention graph.
                     node.kind = "rollback-history"

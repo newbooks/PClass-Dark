@@ -1487,3 +1487,27 @@ zero removals, cleared markers, idempotent recovery and unblocked readers/writer
 Full cleanup/CLI suites **104 passed** (107.61 s;
 `/tmp/pclass-clean-rollback-final.log`). Ruff and scoped Git whitespace checks
 passed. No project-data cleanup, commit or push.
+
+
+### 2026-10-30 — Validate archive descendants and reject unpaired legacy clean
+
+Resolved review P1: archive retirement previously checked only immediate unknown
+files. Recursive coverage now requires every archived file to be a recognized
+metadata record, a verified manifest/receipt member, or a validated completed-fit
+cache record. Directory paths must be ancestors of covered files; unknown empty
+directories are rejected. Fail before clearing archive protection or deletion.
+An approved preview is revalidated and refuses descendants added afterward.
+Resolved P2: clean checks pair.relative before constructing LibraryResult and
+returns an actionable full-build-without-clean error for valid v1 selections.
+Updated [SPEC-0013](../specs/0013-build-library-clean.md).
+
+Validation: initial focused new cases **5 passed** (40.47 s;
+`/tmp/pclass-clean-review-focused.log`). The first broader run had **108 passed,
+1 failed** (`/tmp/pclass-clean-review-final.log`): legitimate forced-build profile
+and decision receipts needed explicit coverage. Added the existing fit validator,
+then archive/forced-build cases **5 passed** (19.72 s;
+`/tmp/pclass-clean-archive-coverage.log`). Final cleanup/CLI suites **109 passed**
+(144.96 s; `/tmp/pclass-clean-review-verified.log`). Tests preserve exact archive
+inventories on rejection, selected valid libraries after retirement, and real
+legacy selections on API/CLI refusal without building. Ruff and scoped Git
+whitespace checks passed. No project-data cleanup, commit or push.

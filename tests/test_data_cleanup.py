@@ -1152,3 +1152,78 @@ def test_rollback_finalization_is_resumable(generations, monkeypatch, stage, poi
     load_selected_library(root)
     with transaction_guard(data), transaction_guard(root):
         pass
+
+
+@pytest.mark.parametrize("extra", [None, "nested-note", "empty-dir", "generation-file"])
+def test_archive_recursive_coverage(generations, extra):
+    import shutil
+
+    data, root, old, _, old_result, *_ = generations
+    archive = root / ".archives"
+    snapshot = archive / "nested" / old_result.library_id
+    shutil.copytree(old_result.library_dir, snapshot)
+    approved = plan_cleanup(data, root)
+    if extra == "nested-note":
+        path = archive / "notes" / "experiment.md"
+        path.parent.mkdir()
+        path.write_text("user notes: preserve")
+    elif extra == "empty-dir":
+        (snapshot / "unknown" / "empty").mkdir(parents=True)
+    elif extra == "generation-file":
+        path = snapshot / "clusters" / "extra.txt"
+        path.write_text("untracked user data: preserve")
+    else:
+        plan = approved
+        assert (
+            next(e for e in plan.entries if e.path == ".archives").disposition
+            == "remove"
+        )
+        assert execute_cleanup(plan).status == "complete"
+        assert not archive.exists()
+        load_selected_library(root)
+        return
+    from pclass_dark.artifacts import identity
+    from pclass_dark.cleanup_io import inventory
+
+    before = identity(inventory(archive))
+    for operation in (
+        plan_cleanup,
+        lambda d, r: execute_cleanup(approved),
+        lambda d, r: build_library(d, r, clean=True),
+    ):
+        with pytest.raises(
+            (IntegrityError, CleanupExecutionError), match="nested archive"
+        ):
+            operation(data, root)
+        assert identity(inventory(archive)) == before
+        assert old.prepared_dir.exists()
+        assert not (root / ".cleanup-journal.json").exists()
+
+
+def test_clean_rejects_legacy_selection_without_companion(
+    library_data, tmp_path, monkeypatch
+):
+    from typer.testing import CliRunner
+
+    import pclass_dark.library_build as building
+    from pclass_dark.cli import app
+    from pclass_dark.library import _build_legacy_library
+
+    data, *_ = library_data()
+    root = tmp_path / "legacy-library"
+    legacy = _build_legacy_library(data, root)
+    assert load_selected_library(root).relative is None
+    selection = sha256(root / "selection.json")
+    monkeypatch.setattr(building, "build", lambda *a, **k: pytest.fail("clean rebuilt"))
+    with pytest.raises(ValueError, match="Run build-library without --clean first"):
+        build_library(data, root, clean=True)
+    monkeypatch.setattr("pclass_dark.paths.default_setup_input_dir", lambda: data)
+    monkeypatch.setattr("pclass_dark.paths.default_library_output_dir", lambda: root)
+    result = CliRunner().invoke(app, ["build-library", "--clean"])
+    assert result.exit_code == 1
+    assert "relative-score companion is missing" in result.output
+    assert "without --clean first" in result.output
+    assert "AttributeError" not in result.output
+    assert sha256(root / "selection.json") == selection
+    assert legacy.library_dir.exists()
+    assert not (root / ".cleanup").exists()

@@ -690,3 +690,23 @@ removal as applicable; subsequent recovery preserves exact original inventories,
 clears all markers and permits readers/writers. Cleanup/CLI suites **104 passed**
 in 107.61 s (`/tmp/pclass-clean-rollback-final.log`). Ruff and scoped whitespace
 checks passed. No project-data cleanup was executed.
+
+## Archive-coverage and legacy-selection corrections (2026-10-30)
+
+Before scheduling an archive namespace for deletion, require recursive exact
+coverage: every file must be a recognized metadata record or a verified file
+listed by a recognized manifest/checkpoint receipt or validated by the existing
+completed-fit validator (including profile/selection receipts); every directory must be an
+ancestor of covered files. Reject unknown nested files and empty directories
+without mutation. Protected active migration/legacy caches retain their behavior.
+The clean entry point must reject relative=None before constructing LibraryResult,
+with an actionable request for a full build without --clean. Test recognized
+nested archives, unknown descendants, and a real v1 selection through API and CLI.
+
+Implemented and validated: cleanup/CLI suites **109 passed** (144.96 s;
+`/tmp/pclass-clean-review-verified.log`). Archive coverage tests exercise nested
+notes, unknown empty directories, extra generation files, stale approved plans,
+recognized nested bundles, and valid forced-build fit cache receipts. A real v1
+selection is rejected through both API and CLI without building or changing its
+selection. Focused archive checks passed (5 tests). Ruff and scoped whitespace
+checks passed; no project-data cleanup executed.

@@ -916,6 +916,11 @@ def build_library(
         with _cleanup_guard_pair(roots["setup"], roots["library"]):
             recovered = recover_cleanup(data_dir, output_dir)
             pair = load_selected_library(output_dir)
+            if pair.relative is None:
+                raise ValueError(
+                    "Cleanup requires a full production/C/B pair; relative-score "
+                    "companion is missing. Run build-library without --clean first"
+                )
             result = LibraryResult(
                 pair.library.library_id,
                 pair.library.source_path,
