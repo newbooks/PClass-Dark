@@ -1012,3 +1012,67 @@ def test_direct_cleanup_does_not_reverify_committed_contents(generations, monkey
     monkeypatch.setattr(cleanup, "_verify_quarantines", checked)
     assert execute_cleanup(plan_cleanup(data, root)).status == "complete"
     assert phases == [False]
+
+
+def test_partial_embedding_without_assembly_survives_cleanup(generations):
+    import numpy as np
+
+    from pclass_dark.artifacts import file_record, identity
+    from pclass_dark.embeddings import SHARD_ROWS, _valid_shard
+
+    data, root, old, new, *_ = generations
+    selected = read_json(data / "selection.json")
+    manifest = read_json(data / selected["embedding"] / "manifest.json")
+    contract = {
+        **manifest["identity_inputs"]["contract"],
+        "torch_version": "partial-unassembled-fixture",
+    }
+    inventory_id = manifest["inventory_id"]
+    embedding_id = identity({"inventory_id": inventory_id, "contract": contract})
+    assert not (data / "embeddings" / embedding_id).exists()
+    checkpoints = data / ".checkpoints" / embedding_id
+    checkpoints.mkdir(parents=True)
+    array = checkpoints / "000000000000.npy"
+    stop = min(SHARD_ROWS, manifest["rows"])
+    np.save(array, np.zeros((stop, 640), dtype="<f4"), allow_pickle=False)
+    receipt = checkpoints / "000000000000.json"
+    write_json(
+        receipt,
+        {
+            "schema": "pclass-dark.embedding-shard.v1",
+            "embedding_id": embedding_id,
+            "inventory_id": inventory_id,
+            "start": 0,
+            "stop": stop,
+            "shape": [stop, 640],
+            "dtype": "<f4",
+            "file": file_record(array),
+            "execution": {
+                "device": "cpu",
+                "batch_size": 1,
+                "seed": 0,
+                "contract": contract,
+                "timestamp": "2026-10-30T00:00:00+00:00",
+            },
+        },
+    )
+    assert _valid_shard(checkpoints, 0, stop, embedding_id, inventory_id) is not None
+    hashes = sha256(array), sha256(receipt)
+    plan = plan_cleanup(data, root)
+    entry = next(
+        e for e in plan.entries if e.key == "setup:.checkpoints/" + embedding_id
+    )
+    assert entry.disposition == "protect"
+    assert entry.reason == "partial resumable embedding job"
+    assert "setup:prepared/" + old.preparation_id in entry.dependencies
+    assert (
+        next(
+            e for e in plan.entries if e.path == "prepared/" + old.preparation_id
+        ).disposition
+        == "protect"
+    )
+    assert execute_cleanup(plan).status == "complete"
+    assert build_library(data, root, clean=True).cleanup.status == "complete"
+    assert (sha256(array), sha256(receipt)) == hashes
+    assert old.prepared_dir.exists() and new.prepared_dir.exists()
+    assert not (data / "embeddings" / embedding_id).exists()

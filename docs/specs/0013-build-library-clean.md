@@ -655,3 +655,17 @@ neither hashing nor relinking. Ruff and scoped whitespace checks passed. Broad
 suite was not repeated after these targeted corrections. No agent-initiated
 real-data cleanup; a running old process must be interrupted/restarted to load the
 new implementation. Completed recovery returns without a second full plan scan.
+
+## Partial embedding ownership regression (2026-10-30)
+
+Implemented correction: an interrupted embedding job can have valid shard receipts
+without an assembled embedding generation. Keep its existing preparation owners,
+dependencies and protection; inherit assembled-embedding owners only if that
+embedding exists. Validate preview and execution against a valid unassembled shard
+and verify checkpoint files and owning preparations survive cleanup.
+
+Validation: cleanup suite **77 passed** in 104.02 s
+(`/tmp/pclass-clean-partial-embedding.log`). The final full-range-shard regression
+also passed separately (`/tmp/pclass-clean-partial-embedding-focused.log`),
+covering preview, direct execution and clean orchestration with unchanged shards
+and retained owning preparations. Ruff and scoped whitespace checks passed.

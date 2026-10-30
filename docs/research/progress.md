@@ -1449,3 +1449,20 @@ is still running, user can Ctrl+C and rerun build-library --clean to resume its
 committed journal through the updated path. Initial validation and metadata-heavy
 filesystem deletion still take time; no production throughput benchmark claimed.
 No commit or push.
+
+
+### 2026-10-30 — Preserve unassembled partial embedding checkpoints
+
+Resolved review P2: cleanup finish unconditionally indexed assembled embeddings
+for embedding-checkpoint nodes even though shards() supports resumable jobs with
+no assembled generation. Inherit owners only when an assembled embedding exists;
+retain partial checkpoint owners, preparation dependencies and protection.
+Updated [SPEC-0013](../specs/0013-build-library-clean.md).
+
+Added a valid full-range first shard for a new embedding identity without assembly,
+verified via the embedding receipt validator. Regression covers preview, execution
+and build-library clean, unchanged shard hashes and retained owning preparations.
+Cleanup suite **77 passed** (104.02 s; `/tmp/pclass-clean-partial-embedding.log`);
+the final full-range fixture also passed independently (1 test, 13.29 s;
+`/tmp/pclass-clean-partial-embedding-focused.log`). Ruff and scoped Git whitespace
+checks passed. No project-data cleanup, commit or push.

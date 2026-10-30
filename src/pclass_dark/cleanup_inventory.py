@@ -1022,7 +1022,9 @@ class Planner:
                     consumers.add(self.selected_preparation)
                 node.owners.update(consumers)
             elif node.kind == "embedding-checkpoints":
-                node.owners.update(self.embeddings[node.metadata["id"]].owners)
+                embedding = self.embeddings.get(node.metadata["id"])
+                if embedding is not None:
+                    node.owners.update(embedding.owners)
         # Preserve every owner not retired, then close required dependencies again.
         live.update(
             n.key
