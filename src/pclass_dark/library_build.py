@@ -507,26 +507,10 @@ def _select(root, production, relative, prepared_id, embedding_id):
     )
 
 
-def build(
-    data_dir,
-    output_dir,
-    *,
-    workers,
-    memory_mib,
-    epsilon,
-    sigma_floor,
-    cluster_ids,
-    force,
-    cross_validate,
+def validate_build_options(
+    *, workers, memory_mib, epsilon, sigma_floor, cross_validate, force
 ):
-    from .library import (
-        LibraryResult,
-        _library_immutable,
-        _read_inputs,
-        encoded_cluster,
-        load_library,
-    )
-
+    """Validate scalar options before build or cleanup recovery can mutate data."""
     for name, value, minimum in (
         ("workers", workers, 1),
         ("memory_mib", memory_mib, 64),
@@ -543,7 +527,38 @@ def build(
             or value <= 0
         ):
             raise ValueError(f"{name} must be positive and finite")
-    epsilon, sigma_floor = float(epsilon), float(sigma_floor)
+    return float(epsilon), float(sigma_floor)
+
+
+def build(
+    data_dir,
+    output_dir,
+    *,
+    workers,
+    memory_mib,
+    epsilon,
+    sigma_floor,
+    cluster_ids,
+    force,
+    cross_validate,
+    _cleanup_snapshot=None,
+):
+    from .library import (
+        LibraryResult,
+        _library_immutable,
+        _read_inputs,
+        encoded_cluster,
+        load_library,
+    )
+
+    epsilon, sigma_floor = validate_build_options(
+        workers=workers,
+        memory_mib=memory_mib,
+        epsilon=epsilon,
+        sigma_floor=sigma_floor,
+        cross_validate=cross_validate,
+        force=force,
+    )
     data, root = Path(data_dir).absolute(), Path(output_dir).absolute()
     if any(p.is_symlink() for path in (data, root) for p in (path, *path.parents)):
         raise ValueError("Symlink data/output roots are unsupported")
@@ -776,6 +791,10 @@ def build(
             "Production complete: %s targets; C/B distributions available",
             result.counts["targets"],
         )
+        if not cross_validate and _cleanup_snapshot is not None:
+            from .data_cleanup import gate_snapshot
+
+            _cleanup_snapshot.append(gate_snapshot(data, root))
     if not cross_validate:
         return result
     # Root guard is deliberately released: selected production remains readable.
@@ -894,6 +913,10 @@ def build(
                         "production_manifest_sha256": production_digest,
                     },
                 )
+                if _cleanup_snapshot is not None:
+                    from .data_cleanup import gate_snapshot
+
+                    _cleanup_snapshot.append(gate_snapshot(data, root))
         LOG.info("Research complete: %s targets, five rotations each", len(targets))
         return replace(
             result,

@@ -17,6 +17,7 @@ import numpy as np
 from . import __version__
 from .artifacts import (
     IntegrityError,
+    check_cleanup_pending,
     file_record,
     identity,
     read_json,
@@ -362,6 +363,7 @@ class RelativeScores:
         Raises ValueError for an unknown ID, IntegrityError for a changed/corrupt
         generation, and OSError for inaccessible files. No query is evaluated.
         """
+        check_cleanup_pending(self.library.source_root)
         if not isinstance(cluster_id, str) or not cluster_id:
             raise ValueError("cluster_id must be a nonempty string")
         with self._lock:
@@ -401,8 +403,31 @@ class RelativeScores:
                         }
                 return freeze(summary)
 
+    def _check_generation(self):
+        try:
+            valid = (
+                sha256(self.path / "manifest.json") == self._digest
+                and sha256(self.library.source_path / "manifest.json")
+                == self.library.manifest_sha256
+            )
+        except OSError as exc:
+            raise IntegrityError(
+                "Relative generation removed; reload the selected pair"
+            ) from exc
+        if not valid:
+            raise IntegrityError(
+                "Relative generation changed; reload the selected pair"
+            )
+
     def evaluate(self, cluster_id, log_scores):
-        with self._lock:
+        check_cleanup_pending(self.library.source_root)
+        with (
+            self._lock,
+            nullcontext()
+            if self._immutable
+            else transaction_guard(self.library.source_root),
+        ):
+            self._check_generation()
             return self._evaluate(cluster_id, log_scores)
 
     def _evaluate(self, cluster_id, log_scores):
@@ -649,6 +674,7 @@ def _load_relative(path, library, immutable, *, expected_targets=None):
 @schema_checked
 def load_relative_scores(relative_dir, *, library, immutable=False):
     """Validate a companion and expose bounded, read-only empirical evidence."""
+    check_cleanup_pending(library.source_root)
     path = Path(relative_dir).absolute()
     immutable = immutable or library.immutable
     if path != library.source_root / "relative-scores" / path.name:

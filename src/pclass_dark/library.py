@@ -40,6 +40,7 @@ from .artifacts import (
     verify_bundle,
     write_json,
 )
+from .cleanup_types import CleanupResult
 from .cluster_paths import (
     LAYOUT,
     cluster_directory_name,
@@ -101,6 +102,7 @@ class LibraryResult:
     research_id: str | None = None
     research_dir: Path | None = None
     reuse: dict | None = None
+    cleanup: CleanupResult | None = None
 
 
 @dataclass(frozen=True)
@@ -454,6 +456,10 @@ def _write_outputs(stage, paths, identity_inputs, contract, *, execution=None):
 
 
 def _library_immutable(path, immutable):
+    from .artifacts import check_cleanup_pending
+
+    check_cleanup_pending(path)
+    check_cleanup_pending(path.parent)
     resources = Path(__file__).resolve().parent / "resources"
     return immutable or path == resources or resources in path.parents
 
@@ -863,15 +869,70 @@ def build_library(
     cluster_ids=None,
     force=False,
     cross_validate=False,
+    clean=False,
 ):
-    """Build all-C signatures and reference distributions; optionally run research."""
+    """Build signatures/distributions, or validate and clean an existing library."""
     from .library_build import build
     from .paths import default_library_output_dir, default_setup_input_dir
 
     data_dir = default_setup_input_dir() if data_dir is None else data_dir
     output_dir = default_library_output_dir() if output_dir is None else output_dir
 
-    return build(
+    if type(clean) is not bool:
+        raise ValueError("clean must be a boolean")
+    if clean and cluster_ids is not None:
+        raise ValueError("--clean requires a full build without --cluster")
+    if clean:
+        from .artifacts import _cleanup_guard_pair
+        from .data_cleanup import (
+            _after_build,
+            _roots,
+            gate_snapshot,
+            recover_cleanup,
+        )
+        from .library_build import validate_build_options
+        from .relative_scores import load_selected_library
+
+        validate_build_options(
+            workers=workers,
+            memory_mib=memory_mib,
+            epsilon=epsilon,
+            sigma_floor=sigma_floor,
+            cross_validate=cross_validate,
+            force=force,
+        )
+        if force or cross_validate:
+            raise ValueError(
+                "--clean cannot be combined with --force or --cross-validate"
+            )
+        logging.getLogger(__name__).info(
+            "Validating existing library for cleanup; no library will be built"
+        )
+        roots = _roots(data_dir, output_dir, _allow_missing_library=True)
+        if not (roots["library"] / "selection.json").exists():
+            raise ValueError(
+                "No existing selected library; run build-library without --clean first"
+            )
+        with _cleanup_guard_pair(roots["setup"], roots["library"]):
+            recovered = recover_cleanup(data_dir, output_dir)
+            pair = load_selected_library(output_dir)
+            result = LibraryResult(
+                pair.library.library_id,
+                pair.library.source_path,
+                dict(pair.library.counts),
+                True,
+                pair.relative.relative_id,
+                pair.relative.path,
+                reuse={"production": True, "relative": True},
+                cleanup=(
+                    recovered if recovered and recovered.status == "complete" else None
+                ),
+            )
+            if result.cleanup is not None:
+                return result
+            snapshot = gate_snapshot(roots["setup"], roots["library"])
+        return _after_build(data_dir, output_dir, snapshot, result)
+    result = build(
         data_dir,
         output_dir,
         workers=workers,
@@ -882,3 +943,5 @@ def build_library(
         force=force,
         cross_validate=cross_validate,
     )
+
+    return result

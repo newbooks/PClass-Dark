@@ -11,6 +11,7 @@ from types import MappingProxyType
 from . import __version__
 from .artifacts import (
     IntegrityError,
+    check_cleanup_pending,
     file_record,
     identity,
     read_json,
@@ -457,6 +458,7 @@ def load_research(research_dir, *, immutable=False):
     from .library import HEADERS
 
     path = Path(research_dir).absolute()
+    check_cleanup_pending(path.parent.parent)
     resources = Path(__file__).resolve().parent / "resources"
     immutable = immutable or resources in path.parents
     with nullcontext() if immutable else transaction_guard(path.parent.parent):
