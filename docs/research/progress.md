@@ -1186,3 +1186,328 @@ expectations for input modes, batch separation, devices, worker defaults and
 redirection. Updated the spec index. This is documentation-only planning;
 no infer command or runtime behavior was implemented. Validation: local links
 and scoped whitespace/diff checks passed; no code tests required.
+
+
+### 2026-10-30 — Draft dependency-aware build-library cleanup
+
+Drafted [SPEC-0013](../specs/0013-build-library-clean.md) at the user's request.
+`build-library --clean` would retire proven obsolete prepared datasets and their
+exclusive completed libraries, C/B distributions, embeddings and checkpoint/import
+caches after validated full publication/reuse. Shared embeddings/fits, selected
+pipelines, current-preparation experiments, partial resumable work and explicit
+archives are protected. The draft distinguishes historical provenance IDs from
+runtime-required dependencies so a shared embedding's original prepared ID does
+not unnecessarily retain the old dataset. Includes read-only `--clean --dry-run`,
+full-scope gates, both-root locking, per-schema dependency adapters, unknown-file
+protection, durable recoverable quarantine, failure behavior, storage accounting
+and tests. Worktree cleanup does not prune Git LFS storage or change Git history.
+Inspected current layout: two preparations, two production generations and two
+relative-score generations share one selected embedding bundle; no IDs are
+hard-coded in the design. No cleanup code was implemented and no data was deleted.
+Updated spec index; local links and scoped diff/whitespace checks passed.
+
+
+### 2026-10-30 — Resolve cleanup specification implementation details
+
+Revised [SPEC-0013](../specs/0013-build-library-clean.md) through code/schema and
+internal-consistency audits and marked it ready to implement (not implemented).
+Confirmed v2 production/fit identities lack prepared IDs; the two current C/B
+companion manifests provide verified target-level ownership for their respective
+preparations and share the same embedding ID. Specified complete ownership proof,
+retention fixed points, exact full-selection gates, old/new fit-format handling,
+provenance-only edges and conservative protection of legacy/migration/unknown
+artifacts. No experimental performance or deletion results are claimed.
+
+Resolved CLI/API and frozen plan/result/error contracts; clean runs after a
+successful full build with an expected snapshot, preview does not build, and
+failed requested research prevents cleanup. Corrected the earlier draft's lock
+assumption: transaction guards are same-thread reentrant. Identified necessary
+runtime and packaging pending-journal checks, lazy evidence cache-hit checks, and
+pure checkpoint validators (existing read helpers may create/quarantine files).
+Specified coordinator/peer identities, ordered root-local quarantine, durable
+commit, rollback before commit, resumable reclamation after commit, marker-only
+crash cases, hard-link recovery and resource caps. Documented implementation
+sequence and fault-injection/regression acceptance matrix. Kept explicit archives,
+shared inputs, current experiments and resumable work protected.
+
+Validation: inspected actual writer/reader/lock code and current ownership
+manifests without modifying artifacts; verified local spec links, index status,
+required contracts and scoped Git whitespace checks. This revision changed only
+documentation; no runtime tests were required or claimed, no cleanup code was
+implemented and no data was deleted. Earlier draft decisions remain recorded in
+this log and are superseded by the ready specification.
+
+
+### 2026-10-30 — Implement opt-in build-library cleanup
+
+Implemented [SPEC-0013](../specs/0013-build-library-clean.md): public immutable
+plan/result records, pure dependency-aware inventory, protected/shared/resumable
+lineages, full-build/preview gates, nonfollowing POSIX deletion, durable two-root
+quarantine/journal recovery, build snapshot handoff, `--clean`/`--dry-run`, and
+importable planning/execution/recovery APIs. Added pending-journal checks to
+runtime guards, lazy relative cache hits and packaging. Added README/data docs;
+normal builds still retain generations. No actual project dataset was cleaned.
+
+Focused fixtures currently pass 40 cleanup tests. Failure-driven fixes included
+recognizing persisted selection decision/trial receipts and their versioned hashes,
+retaining missing private completion receipts as resumable work, and excluding
+compressed selection traces from archived selector parsing. Tests exercise old
+preparation/exclusive-output removal with shared embeddings retained, forced
+archives, partial work, forged/stale plans, extra files/symlinks, guard contention,
+clean CLI preview, selected scoring/explanation survival and isolated process death
+before/after durable journal stages, moves and unlinks. One preliminary full-suite
+run was stopped while the archive-parser regression was corrected. Final full
+regression, additional edge cases and final status remain in progress. This is
+artifact management, not a scientific performance experiment; no PLM inference
+was run or performance claims made.
+
+
+### 2026-10-30 — Complete cleanup acceptance and regression validation
+
+Completed [SPEC-0013](../specs/0013-build-library-clean.md) implementation and
+synchronized its status, index, README and data instructions. Full regression
+passed **322 tests, 2 skipped, 1 warning in 556.81 seconds** with
+`python -m pytest -q --disable-warnings --maxfail=3`; log:
+`/tmp/pclass-dark-cleanup-regression.log`. Added four final cleanup edge cases
+after full-suite collection, then ran all cleanup plus analytical relative-score
+tests: **74 passed in 117.29 seconds** (61 cleanup and 13 relative tests), log:
+`/tmp/pclass-dark-cleanup-acceptance.log`. This final run covers unsupported
+complete targets, research failure preventing cleanup, LFS-store preservation,
+and recovery after unlinking one of two candidate hard-link aliases. Prior
+cleanup acceptance also passed 57 cases including full research and ten isolated
+process-death/fsync boundaries. Earlier full-suite failure was a toy relative
+fixture lacking generation metadata required by cache-hit validation; fixed the
+fixture without changing its independent numerical score expectations.
+
+Ruff and scoped whitespace checks passed. Isolated wheel/sdist builds succeeded;
+archive checks found all cleanup modules and no private journal/quarantine state.
+Installed-wheel build-library help exposes `--clean` and `--dry-run`. Packaging
+artifacts: `/tmp/pclass-dark-cleanup-dist`; log:
+`/tmp/pclass-dark-cleanup-package.log`. Two real pinned-checkpoint tests remained
+opt-in and were skipped. No model inference, scientific performance experiment,
+project cleanup, commit or push was performed. All deletion/recovery tests used
+isolated temporary roots. Conservative legacy/ambiguous retention, POSIX platform
+scope, archive protection and Git LFS limitations are documented.
+
+
+### 2026-10-30 — Correct build-library cleanup semantics
+
+User clarification supersedes the earlier build-then-clean contract:
+`build-library --clean` validates the existing full selected production/C/B pair
+and cleans obsolete generations without entering build orchestration. Missing or
+incomplete selections fail without creating or repairing a library. Reject force
+and research requests in clean mode; preserve cleanup recovery and stale-selection
+checks. Log validation explicitly instead of build target/worker counts. Updated
+[SPEC-0013](../specs/0013-build-library-clean.md), its index and README.
+
+Validation: `python -m pytest tests/test_cli.py tests/test_production_library.py
+ tests/test_data_cleanup.py -q` passed **92 tests** in 280.74 s; output at
+`/tmp/pclass-dark-clean-validation.log`. Focused missing/incomplete/no-build
+regressions passed (3 tests). Ruff and Git whitespace checks passed. Tests use
+synthetic temporary datasets; no project-data cleanup was executed. Existing
+uncommitted work on `issue#22` was preserved; no commit or push.
+
+
+### 2026-10-30 — Disk-backed cleanup planning for large retained caches
+
+The reported inventory-budget failure came from aggregate accounting of all
+retained and removable trees, not evidence of an OS out-of-memory failure.
+Read-only traversal of this checkout found 5,218,158 files / 13,773 directories
+under `data/library/.fits`, and 13,772 files / 6,889 directories under
+`.production-checkpoints`. No data was deleted. Existing one-million-entry
+aggregate accounting cannot handle that inventory.
+
+Updated [SPEC-0013](../specs/0013-build-library-clean.md): planning spools exact
+node inventories to an automatically closed private temporary file, retaining
+only offsets in the graph. Aggregate limits now cover removal inventories;
+per-tree and journal caps remain. Plan hashes, ownership gates and recovery
+checks retain their formats. CLI/README explain temporary disk use and limits.
+Candidate-limit errors now identify entry counts and serialized bytes.
+
+Validation: cleanup suite **66 passed** in 109.15 s
+(`/tmp/pclass-dark-clean-spool-tests.log`); CLI suite **11 passed**
+(`/tmp/pclass-dark-clean-spool-cli.log`). Added regressions for retained inventories
+outside the aggregate removal budget, candidate-budget refusal, deterministic
+plans and spool closure on success/failure. Ruff and whitespace checks passed.
+Full production-data planning/deletion was not run; hashing millions of files
+still costs IO/time and temporary storage. A candidate set exceeding removal or
+64 MiB recovery-journal limits still fails before mutation. No commit or push.
+
+
+### 2026-10-30 — Simplify build-library CLI options
+
+Removed user-exposed data-dir, output-dir, memory-mib, epsilon (user spelling
+“epsion”), sigma-floor and dry-run options from build-library. Internal values
+remain None/None for default root resolution, 1024 MiB workspace and 1e-8 for
+both numerical safeguards. Cleanup executes directly; preview and configurable
+paths/settings remain available through Python APIs. Other subcommands retain
+their options. Updated README, [SPEC-0004](../specs/0004-build-library.md),
+[SPEC-0013](../specs/0013-build-library-clean.md) and specification index.
+
+Validation: `python -m pytest tests/test_cli.py tests/test_data_cleanup.py -q`
+passed **85 tests** in 108.85 s; log `/tmp/pclass-dark-build-cli-defaults.log`.
+Tests verify removed options are absent from help and rejected before building,
+internal defaults are forwarded, and clean uses default root resolution. Ruff
+and Git whitespace checks passed. No project data was cleaned; no commit/push.
+
+
+### 2026-10-30 — Retire rollback archives after replacement validation
+
+User clarification supersedes earlier permanent archive protection: preserve a
+valid fallback during replacement construction, but once a full selected
+setup/production/C/B replacement validates, old generations and recognized
+rollback/migration backups are obsolete. Archive references no longer seed the
+retention graph. Shared embeddings and partial work retain existing protections;
+unknown/unsafe history fails closed. `.archives` is an exact-inventory cleanup
+unit under both managed roots and uses existing journal, quarantine and recovery.
+Updated [SPEC-0013](../specs/0013-build-library-clean.md), index, README and CLI
+help/result text. Earlier archive-retention conclusions above are superseded.
+
+Validation: `python -m pytest tests/test_data_cleanup.py tests/test_cli.py -q`
+passed **87 tests** in 123.06 s (`/tmp/pclass-dark-obsolete-archives.log`). Tests
+cover old/current archive retirement, invalid replacement preservation, forced
+build backups, shared embeddings, and archive-bearing rollback/recovery under
+injected IO failures. Ruff and whitespace checks passed. No project-data deletion
+or full real-data cleanup plan executed. Existing removal-inventory/journal caps
+remain; large obsolete cache sets may still exceed them. No commit or push.
+
+
+### 2026-10-30 — Scale execution beyond aggregate inventory limits
+
+The user's retry reached 1,000,237 removal entries / 228,543,433 serialized bytes
+and failed before deletion. Earlier disk-backed planning alone was insufficient:
+it still accumulated removal inventories and embedded them in a single 64 MiB
+journal. Supersedes earlier statements that these aggregate limits remain.
+
+Updated [SPEC-0013](../specs/0013-build-library-clean.md): temporary SQLite stores
+candidate inventories and inode counters; plans bind sorted exact tree hashes.
+New v2 coordinator journals reference per-candidate bounded inventory sidecars,
+all durable before detachment. Retain one all-candidate commit boundary, exact
+inventory validation, inode/link checks, and v1 journal recovery. Prepared
+transactions without peers cancel partial sidecar publication safely; done-state
+recovery tolerates already removed sidecars. Quarantine validation uses disk-backed
+hard-link counters instead of accumulating every observed file in RAM. Clean now
+plans once under guards; public preview execution still independently replans.
+Added execution-stage progress logs. README and specification index synchronized.
+
+Validation: cleanup, CLI, shared-distribution and library-cache suites **106
+passed** in 144.94 s (`/tmp/pclass-clean-scalable-final.log`). After final storage
+closure/log/readability changes, focused scale/publication/single-scan/closure
+checks **4 passed** (`/tmp/pclass-clean-scalable-final-focused.log`). Six new
+sidecar/scale/recovery tests passed separately (`/tmp/pclass-clean-sidecar-new.log`).
+An earlier run had two failures: the synthetic limit exceeded its total dataset
+size, and done-state error reporting tried reading a reclaimed sidecar. Corrected
+both; preserved failed-run logs at `/tmp/pclass-clean-scalable-tests.log` and
+`/tmp/pclass-clean-sidecar-focused.log`. Ruff and Git whitespace checks passed.
+
+Scaled regression lowers per-tree and per-document limits so aggregate removal
+exceeds them while individual inventories fit, then asserts successful cleanup.
+Coverage includes sidecar publication failure, corruption refusal, v1 recovery,
+interrupted finalization, hard links and process-death recovery. No project-data
+cleanup or full real-data planning executed. Temporary and recovery disk storage
+scale with inventory size; individual-tree and coordinator/sidecar document caps
+remain, but aggregate candidate file count/size no longer blocks this workflow.
+No commit or push; unrelated uncommitted work preserved.
+
+
+### 2026-10-30 — Direct removal of committed obsolete trees
+
+User reported prolonged reclamation of 6,891 candidates and requested direct
+removal without relinking. Inspection found a repeated quarantine hash pass,
+per-file descriptor traversal/identity checks and fsync per unlink. No relinking
+was occurring: detachment renames directories. The real-data coordinator was v2,
+committed, with 6,891 entries; user-process data deletions in the working tree
+were preserved. No cleanup was executed or process stopped by the agent.
+
+Updated [SPEC-0013](../specs/0013-build-library-clean.md): committed trash is now
+removed with descriptor-relative, symlink-resistant shutil.rmtree, checking its
+root inode/device/mode and refusing recreated original paths. No postcommit
+content rehash or hard-link recount; fsync once per candidate parent rather than
+once per file. Precommit selected-data validation, inventory checks and rollback
+remain. Sidecars/journal support interruption and old v1/v2 committed runs.
+Progress every 100 candidates. Recovery completing an existing transaction returns
+its result directly rather than scanning retained checkpoints for another plan.
+Removed obsolete per-file unlink/rmdir helpers. README and index synchronized.
+
+Validation: broader cleanup/CLI/distribution/cache run had **107 passed, 2 failed**
+in 144.26 s (`/tmp/pclass-clean-direct-final.log`). Failures were obsolete crash
+injections waiting for fsync calls 100/150, beyond the reduced operation count.
+Changed those injection points to reachable calls 35/40; all **10 fsync crash
+cases passed** (24.00 s; `/tmp/pclass-clean-direct-fsync.log`). Seven initial
+focused recovery checks passed (`/tmp/pclass-clean-direct-focused.log`); three
+direct-delete checks passed after removing unused helpers
+(`/tmp/pclass-clean-direct-last.log`). Final recovery/single-scan/direct-delete
+checks **5 passed** (18.45 s; `/tmp/pclass-clean-direct-resume.log`). Ruff and scoped
+Git whitespace checks passed. The full broad suite was not rerun after test-only
+injection updates and the specifically tested recovery short circuit.
+
+The 200-file deletion test observes exactly one fsync and no hashing/relinking,
+preserves an outside hard-link alias and symlink target, and root-replacement
+checks refuse removal. Existing process-death and hard-link tests cover interrupted
+direct removal. The existing running process keeps its old imported code: if it
+is still running, user can Ctrl+C and rerun build-library --clean to resume its
+committed journal through the updated path. Initial validation and metadata-heavy
+filesystem deletion still take time; no production throughput benchmark claimed.
+No commit or push.
+
+
+### 2026-10-30 — Preserve unassembled partial embedding checkpoints
+
+Resolved review P2: cleanup finish unconditionally indexed assembled embeddings
+for embedding-checkpoint nodes even though shards() supports resumable jobs with
+no assembled generation. Inherit owners only when an assembled embedding exists;
+retain partial checkpoint owners, preparation dependencies and protection.
+Updated [SPEC-0013](../specs/0013-build-library-clean.md).
+
+Added a valid full-range first shard for a new embedding identity without assembly,
+verified via the embedding receipt validator. Regression covers preview, execution
+and build-library clean, unchanged shard hashes and retained owning preparations.
+Cleanup suite **77 passed** (104.02 s; `/tmp/pclass-clean-partial-embedding.log`);
+the final full-range fixture also passed independently (1 test, 13.29 s;
+`/tmp/pclass-clean-partial-embedding-focused.log`). Ruff and scoped Git whitespace
+checks passed. No project-data cleanup, commit or push.
+
+
+### 2026-10-30 — Make rollback finalization restartable
+
+Resolved review P2: after restoring precommit candidates, recovery deleted sidecars
+and peer while the coordinator still said prepared/detaching. An interruption
+then made subsequent validation require metadata already removed. Recovery now
+persists terminal rolled_back before any metadata removal, including cancellation
+of prepared transactions without peers. Validation accepts terminal rollback with
+missing sidecars/peer; recovery resumes only marker finalization and reports zero
+removed bytes/artifacts. Root/coordinator identity and allowed-path checks remain.
+Updated [SPEC-0013](../specs/0013-build-library-clean.md).
+
+Validation: eight fault cases passed (16.21 s;
+`/tmp/pclass-clean-rollback-focused.log`) across prepared/no-peer, prepared/peer
+and detaching paths, interrupted after terminal publication, sidecar removal and
+peer removal. Tests verify exact restored inventories, unchanged selections,
+zero removals, cleared markers, idempotent recovery and unblocked readers/writers.
+Full cleanup/CLI suites **104 passed** (107.61 s;
+`/tmp/pclass-clean-rollback-final.log`). Ruff and scoped Git whitespace checks
+passed. No project-data cleanup, commit or push.
+
+
+### 2026-10-30 — Validate archive descendants and reject unpaired legacy clean
+
+Resolved review P1: archive retirement previously checked only immediate unknown
+files. Recursive coverage now requires every archived file to be a recognized
+metadata record, a verified manifest/receipt member, or a validated completed-fit
+cache record. Directory paths must be ancestors of covered files; unknown empty
+directories are rejected. Fail before clearing archive protection or deletion.
+An approved preview is revalidated and refuses descendants added afterward.
+Resolved P2: clean checks pair.relative before constructing LibraryResult and
+returns an actionable full-build-without-clean error for valid v1 selections.
+Updated [SPEC-0013](../specs/0013-build-library-clean.md).
+
+Validation: initial focused new cases **5 passed** (40.47 s;
+`/tmp/pclass-clean-review-focused.log`). The first broader run had **108 passed,
+1 failed** (`/tmp/pclass-clean-review-final.log`): legitimate forced-build profile
+and decision receipts needed explicit coverage. Added the existing fit validator,
+then archive/forced-build cases **5 passed** (19.72 s;
+`/tmp/pclass-clean-archive-coverage.log`). Final cleanup/CLI suites **109 passed**
+(144.96 s; `/tmp/pclass-clean-review-verified.log`). Tests preserve exact archive
+inventories on rejection, selected valid libraries after retirement, and real
+legacy selections on API/CLI refusal without building. Ruff and scoped Git
+whitespace checks passed. No project-data cleanup, commit or push.

@@ -51,8 +51,9 @@ result = build_library(
 )
 ```
 
-Use the shared path defaults in SPEC-0006; retain meanings for workers, workspace,
-epsilon (1e-8), sigma floor (1e-8), repeated exact `--cluster`, and `--force`.
+Use the shared path defaults in SPEC-0006. The CLI uses internal workspace
+(1024 MiB), epsilon (1e-8) and sigma-floor (1e-8) defaults; Python accepts explicit
+settings. Expose workers, repeated exact `--cluster`, and `--force`.
 Add `--cross-validate/--no-cross-validate`, default false; Python keyword
 `cross_validate=False`. Workers remain bounded by CPUs, target count, requested
 workspace, and 32. Workspace minimum is 64 MiB. CLI/API inputs must be validated
@@ -601,3 +602,17 @@ Published cluster directories now use validated cluster IDs; readers retain lega
 hex-layout compatibility. See [SPEC-0011](0011-readable-cluster-paths.md) for
 layout metadata, migration, checksum rebinding and backup contracts. Internal
 checkpoint directory names remain unchanged.
+
+## CLI simplification (2026-10-30)
+
+Remove CLI options data-dir, output-dir, memory-mib, epsilon, sigma-floor and
+dry-run. Resolve paths through the existing default resolvers (None), use internal
+1024 MiB / 1e-8 / 1e-8 numerical defaults, and execute clean directly with no CLI
+preview mode. Keep workers, cluster, cross-validate, force and clean exposed.
+Python build_library configuration and plan_cleanup preview remain available.
+Validate removed flags are rejected, help omits them and defaults are forwarded;
+update cleanup CLI integration, documentation and progress records.
+
+Reduced CLI validation: CLI and cleanup suites passed **85 tests** (108.85 s),
+including removed-option rejection, help, default forwarding and default-root
+cleanup integration. Ruff and Git whitespace checks passed.

@@ -8,7 +8,7 @@ import os
 import shutil
 import tempfile
 import threading
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
@@ -193,6 +193,38 @@ def locked(root, key):
 _transaction_context = threading.local()
 
 
+def check_cleanup_pending(root):
+    """Refuse pending retirement even for immutable hints or reentrant readers."""
+    root = Path(root).resolve()
+    token = (os.getpid(), str(root))
+    if token in getattr(_transaction_context, "cleanup", set()):
+        return
+    for name in (".cleanup-journal.json", ".cleanup-peer.json"):
+        path = root / name
+        if path.exists() or path.is_symlink():
+            from .cleanup_types import CleanupRecoveryRequiredError
+
+            raise CleanupRecoveryRequiredError(
+                f"Pending cleanup at {root}; rerun build-library --clean with "
+                "the same --data-dir/--output-dir or call recover_cleanup"
+            )
+
+
+@contextmanager
+def _cleanup_guard_pair(data, library):
+    # Private bypass is scoped to both roots, this process and this thread only.
+    previous = getattr(_transaction_context, "cleanup", set())
+    roots = sorted({Path(data).resolve(), Path(library).resolve()})
+    _transaction_context.cleanup = previous | {(os.getpid(), str(p)) for p in roots}
+    try:
+        with ExitStack() as stack:
+            for root in roots:
+                stack.enter_context(transaction_guard(root))
+            yield
+    finally:
+        _transaction_context.cleanup = previous
+
+
 @contextmanager
 def transaction_guard(root):
     """Own a working root until selection commits or rollback finishes.
@@ -201,12 +233,14 @@ def transaction_guard(root):
     readers fail promptly rather than observe a rollback-eligible generation.
     """
     root = Path(root).resolve()
+    check_cleanup_pending(root)
     token = (os.getpid(), str(root))
     owned = getattr(_transaction_context, "owned", set())
     if token in owned:
         yield
         return
     with locked(root, "setup-transaction"):
+        check_cleanup_pending(root)
         owned.add(token)
         _transaction_context.owned = owned
         try:
@@ -219,6 +253,7 @@ def transaction_guard(root):
 def bundle_read_guard(path, *, immutable=False):
     """Coordinate mutable bundle readers with selection publication/rollback."""
     path = Path(path).resolve()
+    check_cleanup_pending(path.parent.parent)
     resources = Path(__file__).resolve().parent / "resources"
     if immutable or resources in path.parents:
         yield

@@ -17,3 +17,5 @@
 - [0011: Readable cluster directory names](0011-readable-cluster-paths.md) — readable public outputs and guarded migration with original-generation backups.
 
 - [0012: Live profunc dependency](0012-profunc-dependency.md) — implemented: live module imports, validated FASTA source and reference-bound descriptions.
+
+- [0013: Build-library cleanup](0013-build-library-clean.md) — implemented: validation-only `--clean` and Python preview (never builds missing results), disk-backed planning/execution with bounded recovery sidecars and direct postcommit removal, schema-aware retirement of superseded datasets/rollback archives, shared-input protection and recoverable POSIX deletion; full regression and fault-injection acceptance validated.
