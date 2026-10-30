@@ -1063,3 +1063,126 @@ Regression coverage checks header alignment, heading totals with missing/empty
 metrics, 20 bins, unchanged JSON/API and absence of trailing explanatory content.
 Scoped Ruff lint/format and `git diff --check` passed. No fitting or experiments
 were required.
+
+### 2026-10-29 — Replace copied profunc inputs with a runtime dependency
+
+Implemented [SPEC-0012](../specs/0012-profunc-dependency.md), superseding the
+runtime behavior of SPEC-0002 and the static catalog in SPEC-0010. Explicit user
+request authorizes a declared profunc dependency; neighboring checkouts are no
+longer silently consulted through hard-coded paths. Preparation calls installed
+profunc's runtime resolver, reads its current memberships, and verifies source
+FASTA hashes against that dataset's manifest. The runtime excludes FASTA, so
+preparation uses the source generation through profunc's workspace module or
+an explicit `--reference-fasta` / Python `reference_fasta` override. No sequences
+are downloaded. Custom manifest-bound `reference_dir` integrations remain usable.
+
+New fit inputs carry membership/FASTA hashes; descriptions call profunc's actual
+GO describer on the active validated runtime. Stale references and older fits
+without the binding show an unavailable reason. Retired the static catalog and
+export script; historical reference files remain in Git for provenance and are
+excluded from distributions. Existing scientific algorithms, worker/device
+selection, and training/evaluation procedures are unchanged.
+
+Validation so far: 23 focused reference/description/CLI tests passed; the new
+signature-binding and CLI-forwarding checks passed (2 tests); the retired-resource
+build cleanup regression passed. Isolated wheel and sdist builds under
+`/tmp/pclass-dark-profunc-package-check` passed, declared `profunc>=0.1.0,<0.2`,
+and excluded historical references even with simulated stale build files.
+Build log: `/tmp/pclass-dark-profunc-build.log`; artifacts:
+`/tmp/pclass-dark-profunc-dist`. Active profunc packaged publication
+`28f87149af01ed624c2814ca93ce1111ed6c915ad8aac4545ed1af48c00f0ee0`
+resolved successfully: 3524 clusters, 455508 members, complete sequence coverage;
+membership SHA-256 `b616109726acb0e0403060725c097c19bb245062aba62beabf4fcc6d3db8f1de`.
+This is input validation, not a held-out performance experiment. No PLM inference
+or full signature rebuild was run. Full pytest validation remains in progress;
+final outcomes will be appended below. No commit or push was performed.
+
+Full-suite validation caught a missing `id` on the new operation-local description
+mapping (3 listing/migration failures after 117 passing tests). Added a stable
+content-derived ID to preserve the listing's provenance field. The production
+suite separately passed all 32 tests, including scientific legacy imports and
+serial/parallel checks. An expanded focused suite passed 54 tests. Full-suite
+and real-library listing checks were restarted after the catalog-ID fix.
+
+Final validation: **261 passed, 2 skipped, 1 warning in 524.15 seconds** with
+`python -m pytest -q --disable-warnings --maxfail=3`; output saved to
+`/tmp/pclass-dark-profunc-final-pytest.log`. The two pinned real-checkpoint tests
+were not enabled (`PCLASS_DARK_TEST_CACHED_ESM` unset). All 34 listing tests passed
+separately. `python -m ruff check src tests build_support.py` and
+`git diff --check` passed. Final isolated wheel and sdist checks passed.
+`python -m pclass_dark explain-signature --list --format json` succeeded against
+the existing 3443-signature library; all older signatures correctly reported
+`missing_profunc_reference_binding`, retaining their metrics. JSON artifact:
+`/tmp/pclass-dark-profunc-list.json`. Users should rerun setup and build after
+updating profunc to obtain signatures with current reference bindings. Historical
+failed/superseded validation runs above are retained. SPEC-0012 and its index
+are synchronized with the implemented behavior and final test results.
+
+### 2026-10-29 — Default setup/build CLI workers to eight
+
+Changed `setup-data` and `build-library` CLI `--workers` defaults from 1 to 8.
+Explicit `--workers 1` preserves serial mode; Python API defaults and resource
+admission limits are unchanged. Updated README and SPEC-0003/SPEC-0004 interface
+notes. CLI regression tests check both default forwarding and explicit serial
+overrides for both commands. Validation: `python -m pytest tests/test_cli.py -q`
+passed (11 tests); targeted Ruff checks passed. Full-tree Git inspection/diff
+checks hit a read-only `.git/lfs/tmp` error on `data/setup-data/selection.json`;
+checks scoped to source/docs/tests avoid the LFS filter and pass. Existing
+unrelated data and prior changes were preserved; no commit or push performed.
+
+
+### 2026-10-29 — Remove retired copied profunc artifacts
+
+At the user's explicit cleanup request, removed all seven files in
+`src/pclass_dark/resources/reference/`: membership TSV, source FASTA, local
+manifest, and four source manifests/statistics files. Removed the obsolete
+reference-tree Git LFS rule. The static catalog/exporter were already retired
+in the dependency change. Removed the obsolete snapshot-copying/release procedure
+from current reference documentation, updated README and SPEC-0012, and clearly
+marked SPEC-0002/SPEC-0010 as retired historical records. Earlier findings remain
+in this log and Git history. Selected and archived prepared data, embeddings,
+and libraries were preserved; these remain valid reproducible outputs.
+
+Replaced the removed snapshot's integrity test with an independent three-record
+custom-reference fixture verifying membership, sequence coverage, residue counts
+and noncanonical residues. Kept packaging exclusions/stale-build cleanup guards
+to prevent old build directories from republishing retired resources. Validation:
+`python -m pytest tests/test_reference_data.py tests/test_setup_data.py
+ tests/test_cluster_descriptions.py tests/test_cli.py tests/test_shared_distribution.py
+ -q --disable-warnings` passed **58 tests in 4.51 seconds**. Ruff and scoped
+`git diff --check` passed. Live profunc resolution and a cluster_0001 description
+lookup succeeded with the retired tree absent. No scientific algorithm changed;
+no PLM inference, signature rebuild, commit or push was performed.
+
+
+### 2026-10-30 — Narrow the planned infer report to accepted matches
+
+Updated [SPEC-0007](../specs/0007-query-ranking-presentation.md) following the
+user's reporting decision: include only A=Yes matches, union cluster matches
+across one query's windows, and sort the combined result by unrounded B.
+Documented a representative-window rule: lowest B among accepted windows, with C
+from that same window and deterministic coordinate/ID ties. Preserve supporting
+window evidence in structured results. No likely/unlikely labels, hard B cutoffs,
+gap detection, combined probabilities or interpretation categories are planned.
+The compact output is Cluster/A/B/C. This is a reporting specification, not a
+new calibrated protein-level classifier. Query interfaces/resource contracts and
+implementation remain planned. No runtime code changed. Validation: checked
+local specification links, synchronized index and whitespace; no code tests
+required for this documentation-only refinement.
+
+
+### 2026-10-30 — Specify infer input, device defaults and stdout reports
+
+Expanded [SPEC-0007](../specs/0007-query-ranking-presentation.md), the planned
+implementation specification for `pclass-dark infer`. Defined mutually exclusive
+`--seq` (one sequence string) and `--fasta` (one or more FASTA records) inputs.
+Batch queries retain independent window-union match results and input order.
+Specified GPU-first embedding with CPU fallback, an explicit CPU option, and a
+default CPU budget of eight through `--workers`, with bounded CPU use and no
+per-worker GPU model replication. Both input modes print reports to stdout;
+users redirect stdout to files, while diagnostics/progress use stderr. No
+automatic report file or output-path option is planned. Added validation
+expectations for input modes, batch separation, devices, worker defaults and
+redirection. Updated the spec index. This is documentation-only planning;
+no infer command or runtime behavior was implemented. Validation: local links
+and scoped whitespace/diff checks passed; no code tests required.

@@ -1,5 +1,9 @@
 # SPEC-0003: Reference preparation and resumable embeddings with setup-data
 
+Current reference resolution and descriptions are superseded by
+[SPEC-0012](0012-profunc-dependency.md); bundled-copy behavior below is historical.
+
+
 - Date: 2026-10-25.
 - Status: Implemented and validated on CPU; full-reference preparation complete.
   Production embedding of the full dataset and GPU validation have not been run.
@@ -30,6 +34,11 @@ may download a pinned checkpoint and tokenizer if absent locally; `--offline`
 forbids all network access and requires local assets. `--prepare-only` avoids
 loading model dependencies or initializing a GPU. This supersedes the earlier
 draft in which embedding was outside setup-data.
+
+The CLI `--workers` default is 8 (updated 2026-10-29). Explicit
+`--workers 1` retains serial execution. Python API defaults remain 1; existing
+worker admission limits still apply. CLI default/override regression validation
+is recorded in the progress log.
 
 ## Interfaces
 

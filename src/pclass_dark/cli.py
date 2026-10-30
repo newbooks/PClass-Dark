@@ -42,13 +42,16 @@ def setup_data(
     output_dir: str | None = typer.Option(
         None, help="Destination; default: repository data/setup-data, or user cache."
     ),
+    reference_fasta: str | None = typer.Option(
+        None, help="Source FASTA matching profunc's dataset manifest."
+    ),
     min_clusters: int = typer.Option(
         10, min=1, help="Minimum unique full-sequence members per cluster."
     ),
     seed: int = typer.Option(
         42, min=0, help="Seed for per-cluster C folds and fixed B samples."
     ),
-    workers: int = typer.Option(1, min=1, help="CPU workers for cluster preparation."),
+    workers: int = typer.Option(8, min=1, help="CPU workers for cluster preparation."),
     prepare_only: bool = typer.Option(
         False, help="Prepare offline without loading a PLM."
     ),
@@ -76,6 +79,7 @@ def setup_data(
     try:
         result = prepare_data(
             output_dir,
+            reference_fasta=reference_fasta,
             min_clusters=min_clusters,
             seed=seed,
             workers=workers,
@@ -106,7 +110,7 @@ def build_library_command(
     output_dir: str | None = typer.Option(
         None, help="Destination; default: repository data/library, or user cache."
     ),
-    workers: int = typer.Option(1, min=1, help="Bounded CPU target workers."),
+    workers: int = typer.Option(8, min=1, help="Bounded CPU target workers."),
     memory_mib: int = typer.Option(
         1024, min=64, help="Total numeric workspace budget."
     ),

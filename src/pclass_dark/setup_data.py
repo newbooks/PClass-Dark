@@ -36,7 +36,14 @@ from .cluster_sets import (
     pair_payload,
     validate_sets,
 )
-from .reference_data import load_reference, read_fasta, reference_root, sequence_id
+from .reference_data import (
+    load_profunc_reference,
+    load_reference,
+    profunc_fasta_path,
+    read_fasta,
+    resolve_profunc,
+    sequence_id,
+)
 
 LOG = logging.getLogger(__name__)
 
@@ -524,9 +531,22 @@ def verify_prepared(path, expected_id=None, *, immutable=False):
     return m, windows, memberships
 
 
-def _prepare(root, reference, min_clusters, seed, workers, force, transaction):
-    LOG.info("Verifying authoritative bundled references")
-    ref, members, sequences, noncanonical = load_reference(reference)
+def _prepare(
+    root,
+    reference,
+    min_clusters,
+    seed,
+    workers,
+    force,
+    transaction,
+    reference_fasta=None,
+):
+    LOG.info("Verifying reference memberships and sequences")
+    ref, members, sequences, noncanonical = (
+        load_reference(reference)
+        if isinstance(reference, Path)
+        else load_profunc_reference(reference, reference_fasta)
+    )
     config = {
         "min_clusters": min_clusters,
         "seed": seed,
@@ -614,12 +634,14 @@ def prepare_data(
     batch_size=8,
     force=False,
     reference_dir=None,
+    reference_fasta=None,
 ):
     """Prepare references and optionally embed; resume matching inference shards.
 
     Raises ValueError/IntegrityError for bad input, SetupBusyError on contention,
     and OSError for filesystem errors. reference_dir is a local manifest-bound
-    override for integrations/tests; the default always uses packaged resources.
+    override for integrations/tests; the default resolves installed profunc.
+    reference_fasta supplies its checksum-matched source dataset FASTA.
     """
     _validate_options(min_clusters, seed, workers, batch_size, model, revision, device)
     from .paths import default_setup_output_dir
@@ -630,19 +652,27 @@ def prepare_data(
     if any(p.is_symlink() for p in (root_input, *root_input.parents)):
         raise ValueError("Symlink output paths are not supported")
     root = root_input.resolve()
-    # Python 3.10 importlib.resources.as_file supports resource files; the
-    # installed package is a filesystem tree after wheel installation.
-    ref_path = (
-        Path(reference_dir)
+    if reference_dir is not None and reference_fasta is not None:
+        raise ValueError("reference_dir and reference_fasta are mutually exclusive")
+    reference = (
+        Path(reference_dir).resolve()
         if reference_dir is not None
-        else Path(str(reference_root()))
+        else resolve_profunc()
     )
-    reference = ref_path.resolve()
+    if not isinstance(reference, Path):
+        reference_fasta = profunc_fasta_path(reference, reference_fasta)
+    reference_paths = (
+        [reference]
+        if isinstance(reference, Path)
+        else [reference.dataset, reference.clusters]
+    )
+    if reference_fasta is not None:
+        reference_paths.append(Path(reference_fasta).resolve())
     package_resources = Path(__file__).resolve().parent / "resources"
     if (
-        root == reference
-        or root in reference.parents
-        or reference in root.parents
+        any(
+            root == p or root in p.parents or p in root.parents for p in reference_paths
+        )
         or root == package_resources
         or package_resources in root.parents
     ):
@@ -650,7 +680,14 @@ def prepare_data(
     root.mkdir(parents=True, exist_ok=True)
     with publication_transaction(root) as transaction:
         prepared, m, reused = _prepare(
-            root, reference, min_clusters, seed, workers, force, transaction
+            root,
+            reference,
+            min_clusters,
+            seed,
+            workers,
+            force,
+            transaction,
+            reference_fasta,
         )
         embedding_id = embedding_dir = None
         reused_embeddings = False

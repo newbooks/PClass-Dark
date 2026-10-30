@@ -415,3 +415,24 @@ def test_legacy_research_imports_empty_validation_folds(
         assert (
             len(record["oof"]) == record["signature"]["counts"]["validation_positive_n"]
         )
+
+
+def test_signature_carries_reference_for_live_description(library_data, tmp_path):
+    from pclass_dark.artifacts import read_json
+    from pclass_dark.cluster_descriptions import description_for
+
+    data, prepared, *_ = library_data()
+    result = build_library(data, tmp_path / "library")
+    signature = read_json(result.library_dir / "clusters/K0/final.json")
+    reference = read_json(prepared.prepared_dir / "manifest.json")["reference"]["files"]
+    assert signature["input_identity"]["reference"] == reference
+    catalog = {
+        "reference": reference,
+        "clusters": {"K0": {"description": "current function"}},
+    }
+    assert description_for(signature, catalog) == ("current function", None)
+    catalog["reference"] = {
+        **reference,
+        "clusters.tsv": {"sha256": "a" * 64, "size_bytes": 100},
+    }
+    assert description_for(signature, catalog)[1] == "description_reference_mismatch"

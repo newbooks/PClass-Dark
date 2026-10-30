@@ -287,7 +287,7 @@ def _load_rows(root, immutable):
         )
         records = manifest["files"]
         require(isinstance(records, dict), "invalid file record mapping")
-        catalog = load_catalog()
+        catalog = load_catalog(targets)
         rows = []
         for cluster in targets:
             name = "clusters/" + stored_cluster_name(cluster, manifest) + "/final.json"

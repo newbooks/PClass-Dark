@@ -229,7 +229,12 @@ class SharedBuildPy(build_py):
         if target == project / "src/pclass_dark/resources" or target.is_symlink():
             raise ValueError("Build output must not be the source resources directory")
         # Don't ship leftovers from an earlier invocation of build_py.
-        for name in (*NAMESPACES, "selection.json"):
+        for name in (
+            *NAMESPACES,
+            "selection.json",
+            "reference",
+            "cluster_descriptions.json",
+        ):
             path = target / name
             if path.is_dir():
                 shutil.rmtree(path)
@@ -273,7 +278,14 @@ class SharedSdist(sdist):
             self.filelist.files = [
                 f
                 for f in self.filelist.files
-                if not f.replace("\\", "/").startswith("data/") or f == "data/README.md"
+                if (
+                    not f.replace("\\", "/").startswith("data/")
+                    or f == "data/README.md"
+                )
+                and not f.replace("\\", "/").startswith(
+                    "src/pclass_dark/resources/reference/"
+                )
+                and f != "src/pclass_dark/resources/cluster_descriptions.json"
             ]
             self.filelist.extend(
                 str(source.relative_to(project)) for source, _ in files
