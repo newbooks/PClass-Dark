@@ -1188,6 +1188,85 @@ no infer command or runtime behavior was implemented. Validation: local links
 and scoped whitespace/diff checks passed; no code tests required.
 
 
+### 2026-10-30 — Make infer specification implementation-ready
+
+Revised [SPEC-0007](../specs/0007-query-ranking-presentation.md) against the actual
+windowing, ESM backend, representation/scoring, empirical-evidence/cache, artifact
+paths and root-guard implementations on `issue#23`. Fixed the earlier draft's
+unspecified CLI/Python signatures, record/JSON contracts, batch/resource controls,
+CPU thread semantics, initialization-only automatic GPU fallback, failure/output
+atomicity, per-query IDs/window keys and context/iterator lifetime. Retained all
+previously approved scientific rules: literal reference residue policy and
+terminal windows, existing A/B/C math, accepted-window union, minimum-B accepted
+representative with paired C and coordinate ties, and no interpretive categories.
+No new scientific decision was required or silently made. The spec explicitly
+requires stopping for user decisions before changes to those scientific rules.
+
+An IO audit replaced model-batch-first classification, which would repeatedly
+reload the large C/B libraries, with independent model/score batch sizes,
+cluster-first scoring across private temporary vectors, one pinned lazy reference
+view per cluster, and bounded SQLite accepted-window working storage. This changes
+execution order only, not scoring math/ranking. Specified temporary quotas,
+primary-key scan requirements, reusable pure reduction, model release before
+completed-result iteration and report spooling before stdout publication.
+
+The current branch does not contain the prior cleanup specification/helper/error;
+removed a broken SPEC-0013 dependency and specified minimal read-only pending-state
+and cache-hit lifetime checks against current artifacts code, with reuse of cleanup
+helpers if merged later. Added planned RelativeScores metadata and scoped evaluator
+APIs rather than depending on private cache fields or loading quantiles. Corrected
+iterator exhaustion to StopIteration and defined failed-entry resource cleanup.
+Updated specification status and index to ready-to-implement, not implemented.
+Validation: local links, code fences, formulas/contract consistency and scoped
+whitespace checks; no runtime code, inference, scientific experiment or code-test
+results are claimed for this documentation-only revision.
+
+
+### 2026-10-30 — Implement infer query classification and reporting
+
+Implemented [SPEC-0007](../specs/0007-query-ranking-presentation.md) on `issue#23`:
+`pclass-dark infer --seq/--fasta`, stdout text/JSON reports, GPU-first embedding
+with initialization-only CPU fallback, explicit CPU/device options, default eight
+CPU threads and independently bounded model/scoring batches. Added reusable
+`pclass_dark.inference` APIs, frozen records and one shared accepted-window reducer.
+Terminal window coverage, fitted A acceptance, inclusive empirical B/C, minimum-B
+accepted representative with paired C and coordinate ties remain unchanged. No new
+scientific decision, threshold, probability calibration or functional assignment
+was introduced.
+
+Added bounded input preflight and stable FASTA checks; private JSONL, memmap and
+SQLite staging with workspace/disk admission; cluster-first scoring with one lazy
+pinned reference view per target; source-generation/maintenance checks including
+cache hits; scoped thread/precision restoration; failed-entry cleanup; and report
+spooling before stdout publication. Model/guards are released before completed
+results are iterated. No project reference/prepared data, embeddings or library
+artifacts were rebuilt or removed. README, CLI help, optional-dependency notes,
+spec status and index are synchronized.
+
+Validation:
+
+- Full regression: `pytest -q` — **290 passed, 2 skipped**, 461.20 seconds. The
+  two default skips are opt-in real-checkpoint tests. This run collected before
+  the final additional edge-case tests and input/error hardening.
+- Final focused run: `pytest -q tests/test_inference.py
+  tests/test_relative_scores.py tests/test_reference_data.py` — **56 passed**,
+  including the final changes and additional cases. Covers independent coordinate,
+  hash and empirical-score examples; representative pairing/native sorting;
+  batch/worker consistency; cache lifetime; malformed inputs/model matrices;
+  quotas/indexed retrieval; cleanup; device failures and thread restoration;
+  CLI atomic output and help without model initialization.
+- `PCLASS_DARK_TEST_CACHED_ESM=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 pytest -q
+  tests/test_pinned_esm.py` — **1 passed, 1 skipped**, 9.90 seconds, offline using
+  the existing pinned checkpoint. CPU pooling/batching passed; no compatible GPU
+  was available for CUDA comparison. GPU routing/fallback is covered by mocks.
+- `ruff check src tests`, changed-file formatting checks, local documentation
+  links and scoped `git diff --check` passed. Torch emitted an environment warning
+  about `AMD_SERIALIZE_KERNEL=3`; it did not fail tests.
+
+These are implementation checks with synthetic fixtures and cached-model pooling,
+not held-out biological performance estimates. GPU numerical agreement remains
+unverified on this host. No commits or pushes were made.
+
 ### 2026-10-30 — Draft dependency-aware build-library cleanup
 
 Drafted [SPEC-0013](../specs/0013-build-library-clean.md) at the user's request.
@@ -1511,3 +1590,25 @@ then archive/forced-build cases **5 passed** (19.72 s;
 inventories on rejection, selected valid libraries after retirement, and real
 legacy selections on API/CLI refusal without building. Ruff and scoped Git
 whitespace checks passed. No project-data cleanup, commit or push.
+
+
+### 2026-10-30 — Resolve main integration on issue#23
+
+Integrated main `bf4f6704` into issue#23 `c2483cdc`, resolving conflicts in
+artifact guards, relative evidence and this chronological log. Preserved both
+branches' records, main's recoverable cleanup guard and private transaction bypass,
+and inference's scoped evaluator/manifest identity checks. Updated
+[SPEC-0007](../specs/0007-query-ranking-presentation.md) to record integration with
+[SPEC-0013](../specs/0013-build-library-clean.md). Updated the inference regression
+to require the shared recovery exception, covering both marker types and immutable
+mode. No scientific calculation changed.
+
+Validation: `python -m pytest -q tests/test_inference.py
+tests/test_relative_scores.py tests/test_data_cleanup.py tests/test_cli.py`: **162
+passed** in 142.56 seconds. After expanding the marker regression,
+`python -m pytest -q tests/test_inference.py -k
+relative_scope_closed_and_pending_markers`: **4 passed**, 39 deselected, in 5.69
+seconds. `python -m ruff check src tests`, formatting checks for the resolved
+Python files and regression test, and staged whitespace checks passed. These are
+engineering checks; no biological experiment or GPU evaluation was performed.
+All conflicts resolved; merge staged for review, without commit or push.

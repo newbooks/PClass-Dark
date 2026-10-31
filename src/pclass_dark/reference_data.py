@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import os
 from pathlib import Path
 
 from .artifacts import IntegrityError, read_json, schema_checked, verify_files
@@ -99,37 +100,83 @@ def sequence_id(sequence):
     return hashlib.sha256(sequence.encode("ascii")).hexdigest()
 
 
-def read_fasta(path):
-    """Yield unique primary IDs and nonempty, unmodified alphabetic sequences."""
-    seen = set()
-    current = None
-    pieces = []
+class FastaLimitError(ValueError):
+    """A bounded FASTA reader exceeded a caller-supplied engineering limit."""
+
+
+def read_fasta(
+    path,
+    *,
+    max_sequence_length=None,
+    max_header_bytes=None,
+    max_bytes=None,
+    max_records=None,
+    check_stable=False,
+):
+    """Yield unique primary IDs and unmodified nonempty alphabetic sequences.
+
+    Optional limits are enforced while reading, before an unbounded record join.
+    Defaults preserve reference preparation behavior. check_stable detects source
+    replacement/modification through open-file stat snapshots. Limit failures
+    raise FastaLimitError; format/duplicate failures raise IntegrityError.
+    """
+    seen, current, pieces = set(), None, []
+    length = total = 0
     with Path(path).open(encoding="utf-8") as handle:
-        for line in handle:
+        before = os.fstat(handle.fileno())
+        if max_bytes is not None and before.st_size > max_bytes:
+            raise FastaLimitError("FASTA input exceeds byte limit")
+        line_limit = max(max_sequence_length or 0, max_header_bytes or 0) + 2
+        while True:
+            line = handle.readline(line_limit) if line_limit > 2 else handle.readline()
+            if not line:
+                break
+            total += len(line.encode("utf-8"))
+            if max_bytes is not None and total > max_bytes:
+                raise FastaLimitError("FASTA input exceeds byte limit")
             if line.startswith(">"):
+                if (
+                    max_header_bytes is not None
+                    and len(line.rstrip("\r\n").encode("utf-8")) > max_header_bytes
+                ):
+                    raise FastaLimitError("FASTA header exceeds byte limit")
                 if current is not None:
-                    sequence = "".join(pieces)
-                    if not sequence:
+                    if not pieces:
                         raise IntegrityError(f"Empty sequence: {current}")
-                    yield current, sequence
+                    yield current, "".join(pieces)
                 header = line[1:].strip()
                 if not header:
                     raise IntegrityError("Empty FASTA ID")
                 current = header.split()[0]
                 if current in seen:
                     raise IntegrityError(f"Duplicate FASTA ID: {current}")
+                if max_records is not None and len(seen) >= max_records:
+                    raise FastaLimitError("FASTA query count exceeds limit")
                 seen.add(current)
-                pieces = []
+                pieces, length = [], 0
             else:
                 sequence = line.strip(" \t\r\n\v\f")
                 if not sequence:
                     continue
                 if current is None or not sequence.isascii() or not sequence.isalpha():
                     raise IntegrityError(f"Invalid FASTA sequence near {current}")
+                length += len(sequence)
+                if max_sequence_length is not None and length > max_sequence_length:
+                    raise FastaLimitError(f"Sequence length exceeds limit: {current}")
                 pieces.append(sequence)
-    if current is None or not pieces:
-        raise IntegrityError("Missing or empty final FASTA sequence")
-    yield current, "".join(pieces)
+        if current is None or not pieces:
+            raise IntegrityError("Missing or empty final FASTA sequence")
+        yield current, "".join(pieces)
+        after = os.fstat(handle.fileno())
+        if check_stable:
+
+            def stamp(stat):
+                return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns
+
+            if stamp(before) != stamp(after) or stamp(before) != stamp(
+                Path(path).stat()
+            ):
+                raise IntegrityError("FASTA input changed during validation")
 
 
 @schema_checked
