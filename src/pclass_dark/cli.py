@@ -105,18 +105,7 @@ def setup_data(
 
 @app.command("build-library", context_settings={"help_option_names": ["-h", "--help"]})
 def build_library_command(
-    data_dir: str | None = typer.Option(
-        None, help="Input; default: repository data/setup-data, or bundled/user data."
-    ),
-    output_dir: str | None = typer.Option(
-        None, help="Destination; default: repository data/library, or user cache."
-    ),
     workers: int = typer.Option(8, min=1, help="Bounded CPU target workers."),
-    memory_mib: int = typer.Option(
-        1024, min=64, help="Total numeric workspace budget."
-    ),
-    epsilon: float = typer.Option(1e-8, help="Positive R/D safeguard."),
-    sigma_floor: float = typer.Option(1e-8, help="Positive Gaussian width floor."),
     cluster: Annotated[
         list[str] | None, typer.Option(help="Exact target cluster ID; repeatable.")
     ] = None,
@@ -124,6 +113,14 @@ def build_library_command(
         False, help="Also run five research folds; use --cluster to limit cost."
     ),
     force: bool = typer.Option(False, help="Archive and recompute this library."),
+    clean: bool = typer.Option(
+        False,
+        help=(
+            "Validate the existing library without building, then delete obsolete "
+            "preparations and exclusive results; "
+            "includes superseded rollback archives; preserves Git LFS objects."
+        ),
+    ),
 ) -> None:
     """Build all-C signatures and C/B distributions; optionally research five folds."""
     import logging
@@ -131,6 +128,9 @@ def build_library_command(
     from pclass_dark.library import build_library
 
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+    data_dir = output_dir = None
+    memory_mib = 1024
+    epsilon = sigma_floor = 1e-8
     try:
         result = build_library(
             data_dir,
@@ -142,6 +142,7 @@ def build_library_command(
             cluster_ids=cluster,
             cross_validate=cross_validate,
             force=force,
+            **({"clean": True} if clean else {}),
         )
     except KeyboardInterrupt:
         typer.echo(
@@ -149,8 +150,19 @@ def build_library_command(
         )
         raise typer.Exit(130) from None
     except (ValueError, RuntimeError, OSError) as exc:
+        if getattr(exc, "production_result", None) is not None:
+            typer.echo(
+                f"Production remains valid: {exc.production_result.library_dir}",
+                err=True,
+            )
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
+    if getattr(result, "cleanup", None) is not None:
+        typer.echo(
+            f"Cleanup: removed {len(result.cleanup.removed)} generations, "
+            f"{result.cleanup.logical_bytes_removed} logical bytes; "
+            "superseded rollback archives are eligible; Git LFS objects retained."
+        )
     typer.echo(f"Library: {result.library_dir}")
     if result.relative_dir is not None:
         typer.echo(f"Relative scores: {result.relative_dir}")

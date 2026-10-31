@@ -391,6 +391,7 @@ class RelativeScores:
         Raises ValueError for an unknown ID, IntegrityError for a changed/corrupt
         generation, and OSError for inaccessible files. No query is evaluated.
         """
+        check_cleanup_pending(self.library.source_root)
         if not isinstance(cluster_id, str) or not cluster_id:
             raise ValueError("cluster_id must be a nonempty string")
         with self._lock:
@@ -724,6 +725,7 @@ def _load_relative(path, library, immutable, *, expected_targets=None):
 @schema_checked
 def load_relative_scores(relative_dir, *, library, immutable=False):
     """Validate a companion and expose bounded, read-only empirical evidence."""
+    check_cleanup_pending(library.source_root)
     path = Path(relative_dir).absolute()
     immutable = immutable or library.immutable
     if path != library.source_root / "relative-scores" / path.name:

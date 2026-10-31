@@ -321,7 +321,11 @@ def test_model_failure_no_report_and_snapshot_race(query_library, monkeypatch):
             pass
 
 
-def test_relative_scope_closed_and_pending_markers(query_library):
+@pytest.mark.parametrize("marker", [".cleanup-peer.json", ".cleanup-journal.json"])
+@pytest.mark.parametrize("immutable", [False, True])
+def test_relative_scope_closed_and_pending_markers(query_library, marker, immutable):
+    from pclass_dark.cleanup_types import CleanupRecoveryRequiredError
+
     root, _ = query_library
     pair = load_selected_library(root)
     assert pair.relative.describe()["K0"]["C_n"] == 10
@@ -329,8 +333,9 @@ def test_relative_scope_closed_and_pending_markers(query_library):
         view.evaluate(np.array([0.0]))
     with pytest.raises(RuntimeError, match="closed"):
         view.evaluate(np.array([0.0]))
-    write_json(root / ".cleanup-peer.json", {})
-    with pytest.raises(RuntimeError, match="maintenance"):
+    pair.relative._immutable = immutable
+    write_json(root / marker, {})
+    with pytest.raises(CleanupRecoveryRequiredError, match="Pending cleanup"):
         pair.relative.evaluate("K0", np.array([0.0]))
 
 

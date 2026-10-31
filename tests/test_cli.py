@@ -118,3 +118,46 @@ def test_worker_default_and_serial_override(command, workers, monkeypatch):
     result = runner.invoke(app, arguments)
     assert result.exit_code == 0, result.output
     assert calls == [8 if workers is None else workers]
+
+
+@pytest.mark.parametrize(
+    "option",
+    [
+        "--data-dir",
+        "--output-dir",
+        "--memory-mib",
+        "--epsilon",
+        "--epsion",
+        "--sigma-floor",
+        "--dry-run",
+    ],
+)
+def test_build_removed_options_rejected(option, monkeypatch):
+    def unexpected(*a, **k):
+        pytest.fail("removed option invoked build")
+
+    monkeypatch.setattr("pclass_dark.library.build_library", unexpected)
+    assert option not in runner.invoke(app, ["build-library", "--help"]).stdout
+    result = runner.invoke(app, ["build-library", option])
+    assert result.exit_code == 2
+    assert "No such option" in result.output
+
+
+def test_build_internal_defaults(monkeypatch):
+    from types import SimpleNamespace
+
+    calls = []
+
+    def build(*a, **k):
+        calls.append((a, k))
+        return SimpleNamespace(
+            library_dir="library", relative_dir=None, research_dir=None
+        )
+
+    monkeypatch.setattr("pclass_dark.library.build_library", build)
+    result = runner.invoke(app, ["build-library"])
+    assert result.exit_code == 0, result.output
+    args, kwargs = calls[0]
+    assert args == (None, None)
+    assert kwargs["memory_mib"] == 1024
+    assert kwargs["epsilon"] == kwargs["sigma_floor"] == 1e-8

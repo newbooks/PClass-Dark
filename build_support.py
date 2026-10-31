@@ -196,6 +196,13 @@ def inventory(project):
     return [(source, destination) for destination, source in sorted(result.items())]
 
 
+def _check_cleanup(root):
+    for name in (".cleanup-journal.json", ".cleanup-peer.json"):
+        path = root / name
+        if path.exists() or path.is_symlink():
+            raise RuntimeError(f"Pending cleanup at {root}; recover before packaging")
+
+
 @contextmanager
 def shared_files(project):
     with ExitStack() as stack:
@@ -204,6 +211,7 @@ def shared_files(project):
                 continue
             if any(p.is_symlink() for p in (root, *root.parents)):
                 raise ValueError("Symlink shared artifact root")
+            _check_cleanup(root)
             locks = root / ".locks"
             if locks.is_symlink():
                 raise ValueError("Symlink shared lock directory")
@@ -216,6 +224,9 @@ def shared_files(project):
                 raise RuntimeError(
                     f"Artifact writer active at {root}; retry when it finishes"
                 ) from exc
+        for root in sorted(project / "data" / n for n in ("setup-data", "library")):
+            if root.exists():
+                _check_cleanup(root)
         yield inventory(project)
 
 

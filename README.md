@@ -60,10 +60,10 @@ pclass-dark build-library --workers 8
 
 Both commands default to `--workers 8`; use `--workers 1` for serial execution.
 
-Explicit `--data-dir`/`--output-dir` options override the defaults; explicit
-relative paths still use your current directory. Clearing `work/` no longer
+`setup-data` supports explicit path options; `build-library` uses the default
+paths. Python APIs accept custom paths; relative paths use your current directory. Clearing `work/` no longer
 removes the shared artifacts. Existing custom `work/` outputs are not moved
-implicitly; pass their paths explicitly if you want to keep using them.
+implicitly; use the Python API to keep building libraries at custom paths.
 
 Completed shared artifacts are tracked with Git LFS. `python -m build` includes
 only the selected complete bundles in the wheel and source archive, validating
@@ -167,7 +167,7 @@ until rebuilt. See [reference instructions](docs/reference-data.md).
 
 ```bash
 # Default: one signature fitted using all cluster members, plus C/B distributions.
-pclass-dark build-library --workers 4 --memory-mib 4096
+pclass-dark build-library --workers 4
 
 # Build a smaller scope; backgrounds still use all original source clusters.
 pclass-dark build-library --cluster cluster_0945
@@ -286,6 +286,70 @@ Private checkpoints and model weights are excluded. See
 [SPEC-0004](docs/specs/0004-build-library.md),
 [SPEC-0005](docs/specs/0005-relative-score-distributions.md), and the
 [score-interpretation notes](docs/research/notes/2026-10-27-relative-score-reasoning.md).
+
+## Clean Obsolete Dataset Generations
+
+Cleanup validates an existing full library and never builds missing results.
+The CLI uses default data/library paths and internal numerical settings
+(1024 MiB workspace, epsilon and sigma floor both `1e-8`). Custom paths and
+settings remain available through the Python API.
+
+```bash
+# Validate the existing library, then permanently remove eligible old generations.
+pclass-dark build-library --clean
+```
+
+`--clean` requires an existing complete library; missing or invalid selections fail
+without building. It rejects `--force`, `--cross-validate`, and `--cluster`.
+`--clean` removes obsolete preparations and their exclusive completed signatures,
+C/B distributions, embedding generations and checkpoint caches. Shared embeddings,
+the selected pipeline, current-preparation experiments and resumable work are
+retained. Rollback/migration backups under `.archives/` become obsolete once the
+selected replacement is fully validated and are eligible for cleanup; their
+references no longer pin old datasets. Legacy/migration caches and ambiguous data are protected;
+unbounded or corrupt ownership blocks cleanup with an error. Python
+`plan_cleanup()` provides a preview with
+removal/protection reasons and logical byte estimates. It uses the current
+validated selections, regardless of proposed fitting settings.
+
+Do not combine cleanup with `--cluster`, `--force`, or
+`--cross-validate`. Normal builds continue to retain data. A cleanup failure does
+not invalidate an already published library. If interrupted cleanup leaves a
+journal, rerun `build-library --clean` to
+recover before validation. Other commands and packaging refuse pending cleanup.
+POSIX descriptor-relative IO is required for deletion/recovery. Planning caps are
+64 MiB per JSON document (coordinator journal or inventory sidecar) and
+1,000,000 entries / 512 MiB serialized inventory per tree. There is no aggregate
+entry or inventory-size cap across deletion candidates. Inventories and hard-link
+accounting use temporary disk storage; execution publishes bounded recovery
+sidecars before detaching any data. After commit, cleanup directly removes
+obsolete directory trees without relinking, re-hashing their contents or syncing
+each file deletion. Interrupted committed removal resumes from remaining trees.
+Temporary/recovery disk space scales with the
+scanned inventory; a per-tree/document cap or disk-space failure stops safely.
+
+Only files in the supplied writable setup/library roots are considered. Cleanup
+does not discover external consumers. Keep old experiments elsewhere if needed.
+Tracked deletions remain for Git review; `.git/lfs` objects, Git history and remote
+copies are not removed. Retained hard links can also retain disk blocks, so
+estimated reclaimed space can differ from logical size.
+
+```python
+from pclass_dark.data_cleanup import plan_cleanup, execute_cleanup, recover_cleanup
+from pclass_dark.library import build_library
+
+plan = plan_cleanup("data/setup-data", "data/library")
+print(plan.to_dict())
+# Execute only this unchanged, freshly revalidated plan:
+result = execute_cleanup(plan)
+# Or integrate cleanup with a successful full build:
+cleaned = build_library("data/setup-data", "data/library", clean=True)
+# Recovery of pending cleanup is also importable:
+recover_cleanup("data/setup-data", "data/library")
+```
+
+See [SPEC-0013](docs/specs/0013-build-library-clean.md) for dependency, journal and
+retention contracts. No model or profunc source data is needed for cleanup.
 
 ## Explain a Signature
 

@@ -641,3 +641,18 @@ is skipped because no compatible GPU is available. Ruff lint/format, local links
 and scoped whitespace checks pass. Full regression passed 290 tests with two opt-in skips; the final focused
 run passed 56 tests after additional edge cases and validation hardening. See the
 [progress log](../research/progress.md) for commands, timing and limitations. These are engineering checks, not held-out classification performance.
+
+
+### 2026-10-30 — Integration with main cleanup implementation
+
+Merged the SPEC-0013 cleanup implementation into the inference branch. Inference
+uses the shared cleanup guard and propagates `CleanupRecoveryRequiredError`,
+including its recovery instructions. The private cleanup transaction bypass remains
+scoped to its owning process/thread and both roots. Relative evidence retains the
+inference scoped evaluator and checks pending cleanup and generation identity
+before evaluation. Both features' scientific calculations remain unchanged.
+
+Integration validation: inference, relative-score, cleanup and CLI suites passed
+162 tests; the expanded shared-cleanup marker regression passed all four cases.
+Ruff lint/format and staged whitespace checks passed. See the progress log for
+commands and timings.
