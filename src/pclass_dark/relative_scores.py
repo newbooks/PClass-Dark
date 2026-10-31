@@ -8,7 +8,7 @@ import shutil
 import threading
 import time
 from collections import OrderedDict
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,6 +17,7 @@ import numpy as np
 from . import __version__
 from .artifacts import (
     IntegrityError,
+    check_cleanup_pending,
     file_record,
     identity,
     read_json,
@@ -343,6 +344,34 @@ class RelativeEvidence:
     scientific_payload_id: str
 
 
+class RelativeEvaluator:
+    """A lazy reference view valid only inside RelativeScores.for_cluster()."""
+
+    def __init__(self, owner, cluster_id, metadata):
+        self._owner, self._cluster, self._meta = owner, cluster_id, metadata
+        self._arrays = None
+        self._active = True
+
+    def evaluate(self, log_scores):
+        if not self._active:
+            raise RuntimeError("Relative evaluator is closed")
+        values = np.asarray(log_scores)
+        if (
+            values.ndim != 1
+            or values.dtype.kind != "f"
+            or not np.isfinite(values).all()
+        ):
+            raise ValueError("Expected finite floating one-dimensional log scores")
+        values = values.astype(np.float64, copy=False)
+        if self._arrays is None:
+            self._arrays = self._owner._arrays_for(self._cluster, self._meta)
+        return _empirical_evidence(values, self._arrays, self._meta)
+
+    def close(self):
+        self._active = False
+        self._arrays = self._owner = None
+
+
 class RelativeScores:
     def __init__(self, path, library, manifest, metadata, immutable):
         self._layout = manifest.get("cluster_directory_layout", "hex-v1")
@@ -373,14 +402,7 @@ class RelativeScores:
                 if self._immutable
                 else transaction_guard(self.library.source_root)
             ):
-                if (
-                    sha256(self.path / "manifest.json") != self._digest
-                    or sha256(self.library.source_path / "manifest.json")
-                    != self.library.manifest_sha256
-                ):
-                    raise IntegrityError(
-                        "Relative generation changed; reload the selected pair"
-                    )
+                self._check_generation()
                 summary = {
                     "status": meta["status"],
                     "reason": meta["reason"],
@@ -401,42 +423,90 @@ class RelativeScores:
                         }
                 return freeze(summary)
 
-    def evaluate(self, cluster_id, log_scores):
-        with self._lock:
-            return self._evaluate(cluster_id, log_scores)
+    @property
+    def manifest_sha256(self):
+        """Captured companion manifest identity (read-only)."""
+        return self._digest
 
-    def _evaluate(self, cluster_id, log_scores):
-        values = np.asarray(log_scores)
-        if (
-            values.ndim != 1
-            or values.dtype.kind != "f"
-            or not np.isfinite(values).all()
-        ):
-            raise ValueError("Expected finite floating one-dimensional log scores")
-        values = values.astype(np.float64, copy=False)
-        meta = self._metadata.get(cluster_id)
-        if meta is None or meta["status"] != "ok":
-            raise UnavailableDistributionError(
-                f"Unavailable relative scores: {cluster_id}"
+    def _check_generation(self):
+        check_cleanup_pending(self.library.source_root)
+        try:
+            valid = (
+                sha256(self.path / "manifest.json") == self._digest
+                and sha256(self.library.source_path / "manifest.json")
+                == self.library.manifest_sha256
             )
+        except OSError as exc:
+            raise IntegrityError(
+                "Relative generation removed; reload the selected pair"
+            ) from exc
+        if not valid:
+            raise IntegrityError(
+                "Relative generation changed; reload the selected pair"
+            )
+
+    def describe(self):
+        """Return frozen target status/count metadata, without reading arrays."""
+        with (
+            self._lock,
+            (
+                nullcontext()
+                if self._immutable
+                else transaction_guard(self.library.source_root)
+            ),
+        ):
+            self._check_generation()
+            keys = (
+                "status",
+                "reason",
+                "C_n",
+                "B_n",
+                "final_fit_id",
+                "scientific_payload_id",
+                "representation_contract_id",
+            )
+            return freeze(
+                {c: {k: m[k] for k in keys} for c, m in self._metadata.items()}
+            )
+
+    @contextmanager
+    def for_cluster(self, cluster_id):
+        """Pin one lazy C/B pair under its guard; closed views cannot be reused.
+
+        Raises UnavailableDistributionError for unsupported/unknown targets,
+        IntegrityError for changed sources and SetupBusyError for contention.
+        No arrays are materialized unless evaluate() is called.
+        """
+        with (
+            self._lock,
+            (
+                nullcontext()
+                if self._immutable
+                else transaction_guard(self.library.source_root)
+            ),
+        ):
+            self._check_generation()
+            meta = self._metadata.get(cluster_id)
+            if meta is None or meta["status"] != "ok":
+                raise UnavailableDistributionError(
+                    f"Unavailable relative scores: {cluster_id}"
+                )
+            view = RelativeEvaluator(self, cluster_id, meta)
+            try:
+                yield view
+            finally:
+                view.close()
+
+    def evaluate(self, cluster_id, log_scores):
+        with self.for_cluster(cluster_id) as view:
+            return view.evaluate(log_scores)
+
+    def _arrays_for(self, cluster_id, meta):
         if cluster_id in self._cache:
             arrays = self._cache.pop(cluster_id)
             self._cache[cluster_id] = arrays
         else:
-            with (
-                nullcontext()
-                if self._immutable
-                else transaction_guard(self.library.source_root)
-            ):
-                if (
-                    sha256(self.path / "manifest.json") != self._digest
-                    or sha256(self.library.source_path / "manifest.json")
-                    != self.library.manifest_sha256
-                ):
-                    raise IntegrityError(
-                        "Relative generation changed; reload the selected pair"
-                    )
-                arrays = _read_arrays(self.path, meta, layout=self._layout)
+            arrays = _read_arrays(self.path, meta, layout=self._layout)
             size = sum(a.nbytes for a in arrays.values())
             while self._cache and (
                 len(self._cache) >= 16 or self._cache_bytes + size > 64 * 2**20
@@ -446,29 +516,34 @@ class RelativeScores:
             if size <= 64 * 2**20:
                 self._cache[cluster_id] = arrays
                 self._cache_bytes += size
-        c, b = arrays["C"], arrays["B"]
-        ge = len(b) - np.searchsorted(b, values, side="left")
-        tail = (1 + ge) / (len(b) + 1)
-        outputs = [
-            tail,
-            np.searchsorted(b, values, side="right") / len(b),
-            -np.log10(tail),
-            np.searchsorted(c, values, side="right") / len(c),
-            ge,
-        ]
-        for array in outputs:
-            array.flags.writeable = False
-        return RelativeEvidence(
-            *outputs,
-            len(c),
-            len(b),
-            "ok",
-            meta["C_role"],
-            meta["B_role"],
-            False,
-            meta["final_fit_id"],
-            meta["scientific_payload_id"],
-        )
+        return arrays
+
+
+def _empirical_evidence(values, arrays, meta):
+    """Existing inclusive empirical formulas, shared by single and scoped calls."""
+    c, b = arrays["C"], arrays["B"]
+    ge = len(b) - np.searchsorted(b, values, side="left")
+    tail = (1 + ge) / (len(b) + 1)
+    outputs = [
+        tail,
+        np.searchsorted(b, values, side="right") / len(b),
+        -np.log10(tail),
+        np.searchsorted(c, values, side="right") / len(c),
+        ge,
+    ]
+    for array in outputs:
+        array.flags.writeable = False
+    return RelativeEvidence(
+        *outputs,
+        len(c),
+        len(b),
+        "ok",
+        meta["C_role"],
+        meta["B_role"],
+        False,
+        meta["final_fit_id"],
+        meta["scientific_payload_id"],
+    )
 
 
 def _score_quantiles(array):

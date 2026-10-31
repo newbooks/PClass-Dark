@@ -26,7 +26,7 @@ The CLI uses a command/subcommand hierarchy: `pclass-dark <command> [options]`.
 Use `-h` or `--help` after any subcommand to show its options.
 
 `setup-data` prepares references and frozen PLM embeddings. `build-library`
-discovers and evaluates cluster signatures. The same entry
+discovers and evaluates cluster signatures. `infer` reports accepted query matches. The same entry
 point is available through `python -m pclass_dark`.
 
 Reusable functionality lives in the importable `pclass_dark` package. Data
@@ -202,15 +202,51 @@ These are empirical comparisons, not membership probabilities or density-based
 typicality. Final C is in-sample, and B was also used during selection. A high C
 percentile can occur above every observed member score. Background evidence and
 member compatibility should be interpreted together; automatic assignment,
-combined ranking/calibration, and query N/C aggregation remain future work.
+combined calibration remain future work.
 
-Future top-cluster query results will use **A — Acceptance** (Yes/No),
-**B — Background score ↓** (background upper-tail percentage; lower is better),
-and **C — Cluster score ↑** (member percentile; higher score rank among members).
-The planned initial ranking orders accepted clusters by ascending B and displays
-C as supporting evidence. These are not membership probabilities. See
-[SPEC-0007](docs/specs/0007-query-ranking-presentation.md) for the planned
-presentation and tie handling; this ranking is not yet implemented.
+`infer` reports only **A — Acceptance = Yes**, **B — Background score ↓**
+(background upper-tail percentage), and **C — Cluster score ↑** (member
+percentile). Accepted clusters are sorted by ascending B, then cluster ID.
+Queries longer than 1,022 residues use N/C terminal windows; the middle of longer
+queries is not examined. Each cluster appears once per query, using the accepted
+window with the lowest B and C from that same window. JSON retains all accepted
+supporting windows. These values are not membership probabilities; interpretation
+belongs to the user. See [SPEC-0007](docs/specs/0007-query-ranking-presentation.md).
+
+```bash
+pip install '.[embeddings]'
+pclass-dark infer --seq ACDEFGHIKLMNPQRSTVWY
+pclass-dark infer --fasta queries.fasta --device cpu --workers 8
+pclass-dark infer --fasta queries.fasta --format json > matches.json
+```
+
+Provide exactly one of `--seq` or `--fasta`; FASTA supports multiple queries.
+Sequences must use uppercase reference residues (`ACDEFGHIKLMNPQRSTVWYXBZUO`).
+Reports go to stdout and diagnostics to stderr. Embedding prefers GPU with CPU
+fallback during initialization; explicit `--device cpu` is available. CPU threads
+default to eight, clamped to available CPUs. `--offline` requires cached model
+assets. Inference uses the selected production/C/B library and needs no reference
+FASTA or prepared-data directory. It does not rebuild signatures or distributions.
+Model batches default to 8 windows and scoring blocks to 4,096. Temporary storage
+is limited to 2 GiB; `--memory-mib` bounds scoring workspace, excluding the model
+and Python/runtime overhead. Split large inputs or reduce scoring blocks as needed.
+
+```python
+from pclass_dark.inference import QuerySequence, infer_queries, write_inference_report
+import sys
+
+with infer_queries([QuerySequence("my-protein", "ACDEFGHIKLMNPQRSTVWY")]) as run:
+    write_inference_report(run, sys.stdout, format="json")
+# Alternatively iterate run inside the context for frozen QueryResult records.
+```
+
+Construction is lazy; entering the context validates and computes the entire run.
+Results then stream from private working storage, which is removed on exit.
+`read_query_fasta`, `make_query_windows`, and `score_query_windows` provide
+importable input, windowing and precomputed-embedding interfaces. The report
+writer requires a fresh unconsumed session; Python callers own their output stream.
+The CLI spools a completed report before writing stdout, so inference failures
+produce no partial report.
 
 ```python
 from pclass_dark.library import build_library

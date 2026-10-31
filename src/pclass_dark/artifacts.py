@@ -193,6 +193,17 @@ def locked(root, key):
 _transaction_context = threading.local()
 
 
+def check_cleanup_pending(root):
+    """Read-only refusal of pending artifact maintenance; never recover implicitly."""
+    root = Path(root)
+    for name in (".cleanup-journal.json", ".cleanup-peer.json"):
+        path = root / name
+        if path.exists() or path.is_symlink():
+            raise SetupBusyError(
+                f"Pending artifact maintenance at {root}; recover it before inference"
+            )
+
+
 @contextmanager
 def transaction_guard(root):
     """Own a working root until selection commits or rollback finishes.

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from pclass_dark.artifacts import IntegrityError, identity, write_json
+from pclass_dark.artifacts import IntegrityError, identity, sha256, write_json
 from pclass_dark.library_runtime import representation_contract
 from pclass_dark.relative_scores import (
     RelativeScores,
@@ -20,7 +20,11 @@ def toy(tmp_path, c=(-2.0, -1.0), b=(-5.0, -3.0, -3.0, -1.0)):
     write_json(tmp_path / "manifest.json", {"test": True})
     reference = RelativeScores(
         tmp_path,
-        SimpleNamespace(),
+        SimpleNamespace(
+            source_root=tmp_path,
+            source_path=tmp_path,
+            manifest_sha256=sha256(tmp_path / "manifest.json"),
+        ),
         {"id": "fixture"},
         {
             "K": {

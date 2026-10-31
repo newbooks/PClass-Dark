@@ -29,7 +29,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Optional for setup-data inference; completed artifacts need no PLM stack.
+# Optional for setup-data embedding generation and infer query embedding.
 embeddings = [
     "torch>=2.6,<3",
     "transformers>=4.40,<6",

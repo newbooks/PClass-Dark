@@ -1,5 +1,6 @@
 """Command-line interface; scientific functionality belongs in library modules."""
 
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -213,3 +214,97 @@ def explain_signature_command(
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
     typer.echo(rendered, nl=False)
+
+
+@app.command("infer", context_settings={"help_option_names": ["-h", "--help"]})
+def infer_command(
+    seq: str | None = typer.Option(None, help="One uppercase protein sequence."),
+    fasta: Annotated[
+        Path | None,
+        typer.Option(
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Uncompressed FASTA file; multiple queries allowed.",
+        ),
+    ] = None,
+    library_dir: str | None = typer.Option(
+        None, help="Selected production/C/B library root."
+    ),
+    device: str = typer.Option(
+        "auto", help="auto (GPU first, CPU fallback), cpu, cuda, or cuda:<index>."
+    ),
+    workers: int = typer.Option(8, min=1, help="CPU thread budget; one model process."),
+    batch_size: int = typer.Option(8, min=1, max=64, help="Windows per model forward."),
+    score_batch_size: int = typer.Option(
+        4096, min=1, max=65536, help="Windows per CPU scoring block."
+    ),
+    memory_mib: int = typer.Option(
+        1024,
+        min=128,
+        help="Array/SQLite workspace MiB; excludes model/runtime/Python records.",
+    ),
+    offline: bool = typer.Option(
+        False, help="Require cached pinned model assets; no network."
+    ),
+    format: str = typer.Option("text", help="text or json; report goes to stdout."),
+) -> None:
+    """Report only A=Yes clusters and paired B/C evidence, combined per query.
+
+    Users redirect stdout to save reports. Caps: 1 GiB input, 100,000 queries,
+    1,000,000 residues/record, 4 KiB FASTA headers, 2 GiB temporary storage.
+    """
+    import logging
+    import re
+    import shutil
+    import sys
+    import tempfile
+
+    if (seq is None) == (fasta is None):
+        raise typer.BadParameter("Provide exactly one of --seq or --fasta")
+    if format not in {"text", "json"}:
+        raise typer.BadParameter("Use text or json", param_hint="--format")
+    if not re.fullmatch(r"auto|cpu|cuda(?::[0-9]+)?", device):
+        raise typer.BadParameter(
+            "Use auto, cpu, cuda, or cuda:<index>", param_hint="--device"
+        )
+    if fasta is not None and (str(fasta) == "-" or not fasta.is_file()):
+        raise typer.BadParameter(
+            "Use a regular FASTA file, not stdin", param_hint="--fasta"
+        )
+    from .inference import (
+        QuerySequence,
+        infer_queries,
+        read_query_fasta,
+        write_inference_report,
+    )
+
+    logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+    queries = (
+        (QuerySequence("query", seq),) if seq is not None else read_query_fasta(fasta)
+    )
+    try:
+        with tempfile.TemporaryFile(mode="w+", encoding="utf-8", newline="") as report:
+            with infer_queries(
+                queries,
+                library_dir=library_dir,
+                device=device,
+                workers=workers,
+                batch_size=batch_size,
+                score_batch_size=score_batch_size,
+                memory_mib=memory_mib,
+                offline=offline,
+            ) as run:
+                write_inference_report(run, report, format=format)
+            report.seek(0)
+            shutil.copyfileobj(report, sys.stdout, length=65536)
+            sys.stdout.flush()
+    except BrokenPipeError:
+        raise
+    except KeyboardInterrupt:
+        typer.echo("Inference interrupted; no completed report published.", err=True)
+        raise typer.Exit(130) from None
+    except (ValueError, OSError, RuntimeError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
