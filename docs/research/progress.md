@@ -1612,3 +1612,181 @@ seconds. `python -m ruff check src tests`, formatting checks for the resolved
 Python files and regression test, and staged whitespace checks passed. These are
 engineering checks; no biological experiment or GPU evaluation was performed.
 All conflicts resolved; merge staged for review, without commit or push.
+
+
+### 2026-10-31 — Draft external sequence collection specification
+
+Drafted [SPEC-0014](../specs/0014-get-external-sequences.md) for the requested
+`scripts/get-external-seq.py`. Inspected surviving PClass external-audit filtering
+and retrieval, current PClass-Dark reference resolution and profunc graph/Swiss-Prot
+parsers. The draft retains the exact experimental evidence allowlist and all
+eligible accessions, excludes the complete local Swiss-Prot accession snapshot,
+and replaces PClass's duplicate term union with latest-qualifying-GAF-date
+selection (lexicographic tie break). Proposed FASTA headers preserve winner-only
+MF terms and date; `external_filtered.txt` distinguishes annotation, accession
+and retrieved-sequence counts. Includes disk-backed state, bounded retrieval,
+provenance, resumability, publication recovery and test expectations. Updated the
+spec index. Documentation only: no downloader implemented or acquisition run.
+Validation: local Markdown links and scoped whitespace checks passed.
+
+
+### 2026-10-31 — Make external sequence specification implementation-ready
+
+Revised [SPEC-0014](../specs/0014-get-external-sequences.md) against actual
+profunc graph schema/loading, complete-reference FASTA resolution and existing
+CLI/package conventions. Made optional Python/CLI inputs consistent, added the
+manifest-bound source-FASTA override, fixed the exact accession/date/qualifier
+contracts, and specified batched UniProt stream retrieval, retry/timeouts and
+release consistency. Defined SQLite aggregation, count reconciliation, cache
+identity/resume/refresh, rollback publication and output ownership. Removed the
+circular report-hash requirement and distinguished deterministic FASTA/stage
+counts from per-run timestamp metadata. Added an independent 11-row acceptance
+fixture, explicit winner-only MF retention, exceptions, script/API/CLI behavior
+and completion tests. Index marks the specification implementation-ready, not
+implemented. No script or network acquisition was run.
+
+Validation: independently checked fixture counts `11,10,9,8,7,6` and five
+remaining distinct parents at each annotation filter, reviewed final retrieval/
+rejection/deduplication arithmetic, checked local Markdown links/fence balance
+and scoped whitespace. These are documentation checks, not passing runtime
+implementation tests.
+
+
+### 2026-10-31 — Implement external sequence collection (SPEC-0014)
+
+Implemented [SPEC-0014](../specs/0014-get-external-sequences.md) on `issue#26`
+from revision `122c7886` (uncommitted implementation). Added
+`scripts/get-external-seq.py`, the `pclass-dark get-external-seq` command and
+importable `collect_external_sequences` API. Scientific filtering is streamed
+into SQLite, using the explicit experimental evidence allowlist and local MF
+nodes, parent normalization and complete local Swiss-Prot accession exclusion.
+Exact sequence duplicates retain the newest qualifying annotation's accession,
+lexical ties and only that winner's terms. No sampling, sequence-to-Swiss-Prot
+exclusion, model computation or new scientific threshold was introduced.
+
+Added bounded request threads, retry/rate-limit handling, validated release
+headers, source/cache identities, batch resume, cache registration recovery,
+writer locking and durable rollback/commit of the two cwd outputs. Final file
+ownership intentionally protects manual changes even with refresh; the spec and
+[operation/API documentation](../external-sequences.md) now state that
+behavior explicitly. Added requests as a direct dependency, source-distribution
+script/docs inclusion, README examples and the synchronized spec index/status.
+
+Early fixture validation exposed the actual profunc graph schema `"2.0"` (the
+initial test fixture used schema 1) and an independently written report golden
+fixture used a 31-character first column instead of the required 32. Corrected
+those fixtures, then expanded failure, resume and publication tests, including
+rollback after the refreshed FASTA actually changes winner. Tests independently
+check exact stage arithmetic, rejected-newer annotation behavior, winner-only GO
+terms, ties/order/thread consistency, deliberate hash collisions, malformed
+inputs, non-ASCII residue handling, missing/invalid sequences, unknown schemas,
+queue bounds, cache corruption, missing backups, release changes and CLI exits.
+
+Validation (CPU; synthetic fixtures/mocked HTTP unless identified below):
+
+- Broad integration baseline: `python -m pytest -q` — **432 passed, 2 skipped**,
+  612.37 s; `/tmp/pclass-dark-spec0014-full-tests.log`. Two opt-in tests skipped;
+  one existing Torch warning about `AMD_SERIALIZE_KERNEL=3` did not fail tests.
+- Final focused run after new-feature hardening: `python -m pytest -q
+  tests/test_external_sequences.py tests/test_cli.py` — **68 passed**, 10.99 s;
+  `/tmp/pclass-dark-spec0014-focused-tests.log`. This includes 49 external-sequence
+  cases and existing CLI integration coverage.
+- `python -m ruff check src tests scripts/get-external-seq.py`, changed-file
+  formatting, local Markdown links/fence balance and `git diff --check` passed.
+- `python /tmp/pclass-dark-spec0014-package-smoke.py` built clean code-only wheel
+  and sdist in an isolated temporary project (no source data/model artifacts,
+  `python -m build --no-isolation`). Inspected requests metadata, module and
+  sdist script inclusion. Log: `/tmp/pclass-dark-spec0014-package-smoke.log`.
+- Real default reference adapter: **10041 MF nodes; 575748 Swiss-Prot accessions**.
+  Resolved graph at `../profunc/src/profunc/library/default/bundle/dataset/go_graph.pkl`
+  and FASTA at `../profunc/datasets/20260911T184540Z-d7e84090016d/accession.fasta`;
+  both verified against their source contracts.
+- Real historical-source parser smoke: first **10000 annotation rows** plus
+  headers from `../PClass/work_plm1/goa_uniprot_all.gaf.gz` (11664243116 compressed
+  bytes), streamed into a temporary gzip/SQLite with the above references.
+  Uncompressed prefix SHA-256:
+  `366d8d4857387f52a44460f64f732717e4349b95ccbc3886a4a98aa51621bc96`.
+  Annotation-stage counts: **10000, 10000, 9999, 4640, 10, 10**; distinct parents
+  after DB/no-NOT/MF/evidence/graph: **1683, 1683, 1383, 4, 4**; **2** eligible
+  parents remained after local Swiss-Prot exclusion. Temporary artifacts removed.
+- Live transport smoke: one GET to UniProt `/uniprotkb/stream` with
+  `query=(accession:P69905)`, `format=fasta`, `includeIsoform=false`, retries 0.
+  Returned one canonical record, **142 residues**, release **2026_03**, release
+  date **02-September-2026**; required headers and FASTA parser passed. Only
+  temporary files were used; no full-source acquisition was started.
+
+These are engineering/source-contract checks, not held-out performance or a
+complete external dataset build. Large-source runtime/peak disk use remains an
+estimate; historical run directories remain retained until manually managed.
+Next operational step is an explicitly chosen full acquisition using the new
+command in the desired output directory. No commit or push was made.
+
+
+### 2026-10-31 — Remove external-sequence package subcommand
+
+At the user's request, removed `pclass-dark get-external-seq` from the root CLI.
+Moved the standalone Typer adapter to `external_sequence_cli.py`; the requested
+`scripts/get-external-seq.py` and Python API remain available independently of
+that registry. Updated README, operation documentation and SPEC-0014. Earlier
+command examples in this chronological log describe the superseded interface.
+Scientific filtering and artifacts are unchanged.
+
+Validation: `python -m pytest -q tests/test_external_sequences.py tests/test_cli.py`
+— **69 passed**, 10.73 s, including explicit root-command rejection, standalone
+script help, cwd output placement and interruption handling. Ruff lint/format,
+local Markdown link checks and whitespace checks passed. No commit or push.
+
+
+### 2026-10-31 — Readable GOA download progress
+
+Updated SPEC-0014 and GOA progress logging to show comma-separated decimal KB
+(1000 bytes), total KB and one-decimal completion percentage from Content-Length.
+Missing/invalid totals or HTTP content decoding produce an explicit percentage-
+unavailable message instead. Retained 128 MiB updates and added final EOF
+progress, including short downloads. Already running processes retain their
+loaded logging implementation; no acquisition was restarted.
+
+Validation: `python -m pytest -q tests/test_external_sequences.py` — **57 passed**,
+10.20 s, including independently calculated 65.7% progress for the observed
+18790481920/28598433883 byte counts, unknown-total fallbacks and EOF 100% logging.
+Ruff lint/format and whitespace checks passed. No commit or push.
+
+
+### 2026-11-01 — Handle non-protein GOA IDs and readable parse counts
+
+Investigated the actual failed parse in `work-unknown/`. Source GOA gzip is
+28598433883 bytes, cached SHA-256
+`4da0481d560cd09a870ab89283014e712f6bf10b8bafcdce916134eb1f13be9a`;
+embedded headers report GAF 2.2, generation 2026-10-11 19:22 and GO release
+2026-09-27. A read-only sequential gzip scan captured the first three CPX rows.
+At physical line **648144824**, the source has **17 columns**, DB `UniProtKB`,
+object `CPX-10041`, symbol `il18-il18r1_human`, type `protein_complex`, aspect
+`P`, evidence `IEA`, date `20261009`. Adjacent IDs are `CPX-1014` and `CPX-10161`.
+This is a well-formed complex annotation rather than a broken column layout;
+protein-isoform normalization reduced its ID to `CPX` before the old strict
+validator aborted ahead of MF/evidence filtering. Added the captured rows and
+source attribution in `tests/fixtures/goa_nonprotein_ids.gaf`.
+
+Updated [SPEC-0014](../specs/0014-get-external-sequences.md) before the fix, then
+made invalid/non-protein accession rows a counted rejection instead of a fatal
+GAF error. Metadata retains a total and up to ten raw-ID/line examples, warnings
+are bounded, and final report/manifest include `invalid_accession_rows`. Input
+counts include rejected rows; downstream normalized-protein counts exclude them.
+Header/structural/date/gzip validation and local-reference/sequence-ID validation
+remain strict. Valid protein annotation policy is unchanged. Parse progress and
+GAF diagnostic line numbers now use commas, e.g.
+`Parsed 648,000,000 GAF rows; 582,876 graph-qualified rows`.
+
+Validation: `python -m pytest -q tests/test_external_sequences.py tests/test_cli.py`
+— **85 passed**, 13.33 s (`/tmp/pclass-dark-gaf-invalid-accessions-tests.log`).
+Covers malformed IDs/isoform suffixes, bounded warnings, actual complex records,
+exact stage counts, comma formatting, strict reference validation and restarting
+a legacy failed parse with a registered cached download and committed partial
+SQLite state. After adding fixture source attribution, its focused regression
+passed again (**1 passed**, 65 deselected, 0.43 s). Ruff lint/format, local links
+and whitespace checks passed.
+
+The actual user acquisition artifacts and failed run state were not modified or
+restarted. Repeating the same command without refresh reuses the downloaded GAF;
+incomplete GAF parsing restarts from the beginning by design. Full-source
+reprocessing was not performed. No commit or push.
