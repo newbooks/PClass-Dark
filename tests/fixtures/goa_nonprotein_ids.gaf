@@ -1,0 +1,6 @@
+!gaf-version: 2.2
+! Source URL: https://ftp.ebi.ac.uk/pub/databases/GO/goa/UNIPROT/goa_uniprot_all.gaf.gz
+! Source: first CPX rows at lines 648144824-648144826 of local GOA snapshot
+UniProtKB	CPX-10041	il18-il18r1_human	involved_in	GO:0035655	GO_REF:0000108	IEA	GO:0042008	P	Interleukin-18 receptor-ligand complex	IL18:IL18R1:IL18RAP|IL1F4-IL18R1-IL18RAP|IGIF-IL1RRP-IL1R7	protein_complex	taxon:9606	20261009	GOC		
+UniProtKB	CPX-1014	tenascin-x_human	involved_in	GO:0007160	GO_REF:0000108	IEA	GO:0098639	P	Tenascin-X complex	TNXB trimer|Tenascin X complex|TNX complex|TN-X complex|Flexilin complex	protein_complex	taxon:9606	20261009	GOC		
+UniProtKB	CPX-10161	il16_cd4_human	involved_in	GO:0019221	GO_REF:0000108	IEA	GO:0042012	P	Interleukin-16 receptor-ligand complex	IL16:CD4	protein_complex	taxon:9606	20261009	GOC		

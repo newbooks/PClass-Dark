@@ -434,6 +434,23 @@ rows = listing.to_dict()["rows"]
 See [SPEC-0009](docs/specs/0009-list-signature-summaries.md) for the schema and
 summary validation scope.
 
+## Collect External Sequences
+
+```bash
+# Run in the desired output directory, with PClass-Dark installed.
+python /path/to/PClass-Dark/scripts/get-external-seq.py
+```
+
+Collect all experimentally annotated GO MF accessions outside the local
+Swiss-Prot accession reference, retrieve full sequences and deduplicate by the
+latest qualifying annotation date. Outputs in cwd are `external_sequences.fasta`
+(with winner-only MF terms/date in headers) and the aligned stage-count report
+`external_filtered.txt`. Default inputs use profunc's validated graph and complete
+source FASTA. Downloads/state are cached; use `--refresh` for a new generation.
+Historical GOA downloads are about 12 GB; allow roughly 50 GB free for processing.
+See [external sequence collection](docs/external-sequences.md) for explicit inputs,
+Python API, resume behavior, provenance and limitations.
+
 ## Motivation
 
 PLM embeddings encode multiple properties of protein sequences. A distance computed across the full representation may dilute a functional signal carried by only a subset of dimensions. The dimensions most informative for one function may also differ from those informative for another.

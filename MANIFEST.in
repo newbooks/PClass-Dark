@@ -2,3 +2,6 @@ include build_support.py
 include data/README.md
 
 include scripts/migrate_library_paths.py
+
+include scripts/get-external-seq.py
+include docs/external-sequences.md

@@ -24,6 +24,7 @@ dependencies = [
     "scipy>=1.10",
     "typer>=0.16",
     "rich>=13.8.0",
+    "requests>=2.32,<3",
     "filelock>=3.16,<4",
     "threadpoolctl>=3.2,<4",
 ]
