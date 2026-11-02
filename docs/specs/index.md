@@ -21,3 +21,5 @@
 - [0013: Build-library cleanup](0013-build-library-clean.md) — implemented: validation-only `--clean` and Python preview (never builds missing results), disk-backed planning/execution with bounded recovery sidecars and direct postcommit removal, schema-aware retirement of superseded datasets/rollback archives, shared-input protection and recoverable POSIX deletion; full regression and fault-injection acceptance validated.
 
 - [0014: External UniProt sequences](0014-get-external-sequences.md) — implemented: experimental GO MF filtering, complete local Swiss-Prot exclusion, latest-annotation sequence deduplication, bounded retrieval/resume, cwd FASTA/count report and recoverable publication; regression and small real-source/API checks passed, full acquisition not run.
+
+- [0015: External inference comparison](0015-evaluate-external.md) — implemented: executable comparison script and Python API, existing classifier commands with no extra evaluator dependencies, bounded collection, retained raw reports, top-neighbor/Lin-AMB TSV, offline rescoring and recoverable publication; fixture tests and local profunc preflight passed, full inference untested.

@@ -5,3 +5,6 @@ include scripts/migrate_library_paths.py
 
 include scripts/get-external-seq.py
 include docs/external-sequences.md
+
+include scripts/evaluate_external.py
+include docs/external-evaluation.md

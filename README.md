@@ -524,6 +524,16 @@ The methods are complementary. PClass-Dark aims to extend functional coverage be
 
 PClass-Dark is intended to predict membership in functional clusters represented by the reference dataset. Its goal is to recover known functional information beyond reliable nearest-neighbor similarity. It does not inherently discover biological functions absent from the reference annotations.
 
+## External inference comparison
+
+Use `scripts/evaluate_external.py external_sequences.fasta` to collect PClass and
+PClass-Dark predictions and compare them against annotated GO MF truth. The script
+preserves raw inference for resumable collection and offline rescoring, and writes
+`external_evaluation.tsv` in the current directory. It uses the existing
+`pclass infer` and `pclass-dark infer` commands plus profunc GO similarity;
+no evaluation extra or bundle fingerprint is required. See
+[usage and optional controls](docs/external-evaluation.md).
+
 ## Related Projects
 
 - **[PClass](https://github.com/newbooks/pclass):** PLM-based protein function classification using nearest-neighbor search.

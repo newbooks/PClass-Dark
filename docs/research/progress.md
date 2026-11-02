@@ -1790,3 +1790,220 @@ The actual user acquisition artifacts and failed run state were not modified or
 restarted. Repeating the same command without refresh reuses the downloaded GAF;
 incomplete GAF parsing restarts from the beginning by design. Full-source
 reprocessing was not performed. No commit or push.
+
+
+### 2026-11-01 — Draft durable external inference evaluation
+
+Drafted [SPEC-0015](../specs/0015-evaluate-external.md) for the requested
+`scripts/evaluate_external.py`. Inspected current PClass infer composition,
+JSON models, additional Needle/ProSig steps, client serialization and service
+limits (1024 sequences and 10 MiB default JSON body), Dark JSON/B-score/window
+reduction and profunc graph/IC similarity code. The draft preserves the exact
+seven requested columns and all original inference JSON for downstream analyses.
+Defines annotated FASTA truth, staged batching, independent expensive inference
+and cheap scoring identities, resume, full-precision floats, abstentions and
+verified cluster-to-composed-GO mapping. Top-ranked Dark prediction and Lin/AMB
+are explicitly proposed scientific defaults, not user-approved metric decisions.
+Updated the index. Documentation only: no evaluator implemented, model loaded or
+inference/evaluation run. Local Markdown links/fences and whitespace checks passed.
+
+
+### 2026-11-01 — Make external evaluation specification implementation-ready
+
+Revised [SPEC-0015](../specs/0015-evaluate-external.md) against the actual PClass
+CLI/native pipeline, process dependencies, bundle manifests, Dark query ID and
+quota contracts, GO bindings and profunc graph/IC methods. Replaced unresolved
+scientific placeholders with explicit, versioned `top1-v1` / `lin-amb-v1` design
+defaults and a seven-column analytical fixture; this records the chosen defaults,
+not a claim of user-approved performance endpoints. Preserved all returned
+observations and documented which future changes still require inference.
+
+Resolved the draft's cache/annotation identity collision: canonical sequences,
+truth and original-source/header snapshots now have separate identities/stores.
+Defined complete Python/config/result records, exact same-interpreter command
+arguments and native equivalence, PClass body/count admission and HTTP413 split
+state, Dark conservative quota admission, process-group watchdog/cleanup,
+streaming JSON validation, unambiguous offline generation/resource selection,
+portable saved workspaces, per-engine collection fingerprints independent of
+scoring code, ownership and cross-filesystem publication recovery. Specified
+remote server bundle attestation because the current API does not expose its
+model/index identity; version/help checks do not perform biological scans.
+
+Additional reference inspection identified PClass's Python >=3.12 requirement,
+ProSig's local subprocess/core-library behavior and the inspected profunc graph
+implementation's datetime.UTC dependency (cached scoring requires Python >=3.11,
+not a presumed 3.10 from metadata). Removed an unnecessary requirement for an
+English Dark description: verified composed terms are loaded directly from
+profunc cluster records and bound to saved fits/reference identities. Documented
+that an idle PClass service can still occupy GPU memory and how a completed engine
+is reused while the other runs, without automatically stopping user services.
+Updated the spec index to implementation-ready, not implemented.
+
+Documentation validation: checked local links/fence balance and whitespace;
+checked exact seven-column fixture headers/row widths. Executed the synthetic
+schema-2.0 MF graph against profunc's existing fast helper: {X,Y} versus {X} and
+{Y} both **0.875**, X versus unrelated Z **0.0**, empty prediction **undefined**,
+root-only self comparison **undefined**. Independently checked directional means
+0.75 and 1 yield 7/8, distinct from pooled 5/6. No evaluator implementation,
+evaluator test suite, service/model job or real external evaluation was run.
+
+## 2026-11-01 — Implement durable external inference comparison (SPEC-0015)
+
+Implemented [SPEC-0015](../specs/0015-evaluate-external.md) on `issue#28`
+(base revision `4b15854e`). Added directly executable
+`scripts/evaluate_external.py` and the importable `external_evaluation` API,
+without a new `pclass-dark` subcommand. Added typed configs/records, exact
+seven-column TSV serialization, analytical Lin/AMB scoring and deterministic
+minimum-B Dark reduction. Preserved undefined scores as NA and retained complete
+inference JSON for subsequent scientific choices.
+
+Collection now validates/canonicalizes FASTA and GO truth independently, strips
+truth from model inputs, verifies installed PClass/Dark assets and GO bindings,
+admits batches by actual serialized PClass body/count and Dark quotas, and runs
+bounded same-interpreter CLI or equivalent native children. Native PClass retains
+Needle and ProSig. Added process-group watchdog/cleanup, explicit size-rejection
+splitting, durable plans/raw receipts, independent engine/score identities,
+immutable resource snapshots, SQLite joins and bounded spawned scoring workers.
+Resume reuses verified completed chunks; score-only avoids inference imports,
+services and model checks. Output ownership, locks, same-filesystem staging,
+backup/journal recovery and refusal to overwrite corrupt/manual results protect
+expensive completed work.
+
+Implementation corrected the draft's claimed common alphabet: actual Dark
+rejects J, so evaluator preflight rejects it too. Actual report precision uses
+`inference_dtype`. A test initially exposed that ijson's C builder cannot safely
+propagate a ValueError from custom dict insertion (SystemError); the parser now
+marks duplicate keys and rejects them after object construction. Other fixture
+failures revealed an injected-capability alias and incorrect test expectations;
+these were corrected before passing checks. Parallel-scoring validation was
+strengthened to delete the score cache first so it really exercises spawn.
+Final hardening verifies raw contract/chunk hashes, detects graph mutation during
+snapshot loading, and checks ijson availability before expensive collection.
+
+Updated optional dependency groups (`evaluation`, `evaluation-score`, development
+ijson), source packaging, README, [operational/API guidance](../external-evaluation.md),
+specification and index. Documented O(query-count) chunk-plan/coverage metadata
+memory, graph copies per scoring worker, raw storage retention and exact prior
+selection-pointer restoration on rollback.
+
+Validation environment: Python 3.14.6, installed PClass 0.3.0, ProSig 0.5.1 and
+profunc 0.1.0. ijson 3.6.0 was installed into the isolated temporary target
+`/tmp/pclass-evaluation-deps`; no model/service job or production output was
+launched. Commands used `PYTHONPATH=/tmp/pclass-evaluation-deps:src:.`:
+
+- Earlier broad baseline: `python -m pytest -q` — **498 passed, 2 skipped** in
+  600.59 seconds. The opt-in real-model tests were skipped; an existing Torch
+  AMD_SERIALIZE_KERNEL warning appeared. This preceded the final additional
+  evaluator hardening/tests.
+- Final relevant suite: `python -m pytest -q tests/test_external_evaluation.py
+  tests/test_cli.py` — **84 passed** in 25.14 seconds. Covers independent analytical
+  examples, invalid inputs, batch boundaries, malformed reports, native/CLI
+  pipeline equivalence with simulated engines, CPU/parallel consistency,
+  annotation/graph rescoring, cache corruption, publication failures/rollback,
+  locking, child timeout/output caps and grandchild cleanup. All prediction
+  fixtures are synthetic; they are not biological performance measurements.
+- `python -m ruff check src tests scripts/evaluate_external.py`, executable
+  `./scripts/evaluate_external.py --help`, and `git diff --check` passed.
+- Built a clean temporary code-only project with `python -m build --no-isolation`;
+  wheel/sdist creation and evaluator modules, extras metadata, operational guide
+  inclusion and executable source-script mode checks passed. This did not build
+  a full data-bearing release or exercise fresh isolated dependency installation.
+- Real local artifact-only probes verified the PClass serving bundle
+  `bbaca1b4ca82876f4173a38da3b975d0c9757a723b33e1d70eb3027442679283`
+  (22 recorded files), Needle/ProSig version/help availability, 3,443 usable Dark
+  clusters with verified reference-bound composed GO mappings, and 10,041 MF
+  graph nodes. No serving request, alignment/ProSig biological scan or embedding
+  was performed.
+
+Remaining experimental work: run an explicitly selected real cohort with recorded
+input/reference identities and hardware; validate actual CPU/GPU inference,
+device numerical differences, runtime and total storage. Exact Swiss-Prot
+exclusion/deduplication alone do not demonstrate homology-independent performance.
+
+## 2026-11-01 — Simplify external evaluation to consume working classifier commands
+
+Supersedes the evaluator dependency/attestation/native-adapter requirements in the
+previous entry, following the user's instruction to minimize dependencies. The
+current [SPEC-0015](../specs/0015-evaluate-external.md) and
+[usage guide](../external-evaluation.md) describe the replacement contracts.
+
+The evaluator now invokes PATH-resolved `pclass infer --fasta ... --format json`
+and `pclass-dark infer --fasta ... --format json`. It does not import PClass,
+ProSig, Torch or transformers; check models/bundles; probe alignment executables;
+or require a bundle fingerprint. Removed evaluator optional extras and ijson,
+and removed the duplicated native classifier pipelines. The classifiers own
+all their internal operations/dependencies. Python >=3.11/POSIX and the existing
+base profunc dependency/data suffice for orchestration/scoring; the commands can
+use different interpreter environments. No package installation is needed for
+this revision when the existing base environment and commands work.
+
+PClass_go now follows the user's explicit top-match wording: nearest embedding
+neighbor's GO MF terms, with its distance; additional voted GO terms and
+alignment/identity confirmation are ignored by the comparison. Dark uses its
+lowest-B accepted cluster's composed GO set. The installed profunc command is
+`analyze go-set-sim`, whose `explain_set_amb` calls the same detailed Lin/AMB
+helper used directly here. This avoids per-query subprocesses and rounded text
+parsing. Dark reports lack GO terms, so their composed cluster labels are loaded
+automatically from profunc and frozen with the graph. Reference equivalence to
+the classifier is an operator assumption rather than asserted fit attestation.
+
+Retained bounded chunks, strict standard-library JSON parsing, exact result
+coverage, full raw outputs, independent truth identity, SQLite scoring, bounded
+spawned scoring workers, raw checksum verification and journaled publication.
+Default chunk counts are 128; PClass is capped at 1,024 with conservative byte
+admission and durable explicit size-rejection splitting. Reuse identity records
+the executable/command, working directory, relevant environment and run tag.
+Remote model/index changes cannot be detected automatically; `--run-tag` forces
+new observations. Old attested-format raw files are preserved but are not adopted
+as new command-output generations. Documented per-chunk JSON memory and retained
+storage costs, and updated README/index without changing base dependencies.
+
+Validation uses lightweight fake PATH executables with real subprocesses, plus
+analytical and failure fixtures. An intermediate run found missing test imports;
+these were restored. Actual installed-command/profunc preflight passed using a
+single synthetic sequence without running either classifier: MF graph hash
+`819a5675ebd00edd6622d1bd45c8feb05928a8fc2f12d7dc67e555fc843b4f06`,
+map hash `9368b97b0d8e66779717d4254fff07db0c30dfd3e61cb3de52d792ba62a0d4f5`.
+Clean temporary code-only wheel/sdist builds passed and confirmed executable
+script/documentation inclusion and absence of ijson/evaluation-extra metadata.
+Lint and executable help passed. Final test counts are recorded below.
+
+No real cohort inference, GPU comparison or fresh data-bearing release was run.
+The prior full-suite baseline applies to the earlier implementation; this
+revision is validated with the relevant evaluator, CLI and external-sequence
+suites, including retained publication/recovery behavior.
+
+Final validation: `PYTHONPATH=src:. python -m pytest -q
+ tests/test_external_evaluation.py tests/test_cli.py tests/test_external_sequences.py`
+— **139 passed in 30.74 seconds**, without the temporary ijson dependency path.
+Coverage includes top-neighbor/lowest-B analytical scoring, ignored alignment and
+voted fields, dependency-import blocking, real PATH command collection, batching
+and size splitting, one-engine failure/resume, independent Dark overrides,
+annotation/graph rescoring, run tags, parallel determinism, strict JSON/report
+validation, subprocess limits/grandchild cleanup, locks, corruption/manual edits,
+publication interruption/rollback and backup corruption. `python -m ruff check
+src tests scripts/evaluate_external.py`, formatting, documentation links/fences
+and `git diff --check` passed.
+
+## 2026-11-01 — Increase external evaluation processing defaults
+
+Changed both CLI and Python config defaults to PClass batches of 512 sequences,
+Dark chunks of 512 sequences, and 8 scoring workers, as requested. Explicit
+smaller values and existing limits remain supported. Updated SPEC-0015 and the
+operational guide. Added regression coverage for default and overridden CLI/API
+values, and kept the parallel-consistency test's baseline explicitly serial.
+
+Validation: `PYTHONPATH=src:. python -m pytest -q
+ tests/test_external_evaluation.py tests/test_cli.py` — **75 passed in 25.25s**.
+The explicitly serial-versus-parallel scoring regression also passed separately
+(**1 passed**). Ruff lint/format and whitespace checks passed.
+
+## 2026-11-02 — External collection progress percentage
+
+Added cumulative per-engine cohort completion percentages to the existing
+chunk-completion log used by `scripts/evaluate_external.py`. Counts include
+reused receipts and split leaves. Updated SPEC-0015 and added regression checks
+for ordinary batches, a partial final batch, and recursively split requests.
+
+Validation: `python -m pytest -q tests/test_external_evaluation.py tests/test_cli.py`
+— **77 passed in 26.87s**. Ruff lint/format and `git diff --check` passed.
