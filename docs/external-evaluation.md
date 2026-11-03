@@ -136,3 +136,59 @@ invoking classifiers. See [SPEC-0015](specs/0015-evaluate-external.md) for contr
 
 Tests use analytical scores and simulated classifier commands; full external
 inference and GPU execution remain untested.
+
+## Audit the comparison table
+
+Install the optional plotting dependency with `pip install -e '.[audit]'`, then:
+
+```bash
+python scripts/external-audit.py path/to/comparison.tsv
+# Equivalent installed command:
+pclass-dark external-audit path/to/comparison.tsv
+# Optional display settings:
+pclass-dark external-audit path/to/comparison.tsv --bins 10 --hit-cutoff 0.7 --output-dir audit
+```
+
+The script/CLI now excludes all queries whose annotated MF GO set contains
+`GO:0005515`, including mixed sets. It reads truth from the input's hash-verified
+saved evaluation metadata, not from predicted GO columns. For standalone or
+renamed inputs without publication metadata, supply `--truth-tsv annotations.tsv`
+with `Query_id` and `go_mf_terms` columns and exactly one row per input query.
+Missing or unverifiable annotations fail with an error.
+
+The filename is arbitrary; the seven evaluation column headers are required.
+By default outputs are written beside the input (existing audit outputs replaced):
+
+- `external_audit_match_scores_v2.png`: paired GO match scores with equality/cutoff lines.
+- `external_audit_confidence_v2.png`: side-by-side stacked hit/non-hit/undefined counts,
+  identical [0,1] bins and shared count scale. Bar labels give hit percentages among
+  defined matches. A separate >1 distance bin and missing-confidence category are
+  retained when needed. Smaller distance and smaller B are stronger evidence;
+  bin numbers do not equate/calibrate these measures.
+- `external_audit_coverage_v2.png`: side-by-side hit rate versus retained predictions
+  as a percentage of all queries. Ties remain together. Missing match scores count
+  toward coverage but not hit-rate denominators; missing confidence is unrankable.
+- `external_audit_summary_v2.png` and `external_audit_summary_v2.tsv`: counts, coverage,
+  hit rates, method-only hits, missingness and distance >1 diagnostics.
+
+Original unfiltered files are preserved. Counts, hit rates and coverage denominators
+are recomputed on retained queries. The summary records original, excluded and
+retained query counts.
+
+A hit means GO semantic match >=0.7 by default, not exact-label accuracy. Missing
+scores are never converted to zero. Prediction coverage uses nonempty predicted
+GO sets; scatter uses jointly defined scores. Header-only tables produce empty
+plots/NA rates. Dark contains accepted candidates only, so curves cannot extend
+beyond observed predictions. These descriptive plots do not establish independent
+held-out performance or control reference homology leakage.
+
+Python callers can use `read_audit_table`, `summarize_audit`, `confidence_bins`,
+`coverage_curve`, and `audit_external` from `pclass_dark.external_audit`. The first
+four functions do not import Matplotlib or render files. See
+[SPEC-0016](specs/0016-external-audit.md) for contracts and validation.
+
+For the same v2 filtering through Python, call
+`audit_external(input_path, exclude_go="GO:0005515", truth_tsv=None)`.
+`read_query_annotations` and `filter_query_go` are reusable independently. The
+Python API's default remains unfiltered for compatibility; no `exclude_go` writes
+the original filenames. The CLI/script always requests the v2 exclusion.

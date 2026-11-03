@@ -8,3 +8,5 @@ include docs/external-sequences.md
 
 include scripts/evaluate_external.py
 include docs/external-evaluation.md
+
+include scripts/external-audit.py

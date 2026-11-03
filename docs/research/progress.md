@@ -2007,3 +2007,110 @@ for ordinary batches, a partial final batch, and recursively split requests.
 
 Validation: `python -m pytest -q tests/test_external_evaluation.py tests/test_cli.py`
 — **77 passed in 26.87s**. Ruff lint/format and `git diff --check` passed.
+
+
+### 2026-11-02 — External audit plots and summary
+
+Implemented [SPEC-0016](../specs/0016-external-audit.md):
+`scripts/external-audit.py INPUT` and `pclass-dark external-audit INPUT`, backed
+by importable parsing, binning, coverage, summary and rendering functions. Accept
+arbitrary TSV filenames with SPEC-0015 headers. Four external_audit_ PNGs provide
+paired match scatter, stacked hit/non-hit/undefined confidence counts with hit
+percentages, side-by-side coverage/hit-rate curves, and a summary table; also emit
+a summary TSV. Keep tied evidence together, preserve distance overflow, and handle
+missing predictions/scores/confidence explicitly. Default cutoff 0.7, ten equal
+[0,1] bins, default output beside input. Optional audit Matplotlib dependency;
+headless rendering only on explicit API calls. README/API/CLI/spec index and sdist
+script manifest synchronized. CPU O(N log N) ranking needs no workers/GPU.
+
+Validation: audit/evaluation/CLI suites **87 passed** (30.31 s;
+`/tmp/external-audit-final-tests.log`). Ruff and scoped whitespace checks passed.
+Tests cover independent analytical counts, ties, endpoints/overflow, missingness,
+invalid TSV/numbers, empty inputs, PNG output, TSV summary and both CLI adapters.
+
+Real-data command: `MPLCONFIGDIR=/tmp/pclass-external-audit-mpl python
+scripts/external-audit.py work-unknown/external_evaluation.tsv`; default bins/cutoff,
+no sampling, fitting, preprocessing or random seeds. Input SHA256
+09943c5a25388cf4f38e1b712c7470f0e5c33824f4841bbe50df92c8e5b97821;
+baseline 609e2a6e5099603e3f3afa2795f7a68d6f37ee55 plus uncommitted audit changes.
+CPU, Python 3.14.6, NumPy 2.4.4, Matplotlib 3.11.0. Four PNGs and summary TSV at
+`work-unknown/external_audit_*`; final run log `/tmp/external-audit-real-final.log`.
+Visually inspected scatter, confidence, coverage and summary designs. Restricted
+home config caused Matplotlib cache warnings initially; final run used writable
+/tmp cache, without changing application environment defaults.
+
+Results: 27,910 queries, distance >1 count **0**, maximum 0.3711543083190918.
+Both methods predict GO sets for every query. At cutoff 0.7, PClass has 7,017 hits
+among 27,845 scorable queries (25.20%); Dark has 3,229/27,847 (11.60%). Both hit
+2,190; PClass-only 4,827 and Dark-only 1,039 (other method may be unscorable).
+These are descriptive cohort results, not a leakage-controlled held-out estimate.
+B scores occupy the first equal-width bin, illustrating that identical bins do
+not equate confidence scales. Whole-set output replacement is not atomic, though
+all artifacts render in staging before publication. No commit or push.
+
+
+### 2026-11-02 — Clarify coverage axis direction
+
+Added “Strong to weak” below the coverage x-axis label in both panels
+([SPEC-0016](../specs/0016-external-audit.md)). Added a rendering regression
+assertion and regenerated the work-unknown audit PNGs from the same input.
+
+Validation: all 10 audit tests passed (4.29 s); Ruff and scoped whitespace
+checks passed. PNGs regenerated successfully; no analysis values changed.
+
+
+### 2026-11-02 — BLASTP lookup for A0A078IB52
+
+Extracted the 150-aa query from work-unknown/external_sequences.fasta and searched
+local /home/jmao/projects/blastdb/swissprot (487,728 sequences; database date
+2026-09-15). CPU, four threads, BLASTP defaults except reporting E-value 1000,
+max_target_seqs 20 and max_hsps 1. Command: blastp -query
+work-unknown/A0A078IB52.fasta -db /home/jmao/projects/blastdb/swissprot -evalue 1000
+-max_target_seqs 20 -max_hsps 1 -num_threads 4 -outfmt '6 saccver stitle pident
+length qlen qcovs evalue bitscore'. Kept first five unique nonself subjects in
+BLAST output order; output work-unknown/A0A078IB52_blast_top5.tsv. No significant
+sequence matches: best E-value 3.5, 29% query coverage. Expanded the reporting
+threshold to return five subjects, without interpreting these as homologs.
+
+
+### 2026-11-02 — Unmatched-query GO frequencies
+
+Ranked work-unknown/unmatched_accessions.tsv GO annotations by distinct-accession
+frequency (descending, GO ID tie-break), with descriptions and frozen graph IC
+from evaluation graph 819a5675ebd00edd6622d1bd45c8feb05928a8fc2f12d7dc67e555fc843b4f06.
+Verified graph SHA256; IC uses stored -ln(reference frequency), not unmatched
+cohort frequencies. 2,755 unique accessions, 760 distinct terms, 3,559 term
+assignments. Wrote work-unknown/unmatched_go_terms.tsv with rank, term, count,
+percentage of accessions, description and IC. Checked unique IDs, term membership,
+sorted order, bounded counts and total assignment conservation. Most frequent:
+GO:0005515 protein binding, 1,331 accessions (48.31%), IC 2.3043773196925526.
+
+
+### 2026-11-02 — V2 audit excluding protein-binding annotations
+
+Updated [SPEC-0016](../specs/0016-external-audit.md): script/CLI defaults exclude
+any query whose truth MF set contains GO:0005515, including mixed sets. Use saved
+query truth validated against input/publication/score/status file hashes, not
+predicted GO sets. Standalone inputs accept --truth-tsv (Query_id/go_mf_terms),
+requiring exact unique query coverage. Library API adds exclude_go/truth_tsv while
+preserving its unfiltered default. Recompute all denominators on retained queries
+and report original/excluded counts. Filtered PNG/summary TSV filenames add _v2,
+preserving unfiltered outputs. README and API/CLI documentation synchronized.
+
+Validation: audit/evaluation/CLI suites **92 passed** (32.79 s;
+`/tmp/external-audit-v2-final-tests.log`); Ruff and whitespace checks passed.
+Tests verify truth-based filtering even when predicted GO differs, multi-term
+sets, empty cohorts, ties/coverage denominators, original-file preservation,
+verified metadata and malformed annotation refusal.
+
+Ran `MPLCONFIGDIR=/tmp/pclass-external-audit-mpl python scripts/external-audit.py
+work-unknown/external_evaluation.tsv` using default cutoff 0.7, ten bins, same CPU
+software/input identity as initial audit. Source SHA256 remains
+09943c5a25388cf4f38e1b712c7470f0e5c33824f4841bbe50df92c8e5b97821. Verified truth
+from score 5f3b999fddc68ad6e1e08e046a235b07c0899b1d14d1fdbcc06ca8f64a74c2c2.
+Excluded 13,530 queries, retained 14,380. All four _v2 PNGs and summary TSV created
+at work-unknown/external_audit_*_v2; log /tmp/external-audit-v2-real.log. Visually
+checked summary output. Each method has 14,317 scorable queries: PClass 5,439 hits
+(37.99%); Dark 2,548 (17.80%); both-hit 1,780, method-only 3,659/768. Zero retained
+distances >1; max 0.3559103012084961. Annotation-selected descriptive cohort, not
+an independently held-out accuracy estimate. No model rerun, commit or push.
