@@ -23,3 +23,5 @@
 - [0014: External UniProt sequences](0014-get-external-sequences.md) — implemented: experimental GO MF filtering, complete local Swiss-Prot exclusion, latest-annotation sequence deduplication, bounded retrieval/resume, cwd FASTA/count report and recoverable publication; regression and small real-source/API checks passed, full acquisition not run.
 
 - [0015: External inference comparison](0015-evaluate-external.md) — implemented: executable comparison script and Python API, existing classifier commands with no extra evaluator dependencies, bounded collection, retained raw reports, top-neighbor/Lin-AMB TSV, offline rescoring and recoverable publication; fixture tests and local profunc preflight passed, full inference untested.
+
+- [0016: External evaluation audit](0016-external-audit.md) — implemented: PNG comparisons, stacked hit histograms, coverage curves and summary.

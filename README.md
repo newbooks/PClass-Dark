@@ -547,3 +547,18 @@ PClass-Dark is released under the [MIT License](LICENSE).
 ---
 
 *PClass-Dark: Finding conserved functional signals beyond nearest neighbors.*
+
+### Plot an external evaluation audit
+
+```bash
+pip install -e '.[audit]'
+python scripts/external-audit.py path/to/external_evaluation.tsv
+# Also available as: pclass-dark external-audit path/to/comparison.tsv
+```
+
+Excludes queries annotated with `GO:0005515` (using saved truth annotations), then
+creates `external_audit_*_v2.png` scatter, stacked confidence histograms, side-by-side
+coverage curves and summary table beside the input, plus a summary TSV. Any input
+filename is accepted with the evaluation headers; standalone tables also need
+`--truth-tsv` (Query_id/go_mf_terms). Original PNGs are preserved. Default hit cutoff is 0.7;
+distance >1 counts are reported. See [audit documentation](docs/external-evaluation.md#audit-the-comparison-table).

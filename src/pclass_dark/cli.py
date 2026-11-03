@@ -6,6 +6,7 @@ from typing import Annotated
 import typer
 
 from pclass_dark import __version__
+from pclass_dark.external_audit_cli import external_audit_command
 
 app = typer.Typer(
     name="pclass-dark",
@@ -320,3 +321,7 @@ def infer_command(
     except (ValueError, OSError, RuntimeError) as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
+
+
+# The same adapter supports the standalone audit script and installed hierarchy.
+app.command("external-audit")(external_audit_command)

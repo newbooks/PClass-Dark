@@ -30,6 +30,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+audit = ["matplotlib>=3.7,<4"]
 # Optional for setup-data embedding generation and infer query embedding.
 embeddings = [
     "torch>=2.6,<3",
@@ -37,7 +38,7 @@ embeddings = [
     "huggingface-hub>=0.26,<2",
     "safetensors>=0.4,<1",
 ]
-dev = ["build>=1", "pytest>=8", "ruff>=0.5"]
+dev = ["build>=1", "pytest>=8", "ruff>=0.5", "matplotlib>=3.7,<4"]
 
 [project.urls]
 Homepage = "https://github.com/newbooks/PClass-Dark"
