@@ -2114,3 +2114,237 @@ checked summary output. Each method has 14,317 scorable queries: PClass 5,439 hi
 (37.99%); Dark 2,548 (17.80%); both-hit 1,780, method-only 3,659/768. Zero retained
 distances >1; max 0.3559103012084961. Annotation-selected descriptive cohort, not
 an independently held-out accuracy estimate. No model rerun, commit or push.
+
+## 2026-11-02 — Draft Swiss-Prot evaluation specification
+
+Drafted [SPEC-0017](../specs/0017-evaluate-swiss.md) for
+`scripts/evaluate_swiss.py`, the installed command and Python API. Planned output
+is `swiss_evaluation.tsv`, reusing the external evaluator with accession truth
+from the same profunc mapping used by `analyze function`. Truth includes the full
+direct MF set before description pruning. Recorded strict missing-truth behavior,
+separate cache/provenance, audit integration and potentially in-sample scope.
+
+Inspected profunc's function CLI, GO-set loader/resolver, description logic and
+Swiss-Prot annotation writer. Read-only command `profunc analyze function
+A0A011QK89 -v` succeeded with `GO:0047545`. This is an annotation-source check,
+not classifier validation or a full-cohort coverage check. Documentation only;
+implementation and automated validation remain planned. Next: implement and test
+the shared orchestration and frozen truth lookup described in the draft.
+
+## 2026-11-02 — Plan faster Swiss-Prot evaluation
+
+Revised draft [SPEC-0017](../specs/0017-evaluate-swiss.md) after inspecting the
+actual PClass infer CLI, artifacts loader, neighbor client and serving engine,
+and Dark sessions, precomputed-window scorer and existing embedding files.
+PClass currently runs Needle and ProSig unconditionally even for JSON; planned
+neighbor-only collection bypasses both plus descriptions and alignment sequence
+loading. Dark recreates its model per inference session; planned persistent
+runtime shares model/library resources across bounded checkpoint chunks. Existing
+Dark vectors are a promising validated cache source, with coverage/representation
+checks required. Added bounded cache/worker behavior, evidence contracts, parity
+checks and staged throughput benchmarking. Kept self matches and prediction
+semantics explicit; no unsupported speedup estimate or full-cohort run claimed.
+
+Documentation only. No classifier code changed or performance tests run. Checked
+specification links, code fences and whitespace. Next: implement and benchmark
+neighbor-only PClass and persistent/cache-backed Dark adapters against saved
+baseline evidence before the full cohort evaluation.
+
+## 2026-11-02 — Resolve Swiss evaluator implementation contracts
+
+Revised [SPEC-0017](../specs/0017-evaluate-swiss.md) into an implementation-ready
+design. Chose a single native PClass-service/Dark-runtime path; deferred alternate
+backends and speculative optimizations. Defined configs/defaults, module/API
+boundaries, worker protocol/deadlines, evidence/identity contracts, cache join
+keys and integrity checks, offline scoring and phased acceptance tests/pilot.
+
+Inspection found the audit hardcodes `.external-evaluation`, embedding row files
+lack coordinates, existing preparation verification temporarily loads reference
+sequences, and relative-score arrays already have a bounded LRU. The revised
+spec explicitly addresses each instead of assuming existing APIs support the
+new orchestration. Added publication marker v2/state path migration with v1
+compatibility and audit tests. Updated spec index. Documentation only; no code,
+benchmark or pytest execution. Link/fence/content/whitespace checks passed.
+Remaining work is implementation and the specified fixture/live validation;
+full-cohort coverage, performance and GPU behavior are still unmeasured.
+
+
+## 2026-11-02 — Implement native Swiss-Prot evaluation
+
+Implemented [SPEC-0017](../specs/0017-evaluate-swiss.md): executable
+`scripts/evaluate_swiss.py`, installed `pclass-dark evaluate-swiss`, and importable
+`evaluate_swiss` with validated typed configs. Defaults publish
+`swiss_evaluation.tsv` and separate `.swiss-evaluation` state. Frozen profunc
+accession truth preserves full direct MF annotations, original query IDs and
+normalized accession joins. Shared external snapshot/scoring/publication adapters
+retain external defaults. Audit marker v2 resolves/validates the Swiss workspace,
+including outputs in another directory; v1 remains supported.
+
+PClass uses its installed native neighbor client, bypassing infer CLI, Needle,
+ProSig, descriptions and alignment-sequence loading. Dark's new resident runtime
+shares guarded library/model resources across disk-backed checkpoint sessions,
+initializes no model for fully cached windows, and verifies a coordinate/sequence
+embedding index. Bounded workers, deadlines, split/restart receipts, lossless
+numeric evidence, per-worker GO caches and numerical thread budgets are tested.
+Source fingerprints/package versions and per-chunk execution metadata preserve
+provenance. Dark collection runs before PClass to validate/pin its resources once.
+
+Real-data validation initially rejected the existing embedding cache because its
+originating preparation ID differs from the current preparation. This supersedes
+the draft's requirement for equal preparation IDs: full verified inventory,
+sequence/window coordinates and representation determine vector compatibility;
+both preparation IDs are retained as provenance. The final read-only preflight
+passed for the first three records of `work-swiss/sequences.fasta`: **3 windows,
+3 cache hits, 0 misses**. No service calls, models, predictions or TSV publication.
+Input `/tmp/pclass-swiss-preflight/queries.fasta` (982 bytes), SHA-256
+`7702cd41d68236028f83f7d5efb9ad9f371171ae3a80cfaa81683c820b66d5c7`;
+log `/tmp/swiss-preflight-final.log`, state
+`/tmp/pclass-swiss-preflight/.swiss-evaluation/`. Earlier failed preflight logs
+`/tmp/swiss-preflight.log` and `/tmp/swiss-preflight-rerun.log` are retained.
+
+Reproduce the preflight from `/tmp/pclass-swiss-preflight` with
+`python /home/jmao/projects/PClass-Dark/scripts/evaluate_swiss.py queries.fasta
+--dark-library-dir /home/jmao/projects/PClass-Dark/data/library
+--dark-embedding-cache /home/jmao/projects/PClass-Dark/data/setup-data/embeddings/9b71f736c6eb714c1f963578f50faa77a2feee219bedfc82d39f33aefc086980
+--dark-prepared-dir /home/jmao/projects/PClass-Dark/data/setup-data/prepared/8e5994726cb958fce5d2396835f9a3767da897007110a9fda4f2e3b06cccbe4e
+--preflight-only`. Input selection is deterministic first-three order, no seed.
+Graph/mapping identities are in that log and frozen state; selection identities
+and hashes are recorded in `/tmp/pclass-swiss-preflight/source-identities.json`.
+Environment: Python 3.14.6, NumPy 2.4.4, profunc 0.1.0, PClass 0.3.0; baseline
+revision `3af0a2a6bae7906ec0b8efba56f43553a9c81b95` plus uncommitted implementation.
+This validates source/cache integration, not full-cohort coverage or held-out
+performance. No live model or GPU throughput measurements were taken.
+
+Validation:
+
+- `python -m pytest -q`: **592 passed, 2 skipped in 731.56 s**,
+  `/tmp/swiss-full-suite.log`. The opt-in real pinned-checkpoint CPU/GPU tests
+  require `PCLASS_DARK_TEST_CACHED_ESM=1` and were not enabled.
+- Final Swiss suite: **52 passed in 75.89 s**, `/tmp/swiss-final-suite.log`.
+  Localhost protocol fixtures required socket permission in this environment.
+  Final cached numerical-thread limit/restoration change: **3 affected tests
+  passed in 15.23 s**, `/tmp/swiss-thread-checks.log`; current file has 53 tests.
+- Ruff lint/format, whitespace and documentation link/fence checks passed.
+  Temporary code-only wheel/sdist builds passed; checked native modules and
+  script/guide inclusion. Build logs `/tmp/swiss-package-build-final.log`.
+
+Synchronized README, [operational/API guide](../swiss-evaluation.md), specs
+0015/0016/0017 and index. Full cohort inference, a real classifier throughput
+pilot and real-device parity remain operational validation work; no speedup
+factor is claimed. Existing self/training matches remain intentionally possible.
+
+
+### 2026-11-03 — Warn on unknown GO terms during scoring
+
+Downgraded the shared scoring error for graph-missing GO terms (reported for
+`GO:0018491` after Swiss PClass collection) to a `UserWarning` describing a
+possible graph/annotation version mismatch. Profunc computes AMB Lin using
+available terms; original annotations/source counts remain intact and affected
+metric statuses record `missing_terms`. Scores with no usable terms are `NA`.
+Preflight truth/map compatibility and unknown cluster checks remain strict.
+Updated specs [0015](../specs/0015-evaluate-external.md) and
+[0017](../specs/0017-evaluate-swiss.md) and the operational guide.
+
+Validation: external/Swiss suites: 113 passed, one localhost fixture setup error
+under sandbox socket restrictions; rerunning that test with socket permission
+passed (1 passed). Four analytical regressions cover partially/fully missing
+truth and prediction sets. Ruff lint/format and `git diff --check` passed.
+No live cohort or GPU execution was needed for this scoring-only change.
+
+### 2026-11-03 — Recover completed Swiss inference before scoring
+
+The unknown-GO-warning edit changed a scoring hash included in native inference
+contracts. A normal rerun therefore started new Dark work, even though both old
+generations were complete; score-only could not recover without a published
+selection. Added conservative completed-generation discovery to the normal Swiss
+pipeline, independent of selection. The reviewed before/after scoring hashes are
+compatible; all other contract fields and chunk configuration must match. Kept
+the inference fingerprint intact because the scoring module also owns evidence
+projections; arbitrary future scoring edits are deliberately not exempted.
+Original generation IDs and receipts remain immutable. The existing verifier
+checks receipt/response hashes and exact sequence/query coverage before reuse;
+corruption fails rather than silently reclassifying. Logs explicitly say
+`reused completed generation`. Resource preflight still runs.
+
+Read-only recovery validation on `work-swiss/.swiss-evaluation` selected Dark
+`3e4311b6a98769b952ec49b5c73644863821b6ade81d537369db0ce750e599ac`
+and PClass `09aeaea23c0c4c88237b769ff3dbba31e39fd7753f97a8132bea5cc578697d21`,
+each with 744 chunks covering 380,578 queries. No inference or publication was
+performed. Sources, saved truth and graph were verified during assessment.
+
+Validation: `python -m pytest -q tests/test_swiss_evaluation.py
+ tests/test_external_evaluation.py`: **118 passed in 81.24 s**, log
+`/tmp/swiss-resume-tests.log` (localhost fixture socket permission enabled).
+New regressions cover scoring failure before selection, reviewed scoring change
+reuse without worker tasks, configuration/unreviewed-source invalidation, and
+corrupt-response rejection. Ruff lint/format and whitespace checks passed.
+Updated [SPEC-0017](../specs/0017-evaluate-swiss.md) and operational guide.
+Full-cohort scoring remains to be run by the user; no GPU/model run was needed.
+
+### 2026-11-03 — Draft Swiss audit implementation specification
+
+Drafted [SPEC-0018](../specs/0018-swiss-audit.md) for the requested
+`scripts/swiss-audit.py`, based on the actual external audit library, CLI and
+SPEC-0016. Plans shared calculations/rendering, Swiss output names, the existing
+GO:0005515 truth exclusion, verified marker-v2 metadata, standalone truth,
+resource bounds and analytical/integration/real-artifact validation. Explicitly
+retains external compatibility and distinguishes planned work from implemented
+behavior. Added the spec index entry. Documentation-only change; no code or
+scientific results changed and no audit/model run performed. Validation: local
+Markdown links/fences and whitespace checks (see this change's handoff).
+
+
+### 2026-11-03 — Swiss audit specification ready for implementation
+
+Re-reviewed [SPEC-0018](../specs/0018-swiss-audit.md) against the actual external
+audit parser, CLI, options, truth resolution, calculations and renderer. Corrected
+the draft's prediction-GO validation and extra-column claims: preserve presence
+masks and acceptance of additional unique headers. Defined exact summary keys,
+filter variants, explicit-truth precedence, empty-cohort behavior, output protection
+and publication limitations. Specified a private shared renderer with unchanged
+external defaults and Swiss title/prefix, plus implementation sequence and
+regression acceptance checks. Marked the spec/index ready for implementation;
+no code implementation or scientific execution is claimed. Documentation links,
+Markdown fences, headings and whitespace checks passed.
+
+
+### 2026-11-03 — Swiss audit implemented and validated
+
+Implemented [SPEC-0018](../specs/0018-swiss-audit.md): shared private renderer
+with external compatibility wrapper; Swiss API, Typer command and executable
+`scripts/swiss-audit.py`; installed `pclass-dark swiss-audit`; script distribution
+entry. Shared calculations/parser remain unchanged. New defaults filter own-truth
+GO:0005515; explicit truth precedes verified saved metadata; unfiltered Python
+mode remains available. Added hard-link/source and destination symlink protection.
+Updated README, Swiss guide/API, specs 0016/0018 and index.
+
+Validation: external refactor regression 15 passed in 7.47 s; final specified
+audit/evaluation/CLI suites **165 passed in 97.06 s**, log
+`/tmp/swiss-audit-regression.log`; additional import-side-effect regression
+**1 passed in 0.24 s**. The existing localhost fixture ran with socket permission.
+Ruff lint/format, whitespace, documentation links/fences and installed help checks
+passed. Temporary code-only wheel/sdist smoke build verified both new modules
+and executable script inclusion (`/tmp/swiss-audit-packaging.log`).
+
+Ran `/usr/bin/time -v python scripts/swiss-audit.py
+work-swiss/swiss_evaluation.tsv` (bins 10, cutoff 0.7). Table SHA-256
+`bfd8749640c56d022a0cf9a4bcec750056947be74b5c8a67aaf82a7abaef6476`;
+verified saved truth from score
+`0709f16e28b50387710b7f1d8e63b27802939a7147a008f3b89af589d900c9e2`.
+Revision `3af0a2a6bae7906ec0b8efba56f43553a9c81b95` plus dirty implementation.
+380,578 queries, 0 binding exclusions. PClass 374,085/380,578 hits (98.2939%);
+Dark 234,274/380,568 scorable predictions (61.5590%); 10 Dark abstentions.
+Both-hit 231,239, PClass-only 142,846, Dark-only 3,035. No distance >1.
+No preprocessing fit or sampling/seeds. These are descriptive in-sample diagnostics
+with possible self/training/homology matches, not held-out model estimates.
+
+Wrote `work-swiss/swiss_audit_{match_scores,confidence,coverage,summary}_v2.png`
+and `swiss_audit_summary_v2.tsv`; inspected all four images visually. Dense scatter
+remains readable enough for comparison; no aggregation introduced. Full regular
+bins remain displayed and tied evidence is preserved in coverage. Output sizes
+and full counts are in SPEC-0018. CPU run: 9.63 s wall, peak RSS 271,640 KiB; AMD
+Ryzen 9 6900HX/Linux x86_64, Python 3.14.6, NumPy 2.4.4, Matplotlib 3.11.0.
+Logs `/tmp/swiss-audit-real.log`, `/tmp/swiss-audit-real-resources.log`. Home
+Matplotlib config was unwritable; its temporary cache fallback rendered normally.
+No inference, live annotation/graph lookup or GPU work. No remaining implementation
+blocker; future quality evaluation still requires controlled held-out cohorts.

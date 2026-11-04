@@ -163,3 +163,18 @@ commands and resource identities are in the progress log.
 Collection progress logs include the percentage of cohort queries completed for
 that engine, accumulated across chunks (including reused receipts and split
 leaves). Each completed generation reaches 100.0%; percentages use one decimal.
+
+Shared Swiss evaluation integration (SPEC-0017): snapshot ingestion supports an
+explicit truth resolver/source contract and optional normalized-accession table.
+The default external CLI behavior, state directory, table name and inference
+format remain unchanged. Scoring/publication accept explicit native readers and
+table/state names; worker-scoped GO-pair caches are bounded to 4096 entries and
+numerical-library threads to one per score process. Scientific scoring is unchanged.
+
+### Unknown collected GO terms (2026-11-03)
+
+Shared semantic scoring warns for GO terms absent from the frozen graph and
+uses profunc's available-term AMB Lin calculation. Preserve original GO sets and
+source counts; record `missing_terms` for affected metric statuses. No usable
+terms produces an unavailable score (`NA`). Preflight truth/map validation and
+unknown cluster rejection remain unchanged.

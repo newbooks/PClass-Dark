@@ -562,3 +562,26 @@ coverage curves and summary table beside the input, plus a summary TSV. Any inpu
 filename is accepted with the evaluation headers; standalone tables also need
 `--truth-tsv` (Query_id/go_mf_terms). Original PNGs are preserved. Default hit cutoff is 0.7;
 distance >1 counts are reported. See [audit documentation](docs/external-evaluation.md#audit-the-comparison-table).
+
+### Swiss-Prot evaluation
+
+Use `pclass-dark evaluate-swiss sequences.fasta` (or
+`scripts/evaluate_swiss.py`) to write `swiss_evaluation.tsv` with truth resolved
+from profunc's direct accession MF annotations. The native PClass neighbor client
+skips Needle/ProSig; a resident Dark runtime can reuse verified prepared embeddings.
+See the [Swiss evaluation guide](docs/swiss-evaluation.md) for preflight, cache
+options, resume/offline scoring and potentially in-sample interpretation.
+
+### Plot a Swiss evaluation audit
+
+```bash
+pip install -e '.[audit]'
+python scripts/swiss-audit.py work-swiss/swiss_evaluation.tsv
+# Or: pclass-dark swiss-audit work-swiss/swiss_evaluation.tsv
+```
+
+Writes four `swiss_audit_*_v2.png` plots and `swiss_audit_summary_v2.tsv`, using
+verified saved truth to exclude queries annotated `GO:0005515`. Standalone tables
+can supply `--truth-tsv`; `--output-dir`, `--bins` and `--hit-cutoff` control the
+report. No inference is rerun. These are descriptive semantic hit rates, not a
+held-out quality estimate. See the [Swiss audit API and guide](docs/swiss-evaluation.md#plot-a-swiss-evaluation-audit).

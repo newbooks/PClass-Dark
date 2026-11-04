@@ -70,21 +70,24 @@ def _selection(state, input_id):
     return s if s["input_id"] == input_id else None
 
 
-def _paths(work_dir, output, inputs):
+def _paths(
+    work_dir,
+    output,
+    inputs,
+    *,
+    state_name=".external-evaluation",
+    table_name="external_evaluation.tsv",
+):
     if not isinstance(work_dir, (str, Path)):
         raise ValueError("work_dir must be a path")
     root = Path(work_dir).absolute()
     if not root.is_dir() or root.is_symlink():
         raise ValueError("work_dir must be an existing non-symlink directory")
     root = root.resolve()
-    state = root / ".external-evaluation"
+    state = root / state_name
     if state.is_symlink():
         raise ValueError("State directory must not be a symlink")
-    output = (
-        Path(output).absolute()
-        if output is not None
-        else root / "external_evaluation.tsv"
-    )
+    output = Path(output).absolute() if output is not None else root / table_name
     if output.is_symlink():
         raise ValueError("Output must not be a symlink")
     output = output.resolve()
@@ -179,8 +182,9 @@ def _blocks(rows, count=64):
 
 def _score_rows(db, index, mapping, graph_path, map_payload, workers):
     if workers == 1:
+        compare = scoring_ops.cached_metric(index)
         for q, p, d in scoring_ops.joined_records(db):
-            yield scoring_ops.score_query(q, p, d, index, mapping)
+            yield scoring_ops.score_query(q, p, d, index, mapping, metric_func=compare)
     else:
         with ProcessPoolExecutor(
             max_workers=workers,
@@ -217,6 +221,10 @@ def _score_and_publish(
     map_payload,
     mapping,
     config,
+    *,
+    saved_reader=collect.saved_queries,
+    table_name="external_evaluation.tsv",
+    evaluation_kind="external",
 ):
     from profunc.go import similarity
 
@@ -242,6 +250,8 @@ def _score_and_publish(
         ),
         "metric_code": store.record(Path(similarity.__file__))["sha256"],
     }
+    if evaluation_kind != "external":
+        key["evaluation_kind"] = evaluation_kind
     score_id = identity(key)
     score_dir = state / "scores" / score_id
     if score_dir.exists():
@@ -259,11 +269,11 @@ def _score_and_publish(
             count = scoring_ops.join_predictions(
                 db,
                 _query_records(state, cohort),
-                collect.saved_queries(state, "pclass", pclass),
-                collect.saved_queries(state, "dark", dark),
+                saved_reader(state, "pclass", pclass),
+                saved_reader(state, "dark", dark),
             )
             with (
-                (staged / "external_evaluation.tsv").open(
+                (staged / table_name).open(
                     "w", encoding="utf-8", newline="\n"
                 ) as table,
                 (staged / "query_status.jsonl").open(
@@ -291,7 +301,7 @@ def _score_and_publish(
                 "created_at": store.now(),
                 "files": {
                     n: store.record(staged / n)
-                    for n in ["external_evaluation.tsv", "query_status.jsonl"]
+                    for n in [table_name, "query_status.jsonl"]
                 },
             }
             db.close()
@@ -302,7 +312,14 @@ def _score_and_publish(
             if staged.exists():
                 shutil.rmtree(staged)
     store.source_unchanged(cohort)
-    store.publish_table(output, state, score_dir, manifest)
+    store.publish_table(
+        output,
+        state,
+        score_dir,
+        manifest,
+        table_name=table_name,
+        evaluation_kind=evaluation_kind,
+    )
     return EvaluationResult(
         output,
         score_dir / "manifest.json",

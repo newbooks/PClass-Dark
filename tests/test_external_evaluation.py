@@ -188,7 +188,7 @@ def test_top_b_tie_is_not_truth_oracle(graph_path, mapping):
     assert row.dark_go == (Y,) and row.dark_match == 0.875
 
 
-@pytest.mark.parametrize("kind", ["missing", "duplicate", "extra", "hash", "unknown"])
+@pytest.mark.parametrize("kind", ["missing", "duplicate", "extra", "hash"])
 def test_scoring_rejects_incomplete_or_incompatible_data(graph_path, mapping, kind):
     q, p, d = records()
     if kind == "missing":
@@ -199,8 +199,6 @@ def test_scoring_rejects_incomplete_or_incompatible_data(graph_path, mapping, ki
         p.append(SavedPClassQuery("extra", 4, q[0].sequence_sha256, p_result("extra")))
     elif kind == "hash":
         p[0] = SavedPClassQuery("q1", 4, "0" * 64, p[0].result)
-    else:
-        q[0] = EvaluationQuery(0, "q1", 4, q[0].sequence_sha256, ("GO:9999999",))
     with pytest.raises(ValueError):
         list(
             evaluation.score_external_predictions(
@@ -793,3 +791,26 @@ def test_cli_and_api_processing_defaults(monkeypatch, overrides, expected):
         captured["dark"].chunk_size,
         captured["scoring"].workers,
     ) == expected
+
+
+@pytest.mark.parametrize(
+    "truth,prediction,expected",
+    [
+        ((X,), (X, "GO:0018491"), 1.0),
+        ((X, "GO:0018491"), (X,), 1.0),
+        (("GO:0018491",), (X,), None),
+        ((X,), ("GO:0018491",), None),
+    ],
+)
+def test_unknown_metric_terms_warn(graph_path, truth, prediction, expected):
+    with pytest.warns(UserWarning, match="Unknown evaluation MF terms.*GO:0018491"):
+        value, status = scoring.metric(
+            resources.load_graph(graph_path), truth, prediction
+        )
+    assert value == expected
+    assert status["source_counts"] == [len(truth), len(prediction)]
+    assert status["missing_terms"] == [
+        [t for t in truth if t == "GO:0018491"],
+        [t for t in prediction if t == "GO:0018491"],
+    ]
+    assert status["status"] == ("defined" if expected is not None else "unavailable")
