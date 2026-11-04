@@ -25,3 +25,7 @@
 - [0015: External inference comparison](0015-evaluate-external.md) — implemented: executable comparison script and Python API, existing classifier commands with no extra evaluator dependencies, bounded collection, retained raw reports, top-neighbor/Lin-AMB TSV, offline rescoring and recoverable publication; fixture tests and local profunc preflight passed, full inference untested.
 
 - [0016: External evaluation audit](0016-external-audit.md) — implemented: PNG comparisons, stacked hit histograms, coverage curves and summary.
+
+- [0017: Swiss-Prot inference comparison](0017-evaluate-swiss.md) — implemented: native neighbor-only PClass, resident/cache-backed Dark, profunc accession truth, versioned evidence, `swiss_evaluation.tsv` and audit marker migration; validation results in specification.
+
+- [0018: Swiss-Prot evaluation audit](0018-swiss-audit.md) — implemented: Swiss script/CLI/API, shared audit plots, truth-based binding exclusion and verified Swiss publication lookup; real 380,578-query report generated.

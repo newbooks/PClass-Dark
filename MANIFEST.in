@@ -10,3 +10,8 @@ include scripts/evaluate_external.py
 include docs/external-evaluation.md
 
 include scripts/external-audit.py
+
+include scripts/evaluate_swiss.py
+include docs/swiss-evaluation.md
+
+include scripts/swiss-audit.py

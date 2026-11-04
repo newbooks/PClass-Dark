@@ -116,3 +116,20 @@ scorable matches. PClass hits 5,439 (37.99%); Dark hits 2,548 (17.80%). Both hit
 1,780; method-only hits 3,659 and 768. Wrote all four _v2 PNGs and summary_v2.tsv
 beside the input; checked the summary PNG visually. This annotation-selected
 posthoc cohort is descriptive, not a new independently held-out evaluation.
+
+
+Publication marker compatibility (SPEC-0017): a `marker_version=2` marker supplies
+`state_relative` from the table parent and `evaluation_kind=external|swiss`.
+Audit rejects absolute/symlink paths and mismatched workspace UUIDs, then verifies
+the score-manifest/status hashes and query/truth coverage. Relative parent paths
+support explicitly relocated output destinations. Markers without marker_version
+retain the existing external-only lookup. Unknown versions fail. This extends
+truth lookup only; GO exclusions and scientific audit calculations are unchanged.
+
+
+Shared renderer update (SPEC-0018, 2026-11-03): `audit_external` delegates to a
+private renderer with internal title/prefix parameters, also used by Swiss audit.
+Public defaults, filenames and scientific calculations are unchanged. Both
+wrappers additionally reject destination symlinks and source hard-link collisions.
+External audit extraction regression: 15 passed; combined audit/evaluation/CLI
+regression: 165 passed. See [SPEC-0018](0018-swiss-audit.md) for details.

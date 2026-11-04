@@ -217,7 +217,9 @@ class InferenceSession:
         score_batch_size=4096,
         memory_mib=1024,
         offline=False,
+        _runtime=None,
     ):
+        self._runtime = _runtime
         self._queries = queries
         self._library_dir = library_dir
         self._options = dict(
@@ -380,6 +382,10 @@ class InferenceSession:
             raise IntegrityError("Library generation removed; retry inference") from exc
 
     def _compute(self):
+        if self._runtime is not None:
+            self._runtime._compute_session(self)
+            self._summarize()
+            return
         root = Path(
             default_library_input_dir()
             if self._library_dir is None
@@ -461,6 +467,9 @@ class InferenceSession:
                     raise IntegrityError(
                         "Library snapshot changed during inference; retry"
                     )
+        self._summarize()
+
+    def _summarize(self):
         previous_query = previous_match = None
         rows = matched_queries = 0
         for query, cluster in self._db.execute(

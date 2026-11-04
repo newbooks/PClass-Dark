@@ -7,6 +7,8 @@ import typer
 
 from pclass_dark import __version__
 from pclass_dark.external_audit_cli import external_audit_command
+from pclass_dark.swiss_audit_cli import swiss_audit_command
+from pclass_dark.swiss_evaluation_cli import evaluate_swiss_command
 
 app = typer.Typer(
     name="pclass-dark",
@@ -325,3 +327,8 @@ def infer_command(
 
 # The same adapter supports the standalone audit script and installed hierarchy.
 app.command("external-audit")(external_audit_command)
+app.command("swiss-audit")(swiss_audit_command)
+
+app.command("evaluate-swiss", context_settings={"help_option_names": ["-h", "--help"]})(
+    evaluate_swiss_command
+)

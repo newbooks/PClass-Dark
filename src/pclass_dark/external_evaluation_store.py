@@ -93,7 +93,15 @@ def publish_directory(staged, target, manifest):
         sync_dir(target.parent)
 
 
-def snapshot_inputs(fasta, truth_tsv, state):
+def snapshot_inputs(
+    fasta,
+    truth_tsv,
+    state,
+    *,
+    truth_resolver=None,
+    truth_source=None,
+    accession_resolver=None,
+):
     sources = {str(fasta): record(fasta)}
     if truth_tsv is not None:
         sources[str(truth_tsv)] = record(truth_tsv)
@@ -107,6 +115,11 @@ def snapshot_inputs(fasta, truth_tsv, state):
         CREATE TABLE truth(query_id TEXT PRIMARY KEY,go_ids_json TEXT);
         CREATE TABLE supplied(query_id TEXT PRIMARY KEY,go_ids_json TEXT);
         """)
+        if accession_resolver is not None:
+            db.execute(
+                "CREATE TABLE accessions(ordinal INTEGER PRIMARY KEY, "
+                "query_id TEXT UNIQUE, primary_accession TEXT UNIQUE)"
+            )
         if truth_tsv is not None:
             with truth_tsv.open(encoding="utf-8", newline="") as f:
                 reader = csv.DictReader(f, delimiter="\t")
@@ -161,6 +174,8 @@ def snapshot_inputs(fasta, truth_tsv, state):
                     terms = explicit
                 elif truth_tsv is not None:
                     raise ValueError(f"Missing truth TSV query: {qid}")
+                if truth_resolver is not None:
+                    terms = truth_resolver(qid, terms)
                 if not terms:
                     raise ValueError(f"Missing GO MF truth: {qid}")
                 digest = hashlib.sha256(sequence.encode("ascii")).hexdigest()
@@ -177,6 +192,11 @@ def snapshot_inputs(fasta, truth_tsv, state):
                 truth_digest.update(
                     canonical({"query_id": qid, "go_ids": terms}) + b"\n"
                 )
+                if accession_resolver is not None:
+                    db.execute(
+                        "INSERT INTO accessions VALUES (?,?,?)",
+                        (count, qid, accession_resolver(qid)),
+                    )
                 db.execute(
                     "INSERT INTO queries VALUES (?,?,?,?,?)",
                     (count, qid, sequence, len(sequence), digest),
@@ -216,9 +236,13 @@ def snapshot_inputs(fasta, truth_tsv, state):
         ).fetchone()[0]:
             raise ValueError("Extra truth TSV query IDs")
         input_id = input_digest.hexdigest()
-        truth_id = identity(
-            {"input_id": input_id, "truth_rows_sha256": truth_digest.hexdigest()}
-        )
+        truth_key = {
+            "input_id": input_id,
+            "truth_rows_sha256": truth_digest.hexdigest(),
+        }
+        if truth_source is not None:
+            truth_key["source"] = truth_source
+        truth_id = identity(truth_key)
         cohort_key = {
             "input_id": input_id,
             "truth_id": truth_id,
@@ -248,6 +272,9 @@ def snapshot_inputs(fasta, truth_tsv, state):
                         "schema_version": 1,
                         "id": truth_id,
                         "input_id": input_id,
+                        **(
+                            {"source": truth_source} if truth_source is not None else {}
+                        ),
                         "files": {"truth.sqlite": record(truth_stage / "truth.sqlite")},
                     },
                 )
@@ -404,7 +431,15 @@ def recover_publication(output, state):
         ) from exc
 
 
-def publish_table(output, state, score_dir, score_manifest):
+def publish_table(
+    output,
+    state,
+    score_dir,
+    score_manifest,
+    *,
+    table_name="external_evaluation.tsv",
+    evaluation_kind="external",
+):
     old = owner_check(output, state)
     marker, journal = publication_paths(output)
     backup = state / "publications" / identity(str(output)) / uuid.uuid4().hex
@@ -427,8 +462,14 @@ def publish_table(output, state, score_dir, score_manifest):
         "workspace_uuid": read(state / "workspace.json")["workspace_uuid"],
         "score_id": score_manifest["id"],
         "score_manifest": record(score_dir / "manifest.json"),
-        "tsv": record(score_dir / "external_evaluation.tsv"),
+        "tsv": record(score_dir / table_name),
     }
+    if evaluation_kind == "swiss":
+        new.update(
+            marker_version=2,
+            state_relative=os.path.relpath(state, output.parent),
+            evaluation_kind=evaluation_kind,
+        )
     selection = {
         "schema_version": 1,
         **{
@@ -446,7 +487,7 @@ def publish_table(output, state, score_dir, score_manifest):
         "score_manifest": new["score_manifest"],
     }
     staged = output.with_name("." + output.name + "." + uuid.uuid4().hex + ".tmp")
-    shutil.copyfile(score_dir / "external_evaluation.tsv", staged)
+    shutil.copyfile(score_dir / table_name, staged)
     sync_file(staged)
     write_json(
         journal,

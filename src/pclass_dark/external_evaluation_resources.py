@@ -76,12 +76,13 @@ def map_from_payload(payload):
     return ClusterGoMap(clusters, payload.get("reference", {}))
 
 
-def snapshot_map(state, path=None):
+def snapshot_map(state, path=None, *, runtime=None):
     if path is None:
         from profunc.cluster_listing import load_cluster_records
         from profunc.runtime import resolve_runtime
 
-        runtime = resolve_runtime()
+        supplied_runtime = runtime is not None
+        runtime = runtime or resolve_runtime()
         payload = {
             "schema_version": 1,
             "reference": runtime.manifest,
@@ -95,7 +96,7 @@ def snapshot_map(state, path=None):
             },
         }
         payload["mapping_id"] = identity(payload)
-        if resolve_runtime().manifest != runtime.manifest:
+        if not supplied_runtime and resolve_runtime().manifest != runtime.manifest:
             raise ValueError("Profunc runtime changed while reading GO labels; retry")
     else:
         payload = read(Path(path))

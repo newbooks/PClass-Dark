@@ -220,18 +220,36 @@ def read_query_annotations(input_path, data: AuditData, truth_tsv=None):
             )
 
         def verified(file, expected):
-            if file_record(file) != expected:
+            if (
+                any(p.is_symlink() for p in (file, *file.parents))
+                or file_record(file) != expected
+            ):
                 raise ValueError(f"Evaluation source identity mismatch: {file}")
 
         try:
             marker = json.loads(marker_path.read_text())
             verified(path, marker["tsv"])
-            score = (
-                path.parent
-                / ".external-evaluation"
-                / "scores"
-                / digest_id(marker["score_id"])
-            )
+            state = path.parent / ".external-evaluation"
+            if marker.get("marker_version") == 2:
+                relative = marker["state_relative"]
+                if (
+                    not isinstance(relative, str)
+                    or not relative
+                    or Path(relative).is_absolute()
+                    or marker["evaluation_kind"] not in {"external", "swiss"}
+                ):
+                    raise ValueError("Invalid evaluation state location")
+                state = path.parent / relative
+                if any(p.is_symlink() for p in (state, *state.parents)):
+                    raise ValueError("Evaluation state symlink")
+                if (state / "workspace.json").is_symlink():
+                    raise ValueError("Evaluation workspace metadata symlink")
+                workspace = json.loads((state / "workspace.json").read_text())
+                if workspace["workspace_uuid"] != marker["workspace_uuid"]:
+                    raise ValueError("Evaluation workspace identity mismatch")
+            elif "marker_version" in marker:
+                raise ValueError("Unknown evaluation marker version")
+            score = state / "scores" / digest_id(marker["score_id"])
             verified(score / "manifest.json", marker["score_manifest"])
             manifest = json.loads((score / "manifest.json").read_text())
             if manifest["id"] != marker["score_id"] or manifest["query_count"] != len(
@@ -270,6 +288,30 @@ def audit_external(
     whole queries before analysis, and publish _v2 outputs. Without it, preserve
     the original unfiltered API behavior and filenames.
     """
+    return _audit(
+        input_path,
+        output_dir,
+        bins=bins,
+        cutoff=cutoff,
+        exclude_go=exclude_go,
+        truth_tsv=truth_tsv,
+        prefix="external_audit",
+        summary_title="External audit",
+    )
+
+
+def _audit(
+    input_path,
+    output_dir=None,
+    *,
+    bins=10,
+    cutoff=0.7,
+    exclude_go=None,
+    truth_tsv=None,
+    prefix,
+    summary_title,
+):
+    """Shared validated analysis, rendering and staged per-file publication."""
     import os
     import tempfile
 
@@ -297,15 +339,23 @@ def audit_external(
     output = Path(output_dir) if output_dir is not None else Path(input_path).parent
     suffix = "_v2" if exclude_go is not None else ""
     names = [
-        f"external_audit_{name}{suffix}.png"
+        f"{prefix}_{name}{suffix}.png"
         for name in ("match_scores", "confidence", "coverage", "summary")
     ]
-    names.append(f"external_audit_summary{suffix}.tsv")
+    names.append(f"{prefix}_summary{suffix}.tsv")
     sources = {Path(input_path).resolve()}
     if truth_tsv is not None:
         sources.add(Path(truth_tsv).resolve())
     if sources & {(output / name).resolve() for name in names}:
         raise ValueError("Audit output would overwrite the input table")
+    for name in names:
+        destination = output / name
+        if destination.is_symlink():
+            raise ValueError("Audit destination must not be a symlink")
+        if destination.exists() and any(
+            source.exists() and destination.samefile(source) for source in sources
+        ):
+            raise ValueError("Audit output would overwrite an input source")
     output.mkdir(parents=True, exist_ok=True)
     colors = ("#278878", "#df9262", "#a4a9b0")
 
@@ -476,7 +526,7 @@ def audit_external(
         pct = diagnostics["distance_over_one_pct"]
         detail = "NA" if pct is None else f"{pct:.4f}%"
         ax.set_title(
-            f"External audit · semantic hit cutoff {cutoff:g}\n"
+            f"{summary_title} · semantic hit cutoff {cutoff:g}\n"
             f"Embedding distance >1: {diagnostics['distance_over_one']:,} / "
             f"{diagnostics['distance_defined']:,} ({detail})",
             pad=18,

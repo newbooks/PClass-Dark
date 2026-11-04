@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import sqlite3
 import tempfile
+import warnings
 from collections.abc import Mapping
 from dataclasses import asdict
+from functools import lru_cache
 from pathlib import Path
 
 from .external_evaluation_types import (
@@ -28,7 +30,12 @@ def metric(index, truth, prediction):
     truth, prediction = go_set(truth, nonempty=True), go_set(prediction)
     unknown = (set(truth) | set(prediction)) - index.all_terms
     if unknown:
-        raise ValueError(f"Unknown evaluation MF terms: {sorted(unknown)}")
+        warnings.warn(
+            f"Unknown evaluation MF terms: {sorted(unknown)}; excluding these terms "
+            "from semantic scoring (possible GO graph/annotation version mismatch)",
+            UserWarning,
+            stacklevel=2,
+        )
     if not prediction:
         return None, {
             "status": "unavailable",
@@ -37,6 +44,7 @@ def metric(index, truth, prediction):
             "defined_counts": [0, 0],
             "directional_means": [None, None],
             "clamp": None,
+            **({"missing_terms": [sorted(unknown), []]} if unknown else {}),
         }
     detail = go_set_similarity_with_details(index, truth, prediction)
     value = detail.similarity
@@ -57,6 +65,16 @@ def metric(index, truth, prediction):
         ],
         "directional_means": [detail.mean_1_to_2, detail.mean_2_to_1],
         "clamp": clamp,
+        **(
+            {
+                "missing_terms": [
+                    sorted(set(truth) & unknown),
+                    sorted(set(prediction) & unknown),
+                ]
+            }
+            if unknown
+            else {}
+        ),
     }
 
 
@@ -123,14 +141,22 @@ def project_dark(result):
     }
 
 
-def score_query(query, pclass, dark, index, mapping):
+def cached_metric(index):
+    """Bound repeated full-set comparisons to one frozen graph/worker lifetime."""
+    return lru_cache(maxsize=4096)(
+        lambda truth, prediction: metric(index, truth, prediction)
+    )
+
+
+def score_query(query, pclass, dark, index, mapping, *, metric_func=None):
     truth = go_set(query.truth_go, nonempty=True)
     terms = go_set(pclass["go_terms"])
     nearest = min(pclass["neighbors"], key=lambda n: n["distance"], default=None)
     winner = min(dark["matches"], key=lambda m: (m["B"], m["cluster_id"]), default=None)
     dark_terms = mapping.terms(winner["cluster_id"]) if winner else ()
-    p_match, p_status = metric(index, truth, terms)
-    d_match, d_status = metric(index, truth, dark_terms)
+    compare = metric_func or (lambda a, b: metric(index, a, b))
+    p_match, p_status = compare(truth, terms)
+    d_match, d_status = compare(truth, dark_terms)
     row = ComparisonRow(
         query.query_id,
         terms,
@@ -268,7 +294,9 @@ def score_external_predictions(
 ):
     """Yield ordered comparisons with bounded RAM; close the generator for cleanup.
 
-    Raises ValueError for malformed, unknown, duplicate, extra or missing records.
+    Raises ValueError for malformed, duplicate, extra or missing records and
+    unknown clusters.
+    Unknown GO terms warn and are excluded from semantic scoring.
     No inference dependencies, network or permanent files are used.
     """
     with tempfile.TemporaryDirectory(prefix="pclass-evaluation-score-") as directory:
@@ -282,21 +310,26 @@ def score_external_predictions(
 
 
 # Spawned scoring workers hold only the fixed graph/map, never an embedding model.
-_worker_index = _worker_map = None
+_worker_index = _worker_map = _worker_metric = _worker_threads = None
 
 
 def init_score_worker(graph_path, mapping_payload):
+    from threadpoolctl import threadpool_limits
+
     from .external_evaluation_resources import load_graph, map_from_payload
 
-    global _worker_index, _worker_map
+    global _worker_index, _worker_map, _worker_metric, _worker_threads
+    _worker_threads = threadpool_limits(limits=1)
     _worker_index = load_graph(graph_path)
     _worker_map = map_from_payload(mapping_payload)
+    _worker_metric = cached_metric(_worker_index)
 
 
 def score_block(block):
     return [
         (asdict(row), status)
         for row, status in (
-            score_query(q, p, d, _worker_index, _worker_map) for q, p, d in block
+            score_query(q, p, d, _worker_index, _worker_map, metric_func=_worker_metric)
+            for q, p, d in block
         )
     ]
