@@ -10,8 +10,6 @@ Run from the results directory:
 
 ```bash
 python /path/to/PClass-Dark/scripts/evaluate_swiss.py sequences.fasta
-# Equivalent installed command:
-pclass-dark evaluate-swiss sequences.fasta
 ```
 
 The default output is `swiss_evaluation.tsv` in the working directory, with
@@ -57,7 +55,7 @@ For the repository's selected prepared data, use the paths named by
 `data/setup-data/selection.json`:
 
 ```bash
-pclass-dark evaluate-swiss sequences.fasta \
+python /path/to/PClass-Dark/scripts/evaluate_swiss.py sequences.fasta \
   --dark-library-dir /path/to/PClass-Dark/data/library \
   --dark-embedding-cache /path/to/completed/embedding-directory \
   --dark-prepared-dir /path/to/completed/prepared-directory \
@@ -106,8 +104,8 @@ configs, source/cache identities and run tag. A remote model change still requir
 an explicit new tag.
 
 ```bash
-pclass-dark evaluate-swiss sequences.fasta --score-only
-pclass-dark swiss-audit swiss_evaluation.tsv
+python /path/to/PClass-Dark/scripts/evaluate_swiss.py sequences.fasta --score-only
+python /path/to/PClass-Dark/scripts/swiss-audit.py swiss_evaluation.tsv
 ```
 
 Score-only requires the original FASTA and saved workspace, but no live annotation
@@ -161,7 +159,6 @@ runs. `--score-only` continues to require a successful prior publication.
 ```bash
 pip install -e '.[audit]'
 python scripts/swiss-audit.py work-swiss/swiss_evaluation.tsv
-# Or: pclass-dark swiss-audit work-swiss/swiss_evaluation.tsv
 ```
 
 The command writes `swiss_audit_{match_scores,confidence,coverage,summary}_v2.png`

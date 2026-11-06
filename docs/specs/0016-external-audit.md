@@ -1,5 +1,9 @@
 # SPEC-0016: External evaluation audit
 
+> Interface update: [SPEC-0019](0019-script-only-evaluation.md) removes the
+> installed subcommand described below; use the existing script or Python API.
+
+
 - Date: 2026-11-02.
 - Status: Implemented and validated (2026-11-02).
 

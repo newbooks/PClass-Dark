@@ -553,7 +553,6 @@ PClass-Dark is released under the [MIT License](LICENSE).
 ```bash
 pip install -e '.[audit]'
 python scripts/external-audit.py path/to/external_evaluation.tsv
-# Also available as: pclass-dark external-audit path/to/comparison.tsv
 ```
 
 Excludes queries annotated with `GO:0005515` (using saved truth annotations), then
@@ -565,8 +564,8 @@ distance >1 counts are reported. See [audit documentation](docs/external-evaluat
 
 ### Swiss-Prot evaluation
 
-Use `pclass-dark evaluate-swiss sequences.fasta` (or
-`scripts/evaluate_swiss.py`) to write `swiss_evaluation.tsv` with truth resolved
+Use `python scripts/evaluate_swiss.py sequences.fasta` to write
+`swiss_evaluation.tsv` with truth resolved
 from profunc's direct accession MF annotations. The native PClass neighbor client
 skips Needle/ProSig; a resident Dark runtime can reuse verified prepared embeddings.
 See the [Swiss evaluation guide](docs/swiss-evaluation.md) for preflight, cache
@@ -577,7 +576,6 @@ options, resume/offline scoring and potentially in-sample interpretation.
 ```bash
 pip install -e '.[audit]'
 python scripts/swiss-audit.py work-swiss/swiss_evaluation.tsv
-# Or: pclass-dark swiss-audit work-swiss/swiss_evaluation.tsv
 ```
 
 Writes four `swiss_audit_*_v2.png` plots and `swiss_audit_summary_v2.tsv`, using

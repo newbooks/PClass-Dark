@@ -1,5 +1,9 @@
 # SPEC-0017: Swiss-Prot classifier comparison
 
+> Interface update: [SPEC-0019](0019-script-only-evaluation.md) removes the
+> installed subcommand described below; use the existing script or Python API.
+
+
 - Date/revision: 2026-11-02.
 - Status: Implemented; final validation results are recorded below.
 - Scope: This revision replaces earlier exploratory execution choices in this

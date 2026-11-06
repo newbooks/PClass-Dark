@@ -28,4 +28,6 @@
 
 - [0017: Swiss-Prot inference comparison](0017-evaluate-swiss.md) — implemented: native neighbor-only PClass, resident/cache-backed Dark, profunc accession truth, versioned evidence, `swiss_evaluation.tsv` and audit marker migration; validation results in specification.
 
-- [0018: Swiss-Prot evaluation audit](0018-swiss-audit.md) — implemented: Swiss script/CLI/API, shared audit plots, truth-based binding exclusion and verified Swiss publication lookup; real 380,578-query report generated.
+- [0018: Swiss-Prot evaluation audit](0018-swiss-audit.md) — implemented: Swiss script/API, shared audit plots, truth-based binding exclusion and verified Swiss publication lookup; real 380,578-query report generated.
+
+- [0019: Script-only evaluation and audits](0019-script-only-evaluation.md) — removes three root subcommands; scripts and Python APIs retained.

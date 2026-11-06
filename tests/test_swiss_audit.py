@@ -9,13 +9,17 @@ import sys
 from pathlib import Path
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
 from pclass_dark import external_audit as shared
 from pclass_dark.artifacts import file_record
-from pclass_dark.cli import app
 from pclass_dark.swiss_audit import audit_swiss
+from pclass_dark.swiss_audit_cli import swiss_audit_command
 from test_external_audit import table as table  # noqa: F401
+
+app = typer.Typer()
+app.command()(swiss_audit_command)
 
 
 @pytest.fixture
@@ -69,7 +73,7 @@ def test_analytical_parity_outputs_and_title(table, truth, monkeypatch):
 
 def test_script_cli_and_help(table, truth, tmp_path):
     args = [str(table), "--truth-tsv", str(truth), "--bins", "2"]
-    result = CliRunner().invoke(app, ["swiss-audit", *args])
+    result = CliRunner().invoke(app, [*args])
     assert result.exit_code == 0, result.output
     assert "Excluded 2 / 5" in result.output
     expected = (tmp_path / "swiss_audit_summary_v2.tsv").read_bytes()
@@ -81,12 +85,12 @@ def test_script_cli_and_help(table, truth, tmp_path):
     assert "swiss_audit_summary_v2.tsv" in completed.stdout
     assert (tmp_path / "swiss_audit_summary_v2.tsv").read_bytes() == expected
     for command in (
-        ["swiss-audit", "--help"],
-        ["swiss-audit", str(table), "--bins", "0"],
+        ["--help"],
+        [str(table), "--bins", "0"],
     ):
         result = CliRunner().invoke(app, command)
         assert result.exit_code == (0 if "--help" in command else 2)
-    assert CliRunner().invoke(app, ["swiss-audit", str(table)]).exit_code == 1
+    assert CliRunner().invoke(app, [str(table)]).exit_code == 1
 
 
 def publication(table, tmp_path):

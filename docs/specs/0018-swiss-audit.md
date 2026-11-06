@@ -1,5 +1,9 @@
 # SPEC-0018: Swiss-Prot evaluation audit
 
+> Interface update: [SPEC-0019](0019-script-only-evaluation.md) removes the
+> installed subcommand described below; use the existing script or Python API.
+
+
 - Date: 2026-11-03.
 - Status: Implemented; validation results recorded below.
 

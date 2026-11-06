@@ -143,10 +143,8 @@ Install the optional plotting dependency with `pip install -e '.[audit]'`, then:
 
 ```bash
 python scripts/external-audit.py path/to/comparison.tsv
-# Equivalent installed command:
-pclass-dark external-audit path/to/comparison.tsv
 # Optional display settings:
-pclass-dark external-audit path/to/comparison.tsv --bins 10 --hit-cutoff 0.7 --output-dir audit
+python scripts/external-audit.py path/to/comparison.tsv --bins 10 --hit-cutoff 0.7 --output-dir audit
 ```
 
 The script/CLI now excludes all queries whose annotated MF GO set contains
