@@ -1,12 +1,11 @@
 """Defaults depend on package location; explicit paths remain caller-controlled."""
 
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
 from pclass_dark import library_build, paths, setup_data
-from pclass_dark.library import build_library
+from pclass_dark.library import LibraryResult, build_library
 
 
 @pytest.fixture
@@ -46,17 +45,20 @@ def test_prepare_default_and_explicit_override(
     assert explicit.prepared_dir.is_relative_to(other / "explicit")
 
 
-def test_build_api_default_and_override(checkout, monkeypatch):
+def test_build_api_default_and_override(checkout, tmp_path, monkeypatch):
     calls = []
+    monkeypatch.chdir(tmp_path)
 
     def fake(data_dir, output_dir, **kwargs):
         calls.append((data_dir, output_dir))
-        return SimpleNamespace()
+        return LibraryResult("fixture", Path(output_dir) / "fixture", {}, True)
 
     monkeypatch.setattr(library_build, "build", fake)
-    build_library()
+    default = build_library()
+    assert default.structural_model_dir.is_relative_to(checkout / "data/library")
     assert calls[-1] == (checkout / "data/setup-data", checkout / "data/library")
-    build_library("input", "output")
+    explicit = build_library("input", "output")
+    assert explicit.structural_model_dir.is_relative_to(tmp_path / "output")
     assert calls[-1] == ("input", "output")
 
 

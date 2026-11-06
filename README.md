@@ -43,6 +43,17 @@ Core dependencies include profunc, NumPy, SciPy, Typer, and filelock. Install th
 embedding stack with `pip install -e '.[embeddings]'`. For development, use
 `pip install -e '.[dev,embeddings]'` and run `pytest`.
 
+## Structural prediction models
+
+`build-library` also prepares the frozen ProStruct RSA/ALL-CEF and Q3 heads.
+Together with the existing pinned ESM-2 checkpoint, these supply all pretrained
+components needed for the planned 19-feature reranking workflow. No retraining
+or structural reference inference runs during model preparation. The Python
+`StructuralPredictor` API supports full-sequence prediction, GPU/CPU execution
+and offline checkpoint use. See [structural prediction](docs/structural-prediction.md)
+for usage, model provenance and the existing unique-sequence accession files.
+The 19-feature aggregation and `rerank` command remain future work.
+
 ## Shared Data and Distribution
 
 In an editable/source checkout, default paths come from the imported package's
@@ -68,7 +79,8 @@ implicitly; use the Python API to keep building libraries at custom paths.
 Completed shared artifacts are tracked with Git LFS. `python -m build` includes
 only the selected complete bundles in the wheel and source archive, validating
 manifests/checksums and coordinating with active writers. Checkpoints, archives,
-staging files, locks and model weights are excluded. A stage without a selection
+staging files, locks and ESM model weights are excluded. The small frozen
+RSA/ALL-CEF and Q3 heads are always packaged with their provenance. A stage without a selection
 contributes no generated data yet; building does not run the scientific commands.
 See [data instructions](data/README.md) and [SPEC-0006](docs/specs/0006-shared-artifacts.md).
 
@@ -134,7 +146,7 @@ sets = load_sets(result.prepared_dir)
 ```
 
 Completed selected shared bundles are copied into package resources during
-builds. Temporary checkpoints and model weights are excluded. Prepared data and vector consumers
+builds. Temporary checkpoints and ESM weights are excluded. Prepared data and vector consumers
 do not need the embedding-generation dependencies. See
 [SPEC-0003](docs/specs/0003-setup-data.md) for schemas, integrity checks, and
 the release layout.
@@ -282,7 +294,8 @@ the current reference collection; private/staged copies and reports add storage.
 Completed selected production, relative and optional research artifacts are
 automatically bundled under `pclass_dark/resources/library/` with their selectors. Loading and scoring
 need neither setup-data matrices nor PLM imports or writes to installed files.
-Private checkpoints and model weights are excluded. See
+Private checkpoints and ESM weights are excluded; frozen structural heads are
+packaged separately. See
 [SPEC-0004](docs/specs/0004-build-library.md),
 [SPEC-0005](docs/specs/0005-relative-score-distributions.md), and the
 [score-interpretation notes](docs/research/notes/2026-10-27-relative-score-reasoning.md).

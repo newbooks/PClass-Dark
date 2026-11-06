@@ -24,7 +24,10 @@ Track completed `data/` artifacts with Git LFS; ignore hidden checkpoint, stagin
 archive and lock directories. Build wheels and source archives from the selected
 completed setup/library/research bundles, using selectors and manifest inventories
 rather than recursively including the working directory. Static reference data
-remains under package resources. Add no model weights or intermediate arrays.
+remains under package resources. Do not export ESM checkpoint weights or
+intermediate arrays. [SPEC-0020](0020-structural-prediction-models.md) adds a
+separate, always-packaged frozen RSA/Q3 head bundle under resources/structure;
+its small model weights and provenance are an explicit exception.
 
 A setuptools build helper must validate selectors, bundle status/schema, IDs,
 manifest-byte digests and file hashes/size inventories before copying. Use the

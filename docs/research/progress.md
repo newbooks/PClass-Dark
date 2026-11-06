@@ -2367,3 +2367,84 @@ with loopback permission: 1 passed. After adding script help subprocess checks,
 `git diff --check` passed. Script-only use requires access to repository/source
 scripts and the installed package; wheel installation does not install those
 scripts as commands. No remaining validation blocker.
+
+## 2026-11-06 — ProStruct reranking feature feasibility
+
+Inspected ProStruct's actual sequence/residue inference, trained dual-head
+artifact, 19-feature aggregation, profiling and signature code. Recorded the
+assessment and proposed workflow in
+[ProStruct reranking feasibility](prostruct-reranking-feasibility.md).
+Implementation is feasible, but pooled Dark embedding caches cannot supply the
+required residue embeddings, and Dark's terminal 1022-residue windows differ
+from ProStruct's full-coverage 1021-residue windows. Preserve all Dark memberships
+when joining reusable ProStruct predictions/features by exact sequence.
+
+Validated the existing dual-head library's files/tensors and finite synthetic
+CPU outputs. Reference feature/extraction/batched-ESM suites: 49 passed; one
+existing AMD environment warning. GPU unavailable. No production inference,
+reranking implementation or performance experiment. Next step: specify the
+whole-protein versus candidate-window feature unit and leakage-controlled
+reranking protocol before implementation. Current B/C inference is unchanged.
+
+
+## 2026-11-06 — Portable frozen ProStruct structural heads
+
+Implemented [SPEC-0020](../specs/0020-structural-prediction-models.md), extending
+`build-library` with an independent checksum-verified RSA/ALL-CEF + Q3 model
+companion, including on reused/scoped builds. `--clean` remains deletion-only.
+Imported the unmodified dual-head weights, task-specific normalization and
+training provenance into package resources; wheel/sdist include the model bundle.
+No neighboring checkout is a runtime dependency. Core model preparation does not
+load torch/ESM or download models. Added full-sequence `StructuralPredictor`,
+`StructuralHeads`, exact ProStruct windows/ownership, masking and bounded CPU/GPU
+execution. Shared pooled embeddings retain their existing mean semantics; a new
+residue-state operation serves the structural heads. README, data/API guide,
+SPEC-0004/0006, specification index and model provenance are synchronized.
+
+Code revision: `f85c74842878af7f5d0ef2af3cb9ec09a2d77b3e` plus these uncommitted
+changes, branch `issue#34`. Source ProStruct revision
+`fa8fa0da7a9f2ecb1ab096f979b3936dd2409d54`; source library ID and imported bundle
+ID/SHA-256 are recorded in SPEC-0020. Existing feasibility note and prior progress
+entries preserved. The selected preparation contains 380,578 distinct FASTA
+representative accession headers (independently counted), 381,627 memberships
+and 3,443 retained clusters. Original accessions and all retained cluster
+relations remain in aliases.tsv/memberships.tsv; no data export was rewritten.
+
+Validation and resolved failures:
+
+- First focused run: 76 passed, 7 setup errors from a prototype referring to
+  `FrozenEmbedder` instead of this repository's actual `EsmBackend`. Corrected
+  before completion. A subsequent broad run had 210 passes and two test-fixture
+  failures (missing test Path import; old SimpleNamespace stub where the public
+  build now returns an extended dataclass). Both fixed; no production test
+  failures remain unresolved.
+- `python -m pytest -q tests/test_structure.py tests/test_embeddings.py
+  tests/test_cli.py tests/test_production_library.py tests/test_data_cleanup.py
+  tests/test_library_cleanup.py tests/test_shared_distribution.py
+  tests/test_shared_paths.py`: 210 passed, two fixture failures as above.
+- `python -m pytest -q tests/test_structure.py tests/test_library.py
+  tests/test_library_paths.py`: 68 passed (before additional device/failure tests).
+- Final `python -m pytest -q tests/test_shared_paths.py tests/test_structure.py
+  tests/test_cli.py`: 78 passed, 1 GPU test skipped. This includes all corrected
+  fixture checks, CPU numerical tests, model-copy failure atomicity, preservation
+  of valid production on a corrupt companion, clean non-creation and standalone
+  wheel-from-sdist artifact loading away from either source checkout.
+- Explicit copy-failure/production-preservation checks also passed separately
+  (2 passed). Ruff lint/format and `git diff --check` passed.
+- Real pinned ESM CPU/offline queries `ACDEKRHX` and
+  `MKWVTFISLLFLFSSAYSRGVFRRDTHKSEIAHRFKDLGEX`; original ProStruct
+  enrichment.write_accession versus the new API on the latter: every Q3 label
+  matched, maximum exposure difference 4.930724994967051e-10 (TSV rounding).
+  Four numerical threads; no network, fitting, sampling or splits. This is an
+  implementation agreement check, not held-out biological performance.
+
+Validation environment: Linux x86_64, Python 3.14.6, NumPy 2.4.4,
+PyTorch 2.9.1+rocm6.3, Transformers 5.13.1, Safetensors 0.8.0.
+PyTorch exposes no GPU here; actual GPU comparison was skipped, while mocked
+initialization-fallback tests passed. An existing AMD_SERIALIZE_KERNEL warning
+and the existing ESM loader's unused LM-head/pooler report appeared. Residue
+states do not use the pooler. No full-reference prediction or 19-feature table,
+rerank command, fitted reranking score, throughput benchmark or manuscript change.
+Next: aggregate the descriptors with matched reference/query policies, then fit
+and evaluate reranking using training-only profiles and homology-controlled
+held-out data. No additional pretrained model is needed for those descriptors.

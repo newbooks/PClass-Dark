@@ -31,3 +31,5 @@
 - [0018: Swiss-Prot evaluation audit](0018-swiss-audit.md) — implemented: Swiss script/API, shared audit plots, truth-based binding exclusion and verified Swiss publication lookup; real 380,578-query report generated.
 
 - [0019: Script-only evaluation and audits](0019-script-only-evaluation.md) — removes three root subcommands; scripts and Python APIs retained.
+
+- [0020: Portable RSA/ALL-CEF and Q3 predictors](0020-structural-prediction-models.md) — frozen dual heads prepared by build-library, packaged assets and full-sequence Python prediction.

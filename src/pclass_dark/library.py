@@ -103,6 +103,8 @@ class LibraryResult:
     research_dir: Path | None = None
     reuse: dict | None = None
     cleanup: CleanupResult | None = None
+    structural_model_id: str | None = None
+    structural_model_dir: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -949,4 +951,17 @@ def build_library(
         cross_validate=cross_validate,
     )
 
-    return result
+    from dataclasses import replace
+
+    from .structural_models import prepare_structural_models
+
+    try:
+        structural = prepare_structural_models(output_dir)
+    except (ValueError, RuntimeError, OSError) as exc:
+        exc.production_result = result
+        raise
+    return replace(
+        result,
+        structural_model_id=structural.model_id,
+        structural_model_dir=structural.path,
+    )

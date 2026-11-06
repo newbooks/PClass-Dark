@@ -187,9 +187,12 @@ class EsmBackend:
             "Embedding device: %s; float32; final-layer residue-only mean", resolved
         )
 
-    def embed(self, sequences):
+    def _residue_forward(self, sequences):
+        """Validate exact tokens and return hidden states plus residue-only mask."""
         torch = self.torch
-        if any(not s or len(s) > 1022 or set(s) - ALPHABET for s in sequences):
+        if not sequences or any(
+            not s or len(s) > 1022 or set(s) - ALPHABET for s in sequences
+        ):
             raise ValueError("Unsupported or over-limit embedding window")
         encoded = self.tokenizer(
             sequences,
@@ -212,10 +215,31 @@ class EsmBackend:
             torch.autocast(device_type=torch.device(self.device).type, enabled=False),
         ):
             output = self.model(**encoded).last_hidden_state
-            result = pool_residues(
-                output, encoded["attention_mask"], special, [len(s) for s in sequences]
-            )
+        return output, encoded["attention_mask"], special
+
+    def embed(self, sequences):
+        output, attention, special = self._residue_forward(sequences)
+        result = pool_residues(output, attention, special, [len(s) for s in sequences])
         return result.cpu().numpy().astype("<f4", copy=False)
+
+    def residue_states(self, sequences):
+        """Return per-window (residues,640) float32 CPU states, without pooling.
+
+        This shares the pinned checkpoint and token checks with ``embed``. It
+        does not reconstruct states from pooled caches. The caller bounds batches.
+        """
+        output, attention, special = self._residue_forward(sequences)
+        mask = attention.bool() & ~special.bool()
+        result = []
+        for row, sequence in enumerate(sequences):
+            states = output[row][mask[row]].float()
+            if (
+                states.shape != (len(sequence), 640)
+                or not self.torch.isfinite(states).all()
+            ):
+                raise IntegrityError("Invalid residue embedding states")
+            result.append(states.cpu().numpy().astype("<f4", copy=False))
+        return result
 
 
 def _finite_matrix(array, rows):

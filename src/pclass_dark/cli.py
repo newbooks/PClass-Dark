@@ -122,7 +122,7 @@ def build_library_command(
         ),
     ),
 ) -> None:
-    """Build all-C signatures and C/B distributions; optionally research five folds."""
+    """Prepare RSA/Q3 heads, all-C signatures and C/B distributions."""
     import logging
 
     from pclass_dark.library import build_library
@@ -164,6 +164,8 @@ def build_library_command(
             "superseded rollback archives are eligible; Git LFS objects retained."
         )
     typer.echo(f"Library: {result.library_dir}")
+    if getattr(result, "structural_model_dir", None) is not None:
+        typer.echo(f"Structural models: {result.structural_model_dir}")
     if result.relative_dir is not None:
         typer.echo(f"Relative scores: {result.relative_dir}")
     if result.research_dir is not None:
