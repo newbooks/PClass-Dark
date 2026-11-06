@@ -7,7 +7,10 @@ Default commands use this directory regardless of the working directory:
 
 Completed artifacts are tracked through Git LFS and automatically included in
 wheel/source builds. Only selected bundles and their manifest-listed files are
-exported. Checkpoints, locks, archives, staging files and model weights stay local.
+exported. Checkpoints, locks, archives, staging files and ESM checkpoint weights stay local. The small frozen RSA/Q3
+heads are always included separately under package resources/structure. Ordinary
+`build-library` also prepares a verified copy under library/structural-models/;
+`--clean` does not create or repair that copy.
 Do not hand-edit selected manifests or data. Regenerate them with the commands.
 
 ```bash

@@ -1,5 +1,10 @@
 # SPEC-0004: Production signatures and optional cross-validation
 
+Additional model preparation: [SPEC-0020](0020-structural-prediction-models.md)
+adds frozen RSA/ALL-CEF and Q3 heads as a separate companion; signature identities
+and C/B calculations remain unchanged.
+
+
 - Revised: 2026-10-27.
 - Status: Implemented on 2026-10-27; final-only production, empirical C/B
   distributions and optional research are available. Verification recorded below.

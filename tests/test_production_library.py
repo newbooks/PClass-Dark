@@ -32,6 +32,11 @@ def test_default_final_only_and_relative_distributions(
         ) in caplog.messages
     assert len(calls) == 2
     assert result.research_dir is None
+    from pclass_dark.structural_models import BUNDLE_ID, verify_structural_models
+
+    assert result.structural_model_id == BUNDLE_ID
+    assert result.structural_model_dir == root / "structural-models" / BUNDLE_ID
+    assert verify_structural_models(result.structural_model_dir).model_id == BUNDLE_ID
     from pclass_dark.artifacts import read_json
 
     metadata = read_json(result.library_dir / "manifest.json")
@@ -57,6 +62,7 @@ def test_default_final_only_and_relative_distributions(
     )
     again = build_library(data, root)
     assert again.reused
+    assert again.structural_model_dir == result.structural_model_dir
     assert again.library_id == result.library_id
     assert load_library(result.library_dir).manifest_sha256 == sha256(
         result.library_dir / "manifest.json"

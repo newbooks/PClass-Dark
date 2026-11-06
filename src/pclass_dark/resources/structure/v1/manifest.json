@@ -1,0 +1,81 @@
+{
+  "files": {
+    "MODEL_CARD.md": {
+      "sha256": "0bc81b836bdea4ada2f6ee69d4ce69d6bd4ce0e7962e051869615dfb20c034e2",
+      "size_bytes": 1907
+    },
+    "configuration.json": {
+      "sha256": "bc7f2bf13d43373486b9e312d71778d44fefdec4a4b0432d1f4125f2054ded88",
+      "size_bytes": 762
+    },
+    "models.safetensors": {
+      "sha256": "1892cfd64abb13bafb6f199ae020f5d0e54664c15866a6c428a862603e10530e",
+      "size_bytes": 3176040
+    },
+    "provenance.json": {
+      "sha256": "8c8dee61691ded1db6f2c26e644db3a5bd6c4afded3056b6d670dd6707286872",
+      "size_bytes": 1016930
+    },
+    "training_history.tsv": {
+      "sha256": "bc9837aef26951b99a1950d6ee75a7bb604d99f9d24c867d02a97f97f737a154",
+      "size_bytes": 4491
+    },
+    "training_metrics.json": {
+      "sha256": "c7614bf60867b7f254b3ef2317a4197507255b653c8be8e74c2acc9ab0b119f4",
+      "size_bytes": 1227
+    }
+  },
+  "id": "d0f2ef975fef2b86e7057643b250e467a77e81afc58aba42aba8c2f207e844b2",
+  "identity_inputs": {
+    "contract": {
+      "dtype": "float32",
+      "layer": 30,
+      "minimum_overlap": 100,
+      "model": "facebook/esm2_t30_150M_UR50D",
+      "noncanonical_context": "X",
+      "noncanonical_output": "NA",
+      "ownership": "center-selected-earlier-start",
+      "q3_classes": [
+        "C",
+        "E",
+        "H"
+      ],
+      "q3_smoothing": "none",
+      "revision": "a695f6045e2e32885fa60af20c13cb35398ce30c",
+      "rsa_output": "raw_unclipped",
+      "rsa_target": "all_contextual_exposure_fraction_v1",
+      "width": 640,
+      "window_length": 1021
+    },
+    "files": {
+      "MODEL_CARD.md": {
+        "sha256": "0bc81b836bdea4ada2f6ee69d4ce69d6bd4ce0e7962e051869615dfb20c034e2",
+        "size_bytes": 1907
+      },
+      "configuration.json": {
+        "sha256": "bc7f2bf13d43373486b9e312d71778d44fefdec4a4b0432d1f4125f2054ded88",
+        "size_bytes": 762
+      },
+      "models.safetensors": {
+        "sha256": "1892cfd64abb13bafb6f199ae020f5d0e54664c15866a6c428a862603e10530e",
+        "size_bytes": 3176040
+      },
+      "provenance.json": {
+        "sha256": "8c8dee61691ded1db6f2c26e644db3a5bd6c4afded3056b6d670dd6707286872",
+        "size_bytes": 1016930
+      },
+      "training_history.tsv": {
+        "sha256": "bc9837aef26951b99a1950d6ee75a7bb604d99f9d24c867d02a97f97f737a154",
+        "size_bytes": 4491
+      },
+      "training_metrics.json": {
+        "sha256": "c7614bf60867b7f254b3ef2317a4197507255b653c8be8e74c2acc9ab0b119f4",
+        "size_bytes": 1227
+      }
+    },
+    "source_library_id": "9ed4d06c9282266bc1b400f440e15ef61b9c5454195857750c1bd8a8dfa90315",
+    "source_revision": "fa8fa0da7a9f2ecb1ab096f979b3936dd2409d54"
+  },
+  "schema": "pclass-dark.structural-models.v1",
+  "status": "complete"
+}
