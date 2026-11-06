@@ -16,7 +16,6 @@ from pclass_dark import swiss_evaluation as swiss
 from pclass_dark import swiss_evaluation_collect as collect
 from pclass_dark import swiss_evaluation_truth as truth
 from pclass_dark.artifacts import IntegrityError, identity, write_json
-from pclass_dark.cli import app
 from pclass_dark.external_audit import read_audit_table, read_query_annotations
 from pclass_dark.external_evaluation_types import (
     EvaluationInferenceError,
@@ -27,6 +26,7 @@ from pclass_dark.external_evaluation_types import (
 from pclass_dark.inference_records import QuerySequence
 from pclass_dark.library import build_library
 from pclass_dark.reference_data import read_fasta
+from pclass_dark.swiss_evaluation_cli import app
 from pclass_dark.swiss_evaluation_types import (
     SCHEMAS,
     SwissDarkConfig,
@@ -402,13 +402,9 @@ def test_corrupt_published_state_is_refused(tmp_path, pipeline, kind):
 
 def test_cli_help_and_inference_option_rejection():
     runner = CliRunner()
-    result = runner.invoke(
-        app, ["evaluate-swiss", "--help"], terminal_width=200, env={"COLUMNS": "200"}
-    )
+    result = runner.invoke(app, ["--help"], terminal_width=200, env={"COLUMNS": "200"})
     assert result.exit_code == 0 and "--dark-embedding-cache" in result.stdout
-    result = runner.invoke(
-        app, ["evaluate-swiss", "missing.fa", "--score-only", "--device", "cpu"]
-    )
+    result = runner.invoke(app, ["missing.fa", "--score-only", "--device", "cpu"])
     assert result.exit_code != 0 and "Score-only" in result.output
 
 

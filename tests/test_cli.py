@@ -161,3 +161,27 @@ def test_build_internal_defaults(monkeypatch):
     assert args == (None, None)
     assert kwargs["memory_mib"] == 1024
     assert kwargs["epsilon"] == kwargs["sigma_floor"] == 1e-8
+
+
+@pytest.mark.parametrize("command", ["external-audit", "swiss-audit", "evaluate-swiss"])
+def test_script_only_commands_removed(command):
+    help_result = runner.invoke(app, ["--help"])
+    assert help_result.exit_code == 0
+    assert command not in help_result.stdout
+    result = runner.invoke(app, [command, "--help"])
+    assert result.exit_code == 2
+    assert "No such command" in result.output
+
+
+@pytest.mark.parametrize(
+    "script", ["external-audit.py", "swiss-audit.py", "evaluate_swiss.py"]
+)
+def test_evaluation_script_help(script):
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "scripts" / script
+    result = subprocess.run(
+        [sys.executable, str(path), "--help"], capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr
+    assert "--help" in result.stdout

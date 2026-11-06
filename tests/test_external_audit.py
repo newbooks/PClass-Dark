@@ -7,9 +7,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import typer
 from typer.testing import CliRunner
 
-from pclass_dark.cli import app
 from pclass_dark.external_audit import (
     audit_external,
     confidence_bins,
@@ -17,7 +17,11 @@ from pclass_dark.external_audit import (
     read_audit_table,
     summarize_audit,
 )
+from pclass_dark.external_audit_cli import external_audit_command
 from pclass_dark.external_evaluation_types import HEADERS
+
+app = typer.Typer()
+app.command()(external_audit_command)
 
 
 @pytest.fixture
@@ -133,7 +137,6 @@ def test_pngs_summary_and_both_cli_interfaces(table, tmp_path, monkeypatch):
     result = CliRunner().invoke(
         app,
         [
-            "external-audit",
             str(table),
             "--output-dir",
             str(out),
@@ -263,7 +266,7 @@ def test_annotation_metadata_verified_and_required(table, tmp_path):
     )
     annotations = read_query_annotations(table, data)
     assert annotations["q1"] == ("GO:0005515",)
-    result = CliRunner().invoke(app, ["external-audit", str(table)])
+    result = CliRunner().invoke(app, [str(table)])
     assert result.exit_code == 0, result.output
     assert "Excluded 1 / 5" in result.output
     assert (table.parent / "external_audit_coverage_v2.png").exists()

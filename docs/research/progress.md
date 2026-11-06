@@ -2348,3 +2348,22 @@ Logs `/tmp/swiss-audit-real.log`, `/tmp/swiss-audit-real-resources.log`. Home
 Matplotlib config was unwritable; its temporary cache fallback rendered normally.
 No inference, live annotation/graph lookup or GPU work. No remaining implementation
 blocker; future quality evaluation still requires controlled held-out cohorts.
+
+
+## 2026-11-06 — Script-only evaluation and audit interfaces
+
+Implemented [SPEC-0019](../specs/0019-script-only-evaluation.md) on `issue#34`:
+removed `external-audit`, `swiss-audit`, and `evaluate-swiss` registrations and
+imports from the root CLI. Existing scripts, adapters and scientific Python APIs
+remain available. Updated README/operational guides and marked the installed
+interfaces in SPEC-0016–0018 as superseded. No scientific behavior changed.
+
+Validation: `python -m pytest -q tests/test_cli.py tests/test_external_audit.py
+tests/test_swiss_audit.py tests/test_swiss_evaluation.py` yielded 107 passed and
+one sandbox-blocked loopback fixture setup. Reran
+`tests/test_swiss_evaluation.py::test_spawned_pclass_worker_splits_and_reuses`
+with loopback permission: 1 passed. After adding script help subprocess checks,
+`python -m pytest -q tests/test_cli.py`: 25 passed. Ruff lint/format and
+`git diff --check` passed. Script-only use requires access to repository/source
+scripts and the installed package; wheel installation does not install those
+scripts as commands. No remaining validation blocker.
