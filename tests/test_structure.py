@@ -511,3 +511,37 @@ def test_corrupt_companion_preserves_reused_production(library_data, tmp_path):
     assert error.value.production_result.library_id == result.library_id
     assert (root / "selection.json").read_bytes() == selected
     assert load_selected_library(root).library.library_id == result.library_id
+
+
+def test_public_prepare_metadata_is_fresh_and_does_not_forward(monkeypatch):
+    import copy
+
+    from pclass_dark.embeddings import ASSET_HASHES
+    from pclass_dark.setup_data import MODEL, REVISION
+
+    class Backend:
+        initialized = 0
+
+        def __init__(self, **options):
+            type(self).initialized += 1
+            self.model = torch.nn.Linear(1, 1)
+            self.device = "cpu"
+            self.contract = {
+                "model": MODEL,
+                "revision": REVISION,
+                "assets": copy.deepcopy(ASSET_HASHES),
+                "layer": 30,
+                "width": 640,
+                "inference_dtype": "float32",
+            }
+
+        def residue_states(self, *args):
+            pytest.fail("prepare forwarded a dummy sequence")
+
+    monkeypatch.setattr("pclass_dark.embeddings.EsmBackend", Backend)
+    predictor = StructuralPredictor(device="cpu", offline=True, cpu_threads=1)
+    first = predictor.prepare()
+    expected = copy.deepcopy(first)
+    first["embedding_contract"]["assets"]["config.json"] = "mutated"
+    assert predictor.prepare() == expected and Backend.initialized == 1
+    assert expected["numerical_threads"] == 1 and expected["device"] == "cpu"

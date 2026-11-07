@@ -15,3 +15,6 @@ include scripts/evaluate_swiss.py
 include docs/swiss-evaluation.md
 
 include scripts/swiss-audit.py
+
+include scripts/extract_features.py
+include docs/feature-extraction.md
