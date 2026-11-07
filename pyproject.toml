@@ -30,6 +30,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ml = ["scikit-learn>=1.6,<2", "torch>=2.6,<3"]
 audit = ["matplotlib>=3.7,<4"]
 # Optional for setup-data embedding generation and infer query embedding.
 embeddings = [
