@@ -2,6 +2,7 @@
 
 import csv
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -745,3 +746,28 @@ def test_export_numeric_validation():
     for invalid in ("0.4", "-0.000", "nan", "inf", "0.4001"):
         with pytest.raises(IntegrityError):
             reports.numeric(invalid)
+
+
+def test_complete_resume_without_work_receipts(cohort, fake_predictor, monkeypatch):
+    prepared, output = cohort
+    extraction.extract_features(prepared, output, workers=1, offline=True)
+    family = reports.Family(output)
+    original = {name: family.path(name).read_bytes() for name in family.names}
+    shutil.rmtree(family.work)
+
+    def unexpected_snapshot(*args, **kwargs):
+        pytest.fail("Complete-report reuse must not create a snapshot")
+
+    monkeypatch.setattr(store, "snapshot", unexpected_snapshot)
+    calls = list(fake_predictor.calls)
+    prepares = fake_predictor.prepares
+    for _ in range(2):
+        result = extraction.extract_features(
+            prepared, output, resume=True, workers=1, offline=True
+        )
+        assert result.reused_output and result.computed_sequences == 0
+        assert result.reused_sequences == 4
+        assert not family.work.exists()
+        assert original == {name: family.path(name).read_bytes() for name in original}
+    assert fake_predictor.calls == calls
+    assert fake_predictor.prepares == prepares

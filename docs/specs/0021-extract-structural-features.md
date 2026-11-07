@@ -822,3 +822,18 @@ staged, journaled publication. Original report family archived; QC/index content
 identifiers, row order and missingness preserved. See the dated progress entry.
 Validation: extractor, structural-feature and structural-prediction suites:
 115 passed, 1 skipped (GPU unavailable). Ruff and whitespace checks passed.
+
+
+### 2026-11-07 — Complete-report reuse without work receipts
+
+A complete report family is independently reusable after its hidden work directory
+has been removed. After verifying the report family, current input/code contract
+and requested device, `--resume` must return that report without creating a new
+work directory, SQLite snapshot or predictor. Repeated reuse must remain possible.
+When matching work state exists, retain snapshot and receipt-dependent checks.
+Regression validation must delete the work directory, resume twice, verify all
+report bytes are unchanged and confirm no snapshot/model initialization occurs.
+Implemented the early return before work-state creation. Validation: regression
+failed before the fix; extractor, structural-feature and structural-prediction
+suites passed afterward: 116 passed, 1 skipped (GPU unavailable). Ruff checks,
+formatting and whitespace checks passed.

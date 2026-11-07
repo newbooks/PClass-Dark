@@ -76,7 +76,9 @@ cannot be installed by a single filesystem rename.
 An incomplete resumed run must match the recorded model/checkpoint, code,
 versions, window batch size, effective device and numerical thread configuration.
 Changing workers can change the inference thread count and invalidate resume.
-A verified complete report can be reused without initializing ESM. Entirely
+A verified complete report can be reused without initializing ESM. If its hidden
+work directory has been removed, `--resume` reuses the complete report without
+recreating the work directory or requiring cached receipts. Entirely
 noncanonical cohorts need no model runtime; their structural descriptors are NA.
 
 ## Scientific contract and Python API

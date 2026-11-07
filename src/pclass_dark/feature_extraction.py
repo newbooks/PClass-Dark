@@ -649,6 +649,12 @@ def _extract(
             raise IntegrityError(
                 "Requested device differs from completed feature report"
             )
+    if reuse_complete and run is None:
+        # A verified complete family does not need a disposable receipt cache.
+        # Return before creating work state that cannot reproduce those receipts.
+        return _result(
+            family, old_report, 0, old_report["counts"]["unique_sequences"], True
+        )
     if run is not None and run["status"] == "indexing":
         shutil.rmtree(family.work)
         run = None

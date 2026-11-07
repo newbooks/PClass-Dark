@@ -2629,3 +2629,20 @@ train/validation/test construction and candidate reranking evaluation.
 - No classifier training or predictive accuracy claim. Next: implement the planned
   additive classifier with similarity-informed soft targets; changing extraction
   code/precision does not make historical work compatible with a new resume contract.
+
+
+## 2026-11-07 — Resume complete feature reports after cache removal
+
+- Fixed complete-report `--resume` after deletion of the hidden work directory.
+  Previously it created an empty receipt database and then failed receipt-dependent
+  verification, leaving unusable work state. It now returns the independently
+  verified report after contract/device checks, before creating new work state.
+  Existing work directories retain snapshot and receipt integrity checks.
+- Added a regression that removes work state and resumes twice, requiring identical
+  report bytes, no recreated work directory/snapshot and no predictor initialization.
+  Confirmed the test failed before the fix.
+- Updated [SPEC-0021](../specs/0021-extract-structural-features.md) and the
+  [extraction guide](../feature-extraction.md). Validation:
+  `python -m pytest tests/test_feature_extraction.py tests/test_structural_features.py
+  tests/test_structure.py -q`: **116 passed, 1 skipped** (GPU unavailable).
+  Ruff checks/formatting and `git diff --check` passed. No production data changed.
