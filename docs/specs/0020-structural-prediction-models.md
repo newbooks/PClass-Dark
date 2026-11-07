@@ -130,3 +130,14 @@ No CPU multiprocessing is added to this GPU/batched prediction operation;
 independent CPU feature aggregation remains future work. No reference feature
 matrix, reranker profiles, calibrated rank score or held-out ranking results were
 produced. No manuscript changes.
+
+
+## SPEC-0021 integration — 2026-11-06
+
+[The experimental feature extractor](0021-extract-structural-features.md) now uses
+the heads through StructuralPredictor and pure feature aggregation.
+StructuralPredictor.prepare() is a public, idempotent initialization/metadata API,
+returning fresh JSON-compatible runtime provenance under the configured numerical
+thread limit, without a dummy sequence. Existing predict() and pooled embedding
+behavior are unchanged. New metadata tests and relevant existing regressions pass;
+see SPEC-0021 for counts and CPU pilot. No production reranker was added.

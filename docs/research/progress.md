@@ -2448,3 +2448,184 @@ rerank command, fitted reranking score, throughput benchmark or manuscript chang
 Next: aggregate the descriptors with matched reference/query policies, then fit
 and evaluate reranking using training-only profiles and homology-controlled
 held-out data. No additional pretrained model is needed for those descriptors.
+
+
+## 2026-11-06 — Draft feature-table extraction for the first ML experiment
+
+Drafted [SPEC-0021](../specs/0021-extract-structural-features.md) for requested
+`scripts/extract_features.py` and importable aggregation/orchestration modules.
+Rechecked current preparation joins, SPEC-0020 and ProStruct's actual 19-feature
+formulas. The script will resolve filtered unique representative accessions and
+full sequences from one verified preparation, run full-coverage structural
+windowing/residue embeddings/heads, and aggregate once per sequence hash.
+
+The planned main TSV has accession_id first, 19 ordered numeric features, and
+cluster_id last. Preserve every retained cluster membership: the current 380,578
+unique sequences imply 381,627 labeled rows, with repeated accession IDs for
+multi-cluster sequences. Retain an identity sidecar for leakage-safe grouping.
+Formulas follow ProStruct; deliberate export deviation is .17g feature precision
+instead of its three-decimal quantization for ML. Spec includes missingness/QC,
+model/checkpoint provenance, bounded workers/queues, checksum-bound resume,
+rollback/publication contracts and analytical/integration acceptance tests.
+
+Future training/evaluation must keep identical/homologous sequences together,
+fit preprocessing on training data, and evaluate ordering of held-out accepted
+infer candidates rather than claiming reranking from classifier accuracy alone.
+No script/code implementation, feature extraction, ML training or production
+experiment was performed. Validation: checked 19-feature order against ProStruct's
+source constant, table column count, local Markdown links and whitespace. Index
+updated; implementation tests remain planned.
+
+
+## 2026-11-06 — Clarify automatic experimental extraction inputs and cwd outputs
+
+Updated draft [SPEC-0021](../specs/0021-extract-structural-features.md) following
+user clarification: a zero-argument script invocation automatically resolves the
+selected preparation, filtered/deduplicated representative accessions and their
+full sequences. The experimental script writes features.tsv and all report/work
+companions in the launch working directory, with no CLI output-path option.
+Keep the explicit output parameter for Python integrations. Extraction remains
+manually invoked experimental work, outside root subcommands and ordinary
+setup-data/build-library/infer execution. Added input-discovery/cwd acceptance
+checks. Documentation/whitespace checked; no implementation or extraction run.
+
+
+## 2026-11-06 — SPEC-0021 implementation-readiness revision
+
+Revised [SPEC-0021](../specs/0021-extract-structural-features.md) to implementation-
+ready, preserving its experimental scope, automatic selected-cohort discovery
+and launch-cwd features.tsv. No implementation or extraction run was requested
+or performed in this revision. This supersedes the earlier draft's unspecified
+resume/cache/publication details; earlier decisions remain in this log.
+
+Read current artifact guards, path fallback, prepared validation/FASTA, aliases,
+structural bundle and predictor code. Spec now defines precise input resolution
+without requiring pooled embeddings, a streaming checksum/identity/join validator
+instead of the eager verify_prepared path, excluded-alias/representative rules,
+concrete API result/QC types, all companion schemas, SQLite snapshot/receipt
+transactions and logical snapshot hashes, worker/thread/byte admission, runtime
+fingerprints, existing-state decisions and journaled output recovery. Added a
+public StructuralPredictor.prepare metadata extension as an explicit implementation
+task. Clarified float64 comparison of raw exposure to 0.05 (float32 rounding matters),
+full-precision export, exact SCD algorithm and an independently derived DEKRH
+feature oracle. Full reference/ML/reranking runs remain separate experimental work.
+
+Validation: independently checked 19-feature order and KD constants against the
+ProStruct source, analytical fixture counts/charge/hydropathy, float32 threshold
+behavior, 21-column contract, local Markdown links, fenced-code consistency and
+whitespace. Implementation acceptance gates and real-model/GPU pilot checks are
+specified but not executed; no passing implementation tests are claimed.
+
+## 2026-11-06 — Implement experimental selected-cohort feature extraction
+
+Implemented [SPEC-0021](../specs/0021-extract-structural-features.md): executable
+scripts/extract_features.py, pure structural_features aggregation and importable
+feature_extraction API, with supporting feature_store and feature_reports modules.
+The zero-argument script resolves the selected preparation automatically and
+writes features.tsv plus QC/identity/provenance and hidden work state in the launch
+cwd. It is experimental, outside the root CLI and normal setup/build/infer flow.
+No preparation, signature or production selector is changed.
+
+The 21-column table preserves every retained sequence/cluster membership while
+computing each full-sequence feature vector once. All 19 definitions follow
+ProStruct, with explicit float64 threshold comparison, FFT/direct SCD and .17g
+serialization. Added StructuralPredictor.prepare for public runtime metadata;
+kept model weights, prediction behavior and mean-pooled inference unchanged.
+The workflow uses streaming verified input joins, an immutable logical SQLite
+snapshot, checksum-bound feature receipts, bounded spawned CPU aggregation,
+explicit device/thread compatibility and journaled multi-file publication/recovery.
+Updated source packaging, README, operational guide, SPEC-0020/0021 and index.
+
+Code revision: 5f4facf41a9ce541e3ad55fc6bc5cd860aa6ed25 plus this implementation,
+branch issue#34. Exact scientific source-code hashes and runtime/model IDs are
+preserved in the pilot manifests. Existing draft/readiness history above remains
+intact; implementation details supersede those earlier statuses.
+
+Validation:
+
+- First focused analytical/integration run: 22 passed. Initial expanded
+  structure/embedding/CLI run: 119 passed, one GPU skip.
+- Development checks caught a SQL-whitespace regression introduced while wrapping
+  long literals, a replacement-indexing resume edge, and test-fixture issues
+  (missing helper import and fault injection triggering the staged marker write
+  instead of publication). Corrected and reran the affected checks; no unresolved
+  test failure remains. Broader interim runs: 141, then 183, then 187 passes.
+- Final command: python -m pytest -q tests/test_structural_features.py
+  tests/test_feature_extraction.py tests/test_structure.py tests/test_embeddings.py
+  tests/test_cli.py tests/test_setup_data.py tests/test_reference_data.py
+  tests/test_shared_paths.py tests/test_shared_distribution.py.
+  Result: **193 passed, 1 skipped in 38.66 s**. Log:
+  /tmp/pclass-dark-extract-features-tests-final.log. The all-unknown subprocess
+  test was then strengthened to block torch/transformers/safetensors imports during
+  both extraction and complete-report reuse; its targeted rerun passed (1 passed).
+- Numerical oracles cover all features, threshold equality/float32 promotion,
+  unknowns, no-surface cases, invalid inputs and direct O(L^2) SCD comparison.
+  Independent full-precision ProStruct summarize parity: 15 fixtures, seed 21;
+  all defined values agree at atol/rtol 1e-12, with matching NA values.
+- Integration/fault checks cover multi-cluster/excluded representative joins,
+  automatic cwd discovery, snapshot/receipt/source/code corruption, indexing and
+  execution fingerprint resume, CPU serial/spawn equality, workers without torch,
+  payload bounds/oversized serial tasks, each publication swap, recovery after
+  interrupted rollback, third-party modification, old-report preservation, lazy
+  imports, CLI exits and source/wheel packaging.
+- Ruff lint/format, local documentation/content checks and git diff --check pass.
+  GPU tests were skipped because PyTorch exposes no GPU; one existing
+  AMD_SERIALIZE_KERNEL environment warning remains.
+
+Real-model CPU pilot and durable artifacts:
+[record](notes/2026-11-06-extract-features-pilot.md),
+[table/metadata](notes/2026-11-06-extract-features-pilot/).
+Synthetic six-accession source, min_clusters=2, seed=42, prepare_only=True:
+preparation 5e16555f574ce68c71a573e6499d3717e1da738c64068ee1379120aa07a9f175.
+Four unique sequences, five labeled rows, two retained synthetic clusters,
+including a representative originating in an excluded cluster and one all-unknown
+sequence. Ran the script with --device cpu --workers 1 --window-batch-size 1
+--offline from /tmp/pclass-dark-feature-pilot-20261106-595td09r/results;
+complete-report --resume also passed without model initialization.
+Extraction d9ae16e8ba255581d7ffa3c3c4ed44b6652775bae36d1f5de0ecff92ba61bbfa;
+feature TSV SHA-256
+7669a2d8e9329270e0c8001d2f69b0e4d8ce7c511458a7fb1b02c3beab23ef75.
+Serial external timing: 5.86 s, peak RSS 1,465,432 KiB, CPU numerical threads 8.
+A second real run with --workers 2 (two spawn workers, one inference thread)
+produced a byte-identical main feature table; extraction
+52f75bfce8d7c6b094245c5c37380fff8e86ca91c4c64a584ceb923b348707bd.
+Earlier intermediate-code pilots produced the same table; transient artifacts
+were retained, and the committed pilot records identify the final code hash set.
+These are correctness checks with synthetic labels, not held-out performance.
+
+No network downloads, full-reference extraction, classifier training, rerank
+command or ranking-performance experiment. No manuscript changes. Next: explicitly
+run reference extraction in an experiment directory, then specify homology-aware
+train/validation/test construction and candidate reranking evaluation.
+
+
+## 2026-11-07 — Three-decimal feature table export
+
+- Updated [SPEC-0021](../specs/0021-extract-structural-features.md), extractor/API
+  report serialization, README and feature extraction guide. Export uses exactly
+  three decimal places, `0.000` for rounded negative zero, and `NA` for undefined
+  values. Full-precision calculations and cached receipts remain unchanged.
+  This supersedes the earlier full-precision TSV export decision.
+- Export-only conversion of `work/features.tsv` used
+  `python /tmp/round_pclass_features.py` (stream the validated original table through
+  `feature_reports.write_table`, update serialization provenance/file checksum,
+  then `publish_family` under `FileLock`). No inference or random computation;
+  CPU serialization only. Starting revision: `5f4facf4` with working-tree changes.
+  All 381,627 rows, 380,578 sequences and 3,443 clusters retained. Original report
+  family: `work/.features.features-archives/20261107T125159Z-fba0c9a18dd84be6900bd9637c16cb73/`.
+  Source table SHA-256:
+  `49c2d0054db7ef7000d8cc0a485562000e21e5ea7b56377cca8455f21e5510f4`.
+  Converted table: 51,898,567 bytes, SHA-256
+  `96351fca885b3831b86aec3ba020c215a3ef8be66dd41fc8e44c42cf1101bf9c`.
+  Manifest checksums and serialization provenance updated and complete-family
+  verification passed. QC/index files were copied unchanged; full-precision
+  receipt cache and original computation identity preserved.
+- Validation: `python -m pytest tests/test_feature_extraction.py
+  tests/test_structural_features.py tests/test_structure.py -q`: **115 passed,
+  1 skipped** (GPU unavailable). Tests cover rounded integration output,
+  full-precision receipt checks, NA, signed zero, positive/negative rounding,
+  identifier/integer preservation, legacy numeric parsing, serial/parallel and
+  publication/resume behavior. Ruff checks/formatting and `git diff --check` passed.
+- No classifier training or predictive accuracy claim. Next: implement the planned
+  additive classifier with similarity-informed soft targets; changing extraction
+  code/precision does not make historical work compatible with a new resume contract.

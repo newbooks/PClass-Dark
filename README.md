@@ -52,7 +52,9 @@ or structural reference inference runs during model preparation. The Python
 `StructuralPredictor` API supports full-sequence prediction, GPU/CPU execution
 and offline checkpoint use. See [structural prediction](docs/structural-prediction.md)
 for usage, model provenance and the existing unique-sequence accession files.
-The 19-feature aggregation and `rerank` command remain future work.
+The experimental [feature extractor](docs/feature-extraction.md) automatically
+reads selected unique sequences and writes a labeled 19-feature table with
+three decimal places to the launch working directory. The `rerank` command and ML evaluation remain future work.
 
 ## Shared Data and Distribution
 
@@ -534,6 +536,8 @@ The methods are complementary. PClass-Dark aims to extend functional coverage be
 ## Project Status and Scope
 
 **Research and early development.** ProStruct provides preliminary work on structural feature signatures; PClass-Dark will investigate whether the same profiling and composition strategy transfers to PLM embeddings. Data preparation and signature discovery/scoring are implemented. Production calibration and independent predictive benchmarks remain to be established.
+
+**Next step (planned):** Implement an **additive classifier with similarity-informed soft targets** to predict `cluster_id` from the 19 biophysical descriptors. Training targets will incorporate similarity between clusters, while additive feature contributions will explain how feature values support each prediction. Evaluate exact-cluster accuracy and similarity-weighted error on homology-separated held-out data.
 
 PClass-Dark is intended to predict membership in functional clusters represented by the reference dataset. Its goal is to recover known functional information beyond reliable nearest-neighbor similarity. It does not inherently discover biological functions absent from the reference annotations.
 

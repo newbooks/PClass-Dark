@@ -265,6 +265,48 @@ class StructuralPredictor:
             LOG.info("Structural prediction device: %s", backend.device)
         return self._embedder
 
+    def prepare(self) -> dict[str, object]:
+        """Initialize once, returning a fresh JSON-compatible runtime fingerprint.
+
+        Captured under the same numerical thread limits as predict; no dummy
+        forward pass is used. This may resolve/download the pinned checkpoint
+        unless offline=True. Initialization/device errors follow predict().
+        """
+        import copy
+        import platform
+
+        with threadpool_limits(limits=self.cpu_threads):
+            backend = self._runtime()
+            torch = self.heads.torch
+            actual = str(next(backend.model.parameters()).device)
+            if actual.startswith("cuda"):
+                name = torch.cuda.get_device_name(actual)
+                capability = list(torch.cuda.get_device_capability(actual))
+            else:
+                name = platform.processor() or platform.machine()
+                capability = None
+            return copy.deepcopy(
+                {
+                    "device": actual,
+                    "embedding_contract": backend.contract,
+                    "torch_version": str(torch.__version__),
+                    "cuda_version": torch.version.cuda,
+                    "hip_version": torch.version.hip,
+                    "device_name": name,
+                    "device_capability": capability,
+                    "numerical_threads": torch.get_num_threads(),
+                    "deterministic_algorithms": (
+                        torch.are_deterministic_algorithms_enabled()
+                    ),
+                    "tf32_matmul": torch.backends.cuda.matmul.allow_tf32,
+                    "tf32_cudnn": torch.backends.cudnn.allow_tf32,
+                    "seed": 42,
+                    "window_batch_size": self.window_batch_size,
+                    "python_version": platform.python_version(),
+                    "numpy_version": np.__version__,
+                }
+            )
+
     def predict(self, sequence: str) -> StructuralPrediction:
         """Predict original positions, preserving and masking noncanonical symbols.
 

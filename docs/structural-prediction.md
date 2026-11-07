@@ -79,7 +79,8 @@ rsa, q3 = heads.predict(states, batch_size=4096, cpu_threads=1)
 ```
 
 The returned exposure values are model outputs, not the final 19-feature vector.
-Feature aggregation and the `rerank` command are not implemented by this change.
+The experimental [feature extractor](feature-extraction.md) now aggregates the
+19 descriptors; the `rerank` command and ML evaluation remain future work.
 
 ## Sequence windows and existing accessions
 
@@ -106,3 +107,10 @@ membership. Exact deduplication does not remove nonidentical homologs.
 
 See [SPEC-0020](specs/0020-structural-prediction-models.md) for provenance,
 contracts, validation and remaining evaluation work.
+
+
+For extraction runtime provenance, `StructuralPredictor.prepare()` initializes the
+runtime without forwarding a dummy sequence and returns a fresh JSON-compatible
+metadata dictionary. It reports the actual device, pinned embedding contract,
+software/backend versions and numerical thread settings under the predictor's
+configured CPU limits. Repeated calls reuse the same initialized model.

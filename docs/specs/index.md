@@ -33,3 +33,5 @@
 - [0019: Script-only evaluation and audits](0019-script-only-evaluation.md) — removes three root subcommands; scripts and Python APIs retained.
 
 - [0020: Portable RSA/ALL-CEF and Q3 predictors](0020-structural-prediction-models.md) — frozen dual heads prepared by build-library, packaged assets and full-sequence Python prediction.
+
+- [0021: Extract 19 sequence and predicted structural features](0021-extract-structural-features.md) — implemented: experimental script/API, automatic selected-cohort discovery, cwd-local 21-column membership TSV, bounded/resumable extraction, QC/provenance and recoverable publication; CPU pilot validated, full reference and ML evaluation pending.

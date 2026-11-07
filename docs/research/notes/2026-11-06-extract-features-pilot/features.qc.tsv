@@ -1,0 +1,5 @@
+accession_id	sequence_id	length	canonical_count	noncanonical_count	predicted_residue_count	surface_count	buried_count	rsa_out_of_range_count	scd_status	scd_method	undefined_feature_count	undefined_features	prediction_status	device
+A0	3282c6daebd530b3e20bedf65bfc8ace2400232c6ad45d2170cc1a2afa94d78f	5	5	0	5	5	0	0	defined	fft	0	none	complete	cpu
+B2	9641e86ceed151583db9517c53ba0963e92ec2081df3dcbcf5e0be89e1b0849e	6	6	0	6	6	0	0	defined	fft	0	none	complete	cpu
+C2	5d7e2167b6885ead35d89de963c37ee22c63ec067a0829fbc42c9201f3b3dc6e	4	4	0	4	4	0	0	defined	fft	0	none	complete	cpu
+U1	ecc76c19c9f3c5108773d6c3a18a6c25c9bf1131c4e250b71213274e3b2b5d08	2	0	2	0	0	0	0	noncanonical	not_applicable	13	surface_acid_over_all,buried_acid_over_all,surface_base_over_all,buried_base_over_all,q3_h_fraction,q3_e_fraction,q3_c_fraction,surface_fraction,surface_acid_over_surface,surface_base_over_surface,surface_charged_over_surface,mean_kyte_doolittle_hydropathy,sequence_charge_decoration	no_canonical_residues	not_run
