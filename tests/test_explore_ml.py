@@ -1055,3 +1055,23 @@ def test_default_cli_prefilter_logs_and_proceeds(inputs, tmp_path):
     assert counts["total_rows_removed"] == 3
     assert counts["retained_sequences"] == 35
     assert all(row["n"] == 35 for row in summary["repeat_metrics"])
+
+
+def test_complete_resume_reapplies_gpu_memory_fallback(inputs, tmp_path, monkeypatch):
+    from pclass_dark import siac
+
+    c = replace(config(inputs, tmp_path), device="auto")
+    monkeypatch.setattr(siac, "resolve_device", lambda *a, **kw: ("cuda:0", None))
+    monkeypatch.setattr(torch.cuda, "mem_get_info", lambda *a: (0, 1024**3))
+    result = ml.run_exploration(c)
+    manifest = read_json(result.manifest_path)
+    assert manifest["contract"]["device"] == "cpu"
+    before = {p: sha256(p) for p in c.output_dir.rglob("*") if p.is_file()}
+    reused = ml.run_exploration(replace(c, resume=True))
+    assert reused.reused_folds == 5
+    assert before == {p: sha256(p) for p in c.output_dir.rglob("*") if p.is_file()}
+    # More free memory admits the GPU and still rejects a genuine device change.
+    monkeypatch.setattr(torch.cuda, "mem_get_info", lambda *a: (1024**3, 1024**3))
+    with pytest.raises(IntegrityError, match="Changed actual device"):
+        ml.run_exploration(replace(c, resume=True))
+    assert before == {p: sha256(p) for p in c.output_dir.rglob("*") if p.is_file()}

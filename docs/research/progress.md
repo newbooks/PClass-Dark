@@ -3075,3 +3075,17 @@ Explicit --stdout prints the full report once; TSV/JSONL behavior is unchanged.
 Updated SPEC-0024, README and model guide. Validation: 23 model/interpretation
 tests passed, including multi-query summary parity, default file output,
 collision silence and late errors; Ruff and git diff --check passed.
+
+
+### 2026-11-07 — Completed exploration CPU-fallback resume
+
+Fixed completed-run resume to apply the same GPU memory admission and automatic
+CPU fallback as initial preflight before comparing the recorded actual device.
+Uses checksum-verified saved arrays through read-only memory maps, with no refit
+or artifact mutation. A regression mocks GPU availability and insufficient memory,
+trains on CPU, then verifies complete reuse and unchanged experiment checksums;
+it also verifies that a newly admitted GPU still rejects a real device change.
+Updated [SPEC-0022](../specs/0022-explore-ml.md). Validation: exploration suite
+32 passed, 2 GPU tests skipped; model/interpretation suites 23 passed. Ruff and
+git diff --check passed. GPU admission behavior exercised through mocks; actual
+GPU execution was not tested in this environment.

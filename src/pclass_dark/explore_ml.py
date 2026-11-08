@@ -16,6 +16,7 @@ import time
 from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 from filelock import FileLock
@@ -930,6 +931,17 @@ def _execute(config):
             from .siac import resolve_device
 
             device, _ = resolve_device(config.device, threads=config.threads)
+            # Reapply preflight admission: a probed GPU may still require the
+            # same automatic CPU fallback as when this experiment was fitted.
+            cohort = SimpleNamespace(
+                X=np.load(root / "arrays/X.npy", mmap_mode="r", allow_pickle=False),
+                y=np.load(root / "arrays/y.npy", mmap_mode="r", allow_pickle=False),
+                labels=range(manifest["population"]["label_count"]),
+            )
+            similarity = SimpleNamespace(
+                S=np.load(root / "arrays/S.npy", mmap_mode="r", allow_pickle=False)
+            )
+            device, _ = _resources(config, cohort, similarity, device)
             if device != manifest["contract"]["device"]:
                 raise IntegrityError("Changed actual device")
             LOG.info("Reusing verified complete experiment: %s", root / "summary.json")

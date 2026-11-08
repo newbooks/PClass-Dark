@@ -932,3 +932,20 @@ and no changed labels on either analytic fixture. This is a documented numerical
 exception, not an optimizer change or a universal cross-device guarantee. See
 [SPEC-0023](0023-final-ml-model.md). Also, full-data deployment fitting is now
 available under that separate specification; the original CV run is not modified.
+
+## Completed-run device admission correction
+
+Completed resume must apply the same requested-device probe and _resources memory
+admission policy as initial preflight before comparing the actual device against
+the saved contract. Use verified saved X/y/S arrays via read-only memory maps and
+the recorded label count, avoiding cohort reconstruction or fitting. An auto GPU
+that still lacks sufficient memory must fall back to CPU and reuse a completed
+CPU run. A newly admitted GPU remains a changed actual device and is rejected;
+explicit GPU memory failures retain their actionable error. Never modify completed
+artifacts during these checks. Regression uses mocked GPU probing/memory with real
+CPU training, verifying reuse and unchanged report bytes.
+
+Resume correction validation: exploration suite 32 passed, 2 GPU tests skipped;
+model/interpretation suites 23 passed. Mocked memory admission covered CPU reuse
+and genuine device-change rejection with immutable artifacts. Ruff and diff
+checks passed; actual GPU execution was not exercised.
