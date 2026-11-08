@@ -551,6 +551,12 @@ use random splits with homology uncontrolled.
 A completed exploration can be refitted into one portable model using
 `scripts/train-ml.py` / `pclass-dark train-ml`. Query feature tables, FASTA files
 and raw sequences are supported by `scripts/predict-ml.py` / `pclass-dark predict-ml`.
+Predictions default to a Markdown interpretation with chosen-cluster feature
+support, saved beside the input as `<input-stem>-interpretation.md`.
+The top-five matches are also printed in the terminal.
+Use `--output report.md` to choose a path, `--stdout` to print, `--format tsv` for the ranked table,
+or `--format jsonl` for the numerical explanation.
+See [prediction reports](docs/ml-model.md#prediction-output-and-interpretation).
 The default final fit uses the ordinary-target additive control (`hard`), which
 performed best in the recorded CV run. See the [final-model guide](docs/ml-model.md).
 

@@ -2961,3 +2961,117 @@ train/validation/test construction and candidate reranking evaluation.
   no release published. Ruff/format/whitespace, doc links and final bundle/source
   hash checks passed. Existing source data/CV reports remain unchanged. Next:
   apply the model to actual queries and evaluate a separate held-out deployment set.
+
+## 2026-11-07 — Interpret seq2 query in biophysical language
+
+- Ran the existing predict-ml.py raw FASTA path on work/seq2.fasta (129 residues),
+  offline cached GPU extraction, saved explanation to work/seq2-interpretation.jsonl
+  and a readable report to work/seq2-interpretation.md. No code/model/input changes.
+  Query SHA-256 eaf1f8d7f5bf78bbefe1100d912a09893361c57dda057f634adb5c5af6dfe79c;
+  no exact match in final training aliases (homology not assessed).
+- Model e24b23cbe6240e5d3519ff1a3efdff174b6f33e74fdb7037b88e7b5ebbdc16f9:
+  cluster_1096 score 0.853623; runner-up cluster_2264 score 0.037153. Verified live
+  descriptions against original preparation reference files and clusters_meta hash.
+  Top annotation: peptidoglycan muralytic/hydrolase; runner-up NADH dehydrogenase.
+- Comparative explanation: hydropathy -0.472 (+2.622 logits), length 129 (+1.066),
+  surface acidic fraction .097 (+.787), buried basic fraction zero (+.595) support
+  the top. Surface basic fraction .194 (-1.190), surface charged fraction .280
+  (-.831), among other descriptors, favor the runner-up. Baseline +2.038 plus net
+  feature evidence +1.097 yields +3.134 margin. All 18 features available/in support.
+  Contributions explain top versus runner-up, not independent biological causes;
+  scores are uncalibrated and this query is not a measured accuracy result.
+- Verified explanation reconstruction within float32 tolerance, source-reference
+  identity/metadata binding and report content/formatting. No training or automated
+  implementation tests needed for this read-only query analysis/reporting task.
+
+## 2026-11-07 — Revise seq2 interpretation to chosen-cluster support
+
+- At the user's request, revised work/seq2-interpretation.md into an editable
+  human-language template using each feature curve's contribution to cluster_1096,
+  centered by its average across all 379,539 training examples. Replaced the
+  terminology for the alternative with "second choice". No model or CLI/schema edits.
+- Recomputed own-class values from the saved centered spline basis/weights:
+  length +2.459, strand fraction +2.341, hydropathy +2.153, exposed fraction +1.359.
+  Basic fraction among exposed residues .194 contributes +.144 (slight support),
+  rather than the earlier -1.190 difference against the second choice. The only
+  negative own-class contribution is surface charged fraction .280, -.190.
+  Baseline 2.451 + net feature contributions 15.402 reconstructs logit 17.853.
+- Retained chosen-only numerical evidence in
+  work/seq2-chosen-cluster-support.json; preserved the original comparative JSON.
+  The revised report explicitly distinguishes these two references and notes that
+  a future predict-ml.py summary needs own-class fields instead of relabeling margins.
+  Prior comparative findings remain valid for the original comparison; this report
+  supersedes that presentation, not its underlying numerical evidence.
+- Validation: reconstructed the top logit within float32 tolerance, checked all
+  18 features and sign/direction in the template. Independently evaluated centered
+  curves across the full saved training X in bounded batches to verify their mean
+  contributions are within 1e-6 of zero. Markdown/whitespace checks passed.
+  No training or implementation tests were needed for this analysis/report edit.
+
+
+### 2026-11-07 — Shortened prediction interpretation reports
+
+Implemented [SPEC-0024](../specs/0024-ml-interpretation.md) using the user's shortened
+work/seq2-interpretation.md template. predict-ml.py / pclass-dark predict-ml now
+support --format markdown: predicted function, brief explanation and all 18 signed
+chosen-cluster feature supports relative to their training means. JSON adds own-class
+terms without changing comparative fields. Optional labels are bound to the saved
+preparation and reference hashes; unavailable metadata falls back to cluster IDs.
+
+Validation: 77 passed, 2 GPU tests skipped across model/exploration/CLI/interpretation
+suites; final wording check 6 passed; Ruff and whitespace checks passed. CPU offline
+raw FASTA command: python scripts/predict-ml.py --model-dir work/ml-model --fasta
+work/seq2.fasta --format markdown --output work/seq2-generated-interpretation.md
+--device cpu. Its 18 contributions matched independently saved seq2 own-class terms
+at 1e-7 tolerance. Chosen cluster_1096 score 0.854; basic surface-residue support
++0.144 and charged surface-residue support -0.190. Preserved the user's editable
+report. Existing full-model bundle and weights unchanged; this is interpretation
+validation, not additional held-out performance evidence. Usage in
+[model guide](../ml-model.md). No retraining required.
+
+
+### 2026-11-07 — Default prediction format
+
+Changed predict-ml.py / pclass-dark predict-ml to emit the Markdown interpretation
+by default, as requested. --output report.md saves it; stdout remains available.
+Explicit --format tsv and --format jsonl preserve machine-readable alternatives.
+Updated README, model guide and SPEC-0024. Regression tests verify default
+Markdown on stdout and in a saved file, explicit TSV, and overwrite protection.
+Validation: 21 passed in 5.44s. Ruff and git diff --check passed.
+
+
+### 2026-11-07 — Automatic interpretation file publication
+
+Clarified the requested default: Markdown must be saved automatically, not only
+selected as stdout format. Input seq2.fasta now writes seq2-interpretation.md
+beside the input; feature tables follow the same rule. Inline sequences use a
+sanitized query ID in the current directory. --output overrides the path and
+--stdout explicitly prints instead; TSV/JSONL retain stdout defaults. Existing
+files are protected, publication is atomic, and the saved path is reported on
+stderr. Updated SPEC-0024, README and model guide. Validation: 22 model and
+interpretation tests passed, including automatic FASTA/TSV/inline naming,
+collisions, stdout override and late failure protection; Ruff and diff checks
+passed. This supersedes the preceding stdout-default behavior.
+
+
+### 2026-11-07 — Top-five interpretation summary
+
+Added a Top 5 predictions table to the default Markdown interpretation, showing
+cluster IDs, descriptions capped at 24 displayed characters (including ellipsis)
+and original softmax scores to three decimals. Preserves prediction order and
+full function descriptions in the prose; missing labels show Unavailable.
+Updated SPEC-0024 and model guide. Validation: 23 model/interpretation tests
+passed; Ruff and git diff --check passed. The previous saved seq2 contribution
+fixture is no longer present in work/, so no existing sample report was refreshed.
+
+
+### 2026-11-07 — Terminal top-five predictions
+
+Markdown file predictions now also print a per-query top-five table on stdout,
+sharing the report formatter for cluster IDs, 24-character descriptions and
+softmax scores. Summaries are staged on disk and displayed after successful
+publication, preserving bounded memory and avoiding partial success on errors.
+Explicit --stdout prints the full report once; TSV/JSONL behavior is unchanged.
+Updated SPEC-0024, README and model guide. Validation: 23 model/interpretation
+tests passed, including multi-query summary parity, default file output,
+collision silence and late errors; Ruff and git diff --check passed.
