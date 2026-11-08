@@ -411,6 +411,11 @@ def _available_cpus():
 def _resources(config, cohort, similarity, device):
     import resource
 
+    from .siac import sparse_target_memory
+
+    targets = sparse_target_memory(
+        len(cohort.labels), config.neighbors, config.batch_size
+    )
     # B <= 18 * (knots + degree - 2), with include_bias=False.
     n, c, b = len(cohort.y), len(cohort.labels), 18 * (config.knots + 1)
     immutable = cohort.X.nbytes + cohort.y.nbytes + similarity.S.nbytes
@@ -419,7 +424,8 @@ def _resources(config, cohort, similarity, device):
         256 * 1024**2, resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
     )
     variable = (
-        n * 18 * 16
+        targets["host_bytes"]
+        + n * 18 * 16
         + n * b * 4
         + n * 32
         + c * b * 4 * 5
@@ -444,7 +450,14 @@ def _resources(config, cohort, similarity, device):
         import torch
 
         free, total = torch.cuda.mem_get_info(device)
-        gpu_need = int(1.5 * (c * b * 4 * 5 + config.batch_size * (4 * c + b) * 4))
+        gpu_need = int(
+            1.5
+            * (
+                c * b * 4 * 5
+                + config.batch_size * (4 * c + b) * 4
+                + targets["device_bytes"]
+            )
+        )
         if gpu_need > free:
             if config.device != "auto":
                 raise ValueError(
@@ -455,6 +468,7 @@ def _resources(config, cohort, similarity, device):
     else:
         gpu = None
     return device, {
+        "sparse_targets": targets,
         "immutable_bytes": immutable,
         "worker_baseline_bytes": baseline,
         "per_worker_bytes": per_worker,
@@ -467,7 +481,9 @@ def _resources(config, cohort, similarity, device):
         "basis_width_upper_bound": b,
         "gpu": gpu,
         "fallback": fallback,
-        "formula": ("immutable+J*(baseline+1.5*(N*(18*16+B*4+32)+C*B*20+M*(4*C+B)*4))"),
+        "formula": (
+            "immutable+J*(baseline+1.5*(N*(18*16+B*4+32)+C*B*20+M*(4*C+B)*4+targets_host))"
+        ),
     }
 
 

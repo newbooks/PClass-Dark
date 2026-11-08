@@ -42,6 +42,23 @@ class SparseTargets:
         )
 
 
+def sparse_target_memory(label_count, neighbors, batch_size):
+    """Conservative host/device bytes for sparse targets and batched loss buffers.
+
+    Host reserves original arrays, a temporary copy and CPU tensors. Device
+    reserves transferred tensors. Both include gather/product/backward workspace.
+    Hard targets currently allocate the same tables and must use this estimate.
+    """
+    width = min(neighbors, max(0, label_count - 1))
+    table = label_count * (width * 12 + 12)
+    batch = batch_size * width * 24
+    return {
+        "table_bytes": table,
+        "host_bytes": 3 * table + batch,
+        "device_bytes": table + batch,
+    }
+
+
 def make_soft_targets(similarity, *, active_labels, alpha, neighbors, gamma):
     """Construct normalized similarity targets over active global label indices."""
     active = np.asarray(active_labels, dtype=np.int64)

@@ -276,10 +276,14 @@ def _versions():
 def _admit(X, y, S, settings, device, requested, budget_gib):
     import resource
 
+    from .siac import sparse_target_memory
+
     n, c, b = len(y), len(S), 18 * (settings["knots"] + 1)
+    targets = sparse_target_memory(c, settings["neighbors"], settings["batch_size"])
     base = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
     variable = (
-        n * (18 * 16 + b * 4 + 32)
+        targets["host_bytes"]
+        + n * (18 * 16 + b * 4 + 32)
         + c * b * 20
         + settings["batch_size"] * (4 * c + b) * 4
     )
@@ -293,7 +297,14 @@ def _admit(X, y, S, settings, device, requested, budget_gib):
         import torch
 
         free, total = torch.cuda.mem_get_info(device)
-        need = int(1.5 * (c * b * 20 + settings["batch_size"] * (4 * c + b) * 4))
+        need = int(
+            1.5
+            * (
+                c * b * 20
+                + settings["batch_size"] * (4 * c + b) * 4
+                + targets["device_bytes"]
+            )
+        )
         gpu = {"free_bytes": free, "total_bytes": total, "estimated_bytes": need}
         if need > free:
             if requested != "auto":
@@ -301,6 +312,7 @@ def _admit(X, y, S, settings, device, requested, budget_gib):
             LOG.warning("GPU memory admission failed; using CPU before fitting")
             device = "cpu"
     return device, {
+        "sparse_targets": targets,
         "estimated_peak_bytes": peak,
         "budget_bytes": int(budget_gib * 1024**3),
         "gpu": gpu,

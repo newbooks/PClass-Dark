@@ -3089,3 +3089,20 @@ Updated [SPEC-0022](../specs/0022-explore-ml.md). Validation: exploration suite
 32 passed, 2 GPU tests skipped; model/interpretation suites 23 passed. Ruff and
 git diff --check passed. GPU admission behavior exercised through mocks; actual
 GPU execution was not tested in this environment.
+
+
+### 2026-11-07 — Sparse-target memory admission
+
+Corrected exploration _resources and final fitting _admit to include the full
+sparse neighbor tables, simultaneous host copies and sparse batch-loss workspace.
+A shared pure estimator accounts for int64 indices and float32 weights, active
+labels/alpha, neighbor-width capping and per-worker copies, including hard-target
+allocations. GPU estimates now include transferred tables and batch workspace,
+so oversized auto requests fall back to CPU before fitting. Resource audits expose
+the component byte estimates. Updated SPEC-0022 and SPEC-0023.
+
+Validation: 58 passed, 2 GPU tests skipped across memory, exploration, final-model
+and interpretation suites. New independent array-size and mocked 10,000-label
+tests cover host refusal, worker reduction, GPU fallback and explicit refusal
+without allocating large tables. Ruff and git diff --check passed. Actual GPU
+execution was not exercised; no training algorithm or target semantics changed.

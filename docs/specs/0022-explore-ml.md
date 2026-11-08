@@ -949,3 +949,23 @@ Resume correction validation: exploration suite 32 passed, 2 GPU tests skipped;
 model/interpretation suites 23 passed. Mocked memory admission covered CPU reuse
 and genuine device-change rejection with immutable artifacts. Ruff and diff
 checks passed; actual GPU execution was not exercised.
+
+## Sparse-target memory admission correction
+
+Include full-label sparse targets even for hard targets (allocation still occurs):
+K=min(neighbors,C-1), one table C*K*(8+4)+C*(8+4) bytes for int64
+indices/active labels and float32 weights/alpha. Host admission reserves three
+table copies for original arrays, transient NumPy copies and CPU tensors (also
+covering overlap with prior-stage targets), plus 24*batch_size*K bytes for sparse
+batch gathers/products and their gradients. GPU admission reserves one table plus
+the same batch workspace. Apply existing 1.5 safety factor and per-worker scaling;
+use the same pure estimator in exploration and final fitting. No target allocation
+is needed for admission. Tests compare small actual target sizes, cap neighbor
+width, and mock large C / memory limits to verify worker reduction, host refusal,
+GPU auto fallback and explicit-GPU refusal.
+
+Sparse-target admission validation: 58 tests passed, 2 GPU tests skipped across
+memory/exploration/final-model/interpretation suites. Analytical actual-array
+size checks and mocked 10,000-label admission cover worker reduction, host budget
+refusal, auto CPU fallback and explicit GPU refusal without large allocations.
+Ruff and git diff --check passed; real GPU execution was not exercised.
