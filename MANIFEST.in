@@ -18,3 +18,10 @@ include scripts/swiss-audit.py
 
 include scripts/extract_features.py
 include docs/feature-extraction.md
+
+include scripts/explore-ml.py
+include docs/explore-ml.md
+
+include scripts/train-ml.py
+include scripts/predict-ml.py
+include docs/ml-model.md

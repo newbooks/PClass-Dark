@@ -322,3 +322,25 @@ def infer_command(
     except (ValueError, OSError, RuntimeError) as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
+
+
+# The adapter imports neither ML dependencies nor data until invoked.
+from .explore_ml_cli import command as _explore_ml_command  # noqa: E402
+
+app.command("explore-ml", context_settings={"help_option_names": ["-h", "--help"]})(
+    _explore_ml_command
+)
+
+from .ml_model_cli import (  # noqa: E402
+    predict_command as _predict_ml_command,
+)
+from .ml_model_cli import (  # noqa: E402
+    train_command as _train_ml_command,
+)
+
+app.command("train-ml", context_settings={"help_option_names": ["-h", "--help"]})(
+    _train_ml_command
+)
+app.command("predict-ml", context_settings={"help_option_names": ["-h", "--help"]})(
+    _predict_ml_command
+)

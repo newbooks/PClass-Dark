@@ -537,9 +537,116 @@ The methods are complementary. PClass-Dark aims to extend functional coverage be
 
 **Research and early development.** ProStruct provides preliminary work on structural feature signatures; PClass-Dark will investigate whether the same profiling and composition strategy transfers to PLM embeddings. Data preparation and signature discovery/scoring are implemented. Production calibration and independent predictive benchmarks remain to be established.
 
-**Next step (planned):** Implement an **additive classifier with similarity-informed soft targets** to predict `cluster_id` from the 19 biophysical descriptors. Training targets will incorporate similarity between clusters, while additive feature contributions will explain how feature values support each prediction. Evaluate exact-cluster accuracy and similarity-weighted error on homology-separated held-out data.
+The experimental **Similarity-Informed Additive Classifier (SIAC)** predicts
+`cluster_id` from 18 biophysical descriptors, excluding `sequence_charge_decoration`.
+It uses cluster similarity in soft training targets and learns cluster-specific
+feature contribution curves. `scripts/explore-ml.py` and `pclass-dark explore-ml`
+report exact and similarity-weighted hit rates using random stratified five-fold
+cross-validation (no homology files required), with optional repeated prediction stability analysis. Install
+`pip install -e '.[ml]'`; see the [SIAC guide](docs/explore-ml.md) and
+[implementation specification](docs/specs/0022-explore-ml.md). The first
+[reference CV results](docs/research/notes/2026-11-07-siac-reference-results.md)
+use random splits with homology uncontrolled.
+
+A completed exploration can be refitted into one portable model using
+`scripts/train-ml.py` / `pclass-dark train-ml`. Query feature tables, FASTA files
+and raw sequences are supported by `scripts/predict-ml.py` / `pclass-dark predict-ml`.
+Predictions default to a Markdown interpretation with chosen-cluster feature
+support, saved beside the input as `<input-stem>-interpretation.md`.
+The top-five matches are also printed in the terminal.
+Use `--output report.md` to choose a path, `--stdout` to print, `--format tsv` for the ranked table,
+or `--format jsonl` for the numerical explanation.
+See [prediction reports](docs/ml-model.md#prediction-output-and-interpretation).
+The default final fit uses the ordinary-target additive control (`hard`), which
+performed best in the recorded CV run. See the [final-model guide](docs/ml-model.md).
 
 PClass-Dark is intended to predict membership in functional clusters represented by the reference dataset. Its goal is to recover known functional information beyond reliable nearest-neighbor similarity. It does not inherently discover biological functions absent from the reference annotations.
+
+## CAUTIONS
+
+### Identical sequences can retain different annotation profiles and cluster labels
+
+Sequence deduplication does not guarantee one functional-cluster target per
+sequence. The prepared data merges identical sequences under one representative
+while retaining their original cluster memberships. A verified example is:
+
+| Original accession | Original cluster | Sequence length | Recorded GO MF annotations |
+| --- | --- | --- | --- |
+| `Q2FH94` | `cluster_0868` | 207 aa | `GO:0003677` DNA binding; `GO:0004252` serine-type endopeptidase activity |
+| `Q2FYU1` | `cluster_1372` | 207 aa | `GO:0001217` DNA-binding transcription repressor activity; `GO:0004252` serine-type endopeptidase activity; `GO:0043565` sequence-specific DNA binding |
+
+The original sequences are exactly identical, with SHA-256:
+
+```text
+000e1ae445249eb65e86ecc55aa05066c28e936c33901f41d9d88c833448a7de
+```
+
+The deduplicated FASTA retains representative `Q2FH94`; the membership table
+preserves both clusters. Consequently, `features.tsv` contains two `Q2FH94` rows
+with identical features and different `cluster_id` values. Sequence deduplication
+succeeded; the single-label training target remains ambiguous. This is unrelated
+to embedding windows or three-decimal feature formatting, and does not establish
+that the proteins have different biological functions.
+
+In the inspected reference snapshot, SIAC detected 1,039 sequence identities with
+multiple targets. The initially observed error was:
+
+```text
+$ ../scripts/explore-ml.py
+Conflicting labels for 1039 identities; correct labels or explicitly use conflict_policy='exclude'
+```
+
+The exploration now prefilters these ambiguous sequence identities by default,
+logs removals and writes `conflicts.tsv` / `exclusions.tsv`. Same-target identical
+sequences collapse to one example; conflicting-target identities are removed in
+full rather than assigned an arbitrary label. This leaves 379,539 sequences in
+the inspected snapshot. `--conflict-policy error` restores strict validation.
+Resolving annotations upstream or using a separately specified multilabel model
+are alternatives. Exclusion changes the evaluation population; see the
+[SIAC guide](docs/explore-ml.md).
+
+### GO-set similarity check for the conflicting example
+
+The recorded ProFunc check compares the two original annotation profiles:
+
+```text
+$ profunc analyze go-set-sim Q2FH94 Q2FYU1
+Score: 0.7509
+Status: ok
+
+Resolved inputs:
+- A: Q2FH94 -> GO:0003677;GO:0004252
+- B: Q2FYU1 -> GO:0001217;GO:0004252;GO:0043565
+- Missing A: none
+- Missing B: none
+
+A -> B best matches:
+- GO:0003677 DNA binding -> GO:0043565 sequence-specific DNA binding: 0.8021
+- GO:0004252 serine-type endopeptidase activity -> GO:0004252 serine-type endopeptidase activity: 1
+
+B -> A best matches:
+- GO:0001217 DNA-binding transcription repressor activity -> GO:0004252 serine-type endopeptidase activity: 0
+- GO:0004252 serine-type endopeptidase activity -> GO:0004252 serine-type endopeptidase activity: 1
+- GO:0043565 sequence-specific DNA binding -> GO:0003677 DNA binding: 0.8021
+
+Mean(A -> B): 0.9011
+Mean(B -> A): 0.6007
+Formula: AMB(A, B) = (mean(A -> B) + mean(B -> A)) / 2
+                   = (0.9011 + 0.6007) / 2
+                   = 0.7509
+```
+
+Both profiles include serine-type endopeptidase activity. The second also includes
+sequence-specific DNA binding, a descendant of DNA binding, and transcription
+repressor activity. Their recorded annotation sets differ despite identical
+sequences. The zero-score best match contributes no similarity credit; it does
+not imply a functional relationship between the named terms.
+
+The symmetric AMB score gives partial credit for the related annotation profiles;
+**0.7509 does not mean identical annotations or interchangeable cluster labels**.
+This accession-profile check also differs from the medoid-profile similarities
+used in `cluster_dmatrix.tsv`. Treat these as recorded reference-snapshot results:
+GO annotations, graph structure and information-content estimates can change.
 
 ## External inference comparison
 

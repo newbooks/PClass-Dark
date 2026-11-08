@@ -35,3 +35,9 @@
 - [0020: Portable RSA/ALL-CEF and Q3 predictors](0020-structural-prediction-models.md) — frozen dual heads prepared by build-library, packaged assets and full-sequence Python prediction.
 
 - [0021: Extract 19 sequence and predicted structural features](0021-extract-structural-features.md) — implemented: experimental script/API, automatic selected-cohort discovery, cwd-local 21-column membership TSV, bounded/resumable extraction, QC/provenance and recoverable publication; CPU pilot validated, full reference and ML evaluation pending.
+
+- [0022: Explore similarity-informed additive classification](0022-explore-ml.md) — implemented: SIAC 18-feature script/API/CLI, similarity-informed soft targets, random stratified five-fold CV (optional homology grouping), exact/semantic hit rates, repeated stability, explanations and resumable fold reports; CPU synthetic validation, full-data evaluation pending.
+
+- [0023: Full-cohort additive model and query prediction](0023-final-ml-model.md) — implemented: all-reference refit, portable checked model bundle, raw-sequence/feature query API/scripts/CLI; full HARD model trained and raw-query parity validated on GPU.
+
+- [0024: Human-readable ML prediction interpretations](0024-ml-interpretation.md) — implemented: chosen-cluster support, shortened Markdown write-up and source-bound functional labels; 77 tests passed, 2 GPU tests skipped.

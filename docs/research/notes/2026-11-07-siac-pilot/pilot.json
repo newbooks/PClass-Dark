@@ -1,0 +1,179 @@
+{
+  "schema": "pclass-dark.siac-synthetic-pilot.v1",
+  "purpose": "software validation only; artificial labels",
+  "experiment_id": "5e1a1cdc0914d3e856b038fcf3d0c983b5f07e1766912991da1dd54537879aed",
+  "contract": {
+    "code": {
+      "artifacts.py": "c9b32a2ed27b073ec36668813aa1fcbfdc4d29c53a1baa12489b494f28573285",
+      "explore_ml.py": "e09e900b5a8127e043024d7d34b8548d053cdfb4777f13ba11223f5b3da1036a",
+      "feature_reports.py": "006c91e36e0e479b554469416293fb60e00a613a6e8896ce18a8260d031a4a92",
+      "feature_store.py": "535dedc00aeb5c7d970193d330194fad996964c07a5ec5df3e245d866db65574",
+      "ml_data.py": "36a93b1bea8713a9b281cf15bdbfa09c2d136783b655e804d96b24af2e04665c",
+      "ml_reports.py": "9fd1e136acc7d8dba8dd18847bd0f33ab4799adc103c426448ad71bd985d688b",
+      "ml_splits.py": "ac60a341abd5062f9a5cc82823cbd821d7c220bf3b9a0d01c154ed47c23efbef",
+      "siac.py": "665e5b58d8b2a2156ae3ac5310b6894051084b48d20ea2fae1a8cbc6568590f9",
+      "structural_features.py": "85f13ef74e4dba9fa157584afe0ad3148808c61cc56e518526eabb49ecb5d9d7"
+    },
+    "deterministic_algorithms": true,
+    "device": "cpu",
+    "inputs": {
+      "features/features.tsv": {
+        "sha256": "71dbd546d729bdcc3b49a4bda5246b260339480d0806839cb4471ec299fc8416",
+        "size_bytes": 33864
+      },
+      "similarities/cluster_dmatrix.tsv": {
+        "sha256": "e4fe255addbae99acdf48f67b77e5f22c1ccbce0fb88f654795682adfff899ed",
+        "size_bytes": 184
+      }
+    },
+    "schema": "pclass-dark.explore-ml.contract.v1",
+    "settings": {
+      "alpha": 0.1,
+      "batch_size": 64,
+      "conflict_policy": "error",
+      "knots": 8,
+      "learning_rate": 0.05,
+      "max_epochs": 20,
+      "min_delta": 1e-05,
+      "neighbors": 10,
+      "patience": 5,
+      "repeats": 1,
+      "seed": 42,
+      "similarity_power": 2.0,
+      "split_mode": "accession",
+      "weight_decay": 0.0001
+    },
+    "splits": {
+      "folds.tsv": {
+        "sha256": "0f8fe07f2381b19246f1501400c6577215fc0b69e81f2944008473a55768035e",
+        "size_bytes": 3284
+      },
+      "inner_folds.tsv": {
+        "sha256": "ecab9bab21ef3d6fd03243dd746b2834aa9f5337b8983cb4b5c0be41bb4ce276",
+        "size_bytes": 9770
+      }
+    },
+    "versions": {
+      "numpy": "2.4.4",
+      "scikit-learn": "1.9.0",
+      "scipy": "1.18.0",
+      "threadpoolctl": "3.6.0",
+      "torch": "2.9.1+rocm6.3"
+    }
+  },
+  "population": {
+    "conflict_policy": "error",
+    "example_count": 90,
+    "excluded_accession_count": 0,
+    "excluded_identity_count": 0,
+    "label_count": 3,
+    "provenance_status": {
+      "extraction": "unverified",
+      "homology": "uncontrolled",
+      "similarity": "unverified"
+    },
+    "sequence_hashes_available": false,
+    "source_rows": 90,
+    "split_mode": "accession"
+  },
+  "execution": {
+    "completed_at": 1794081268.3511019,
+    "cpu_count": 16,
+    "device": "cpu",
+    "elapsed_seconds": 3.6258339881896973,
+    "git": {
+      "dirty": true,
+      "revision": "7ca58d8f53cd7f1021649d1aca8d3b871cf50dfb",
+      "status": " M MANIFEST.in\n M README.md\n M docs/research/progress.md\n M docs/specs/index.md\n M pyproject.toml\n M src/pclass_dark/cli.py\n?? docs/explore-ml.md\n?? docs/specs/0022-explore-ml.md\n?? scripts/explore_ml.py\n?? src/pclass_dark/explore_ml.py\n?? src/pclass_dark/explore_ml_cli.py\n?? src/pclass_dark/ml_data.py\n?? src/pclass_dark/ml_reports.py\n?? src/pclass_dark/ml_splits.py\n?? src/pclass_dark/siac.py\n?? tests/test_explore_ml.py\n"
+    },
+    "platform": [
+      "Linux",
+      "woodpecker",
+      "7.0.0-38-generic",
+      "#38~24.04.4-Ubuntu SMP PREEMPT_DYNAMIC Mon Sep 14 16:37:11 UTC 2",
+      "x86_64"
+    ],
+    "resources": {
+      "basis_width_upper_bound": 162,
+      "budget_bytes": 8589934592,
+      "effective_workers": 1,
+      "estimated_peak_bytes": 816169508,
+      "fallback": null,
+      "formula": "immutable+J*(baseline+1.5*(N*(18*16+B*4+32)+C*B*20+M*(4*C+B)*4))",
+      "gpu": null,
+      "immutable_bytes": 13752,
+      "per_worker_bytes": 816155756,
+      "requested_workers": 1,
+      "threads": 1,
+      "worker_baseline_bytes": 815943680
+    }
+  },
+  "repeat_metrics": [
+    {
+      "config_id": "siac",
+      "exact_hit_rate": 1.0,
+      "macro_recall": 1.0,
+      "macro_similarity": 1.0,
+      "n": 90,
+      "n_exact": 90,
+      "outer_fold_id": null,
+      "repeat_id": 0,
+      "scope": "pooled",
+      "similarity_sum": 90.0,
+      "stratum": "all",
+      "stratum_value": "all",
+      "top5_hit_rate": 1.0,
+      "weighted_hit_rate": 1.0
+    },
+    {
+      "config_id": "hard",
+      "exact_hit_rate": 1.0,
+      "macro_recall": 1.0,
+      "macro_similarity": 1.0,
+      "n": 90,
+      "n_exact": 90,
+      "outer_fold_id": null,
+      "repeat_id": 0,
+      "scope": "pooled",
+      "similarity_sum": 90.0,
+      "stratum": "all",
+      "stratum_value": "all",
+      "top5_hit_rate": 1.0,
+      "weighted_hit_rate": 1.0
+    },
+    {
+      "config_id": "majority",
+      "exact_hit_rate": 0.3333333333333333,
+      "macro_recall": 0.3333333333333333,
+      "macro_similarity": 0.7333333333333335,
+      "n": 90,
+      "n_exact": 30,
+      "outer_fold_id": null,
+      "repeat_id": 0,
+      "scope": "pooled",
+      "similarity_sum": 66.00000000000001,
+      "stratum": "all",
+      "stratum_value": "all",
+      "top5_hit_rate": null,
+      "weighted_hit_rate": 0.7333333333333335
+    },
+    {
+      "config_id": "semantic_constant",
+      "exact_hit_rate": 0.3333333333333333,
+      "macro_recall": 0.3333333333333333,
+      "macro_similarity": 0.7333333333333335,
+      "n": 90,
+      "n_exact": 30,
+      "outer_fold_id": null,
+      "repeat_id": 0,
+      "scope": "pooled",
+      "similarity_sum": 66.00000000000001,
+      "stratum": "all",
+      "stratum_value": "all",
+      "top5_hit_rate": null,
+      "weighted_hit_rate": 0.7333333333333335
+    }
+  ],
+  "full_artifacts": "/tmp/pclass-dark-siac-pilot-20261107/results-final",
+  "full_artifacts_ephemeral": true
+}

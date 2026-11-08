@@ -2646,3 +2646,478 @@ train/validation/test construction and candidate reranking evaluation.
   `python -m pytest tests/test_feature_extraction.py tests/test_structural_features.py
   tests/test_structure.py -q`: **116 passed, 1 skipped** (GPU unavailable).
   Ruff checks/formatting and `git diff --check` passed. No production data changed.
+
+
+## 2026-11-07 — Draft additive-classifier exploration specification
+
+- Added [SPEC-0022](../specs/0022-explore-ml.md) for planned
+  `scripts/explore_ml.py`, equivalent library/CLI operations and the README-selected
+  additive classifier. Inputs exclude sequence_charge_decoration (18 predictors).
+  Synchronized the README next-step note and specification index.
+- Defined exact hit rate (accuracy/micro recall), mean similarity-weighted hit
+  rate, macro/size-stratified diagnostics, matched alpha=0 and constant baselines,
+  training-only fitting, five-fold homology-grouped evaluation and optional repeated
+  CV for per-protein prediction stability. Fold score SD is not a confidence interval.
+- Documented previously observed local input facts: 381,627 membership rows,
+  380,578 accessions, 3,443 feature labels; similarity input covers 3,524 clusters.
+  The 1,039 accessions with conflicting labels require explicit resolution before
+  a single-label run; default validation fails, explicit exclusion is audited.
+  No input table changed and no new predictive experiment ran.
+- Consulted actual ProFunc medoid AMB Lin implementation and official scikit-learn /
+  PyTorch documentation for grouped CV, splines and soft targets. Proposed defaults
+  are unvalidated; implementation, automated tests and full training remain pending.
+- Documentation validation: local Markdown links, 18-feature input list, metric and
+  target analytical examples, and `git diff --check` checked. No code tests required
+  for this specification-only change.
+
+
+## 2026-11-07 — SIAC exploration specification made implementation-ready
+
+- Revised [SPEC-0022](../specs/0022-explore-ml.md) through a contract/readiness
+  review. Kept implementation and empirical validation explicitly pending; updated
+  the index and README link wording to reflect specification readiness.
+- Fixed cohort identity/conflict ordering, exact alias exclusions, complete
+  retained-label similarity coverage and duplicate detection across extra labels.
+  Defined all outer/inner split eligibility checks and the deterministic seed
+  derivation, training-only spline preprocessing, sparse soft targets, optimizer,
+  epoch selection/refit behavior and canonical class-specific softmax curve gauge.
+- Specified metric denominators, baseline/top-k conventions, repeated prediction
+  stability formulas, exact TSV/JSON/model-array schemas, API/CLI options, optional
+  dependencies, bounded CPU/GPU resource admission and task-level atomic resume.
+  Removed the unsupported promise to quantify attribution stability without a
+  fixed comparator protocol; prediction stability and curve export remain in scope.
+- Documentation validation: local links, source feature ordering (18 inputs), all
+  tabular schema headers, complete example options, fenced blocks and readiness
+  markers checked. `git diff --check` passed. Consulted official sklearn spline /
+  grouped-split and PyTorch soft-target documentation; verified installed spline
+  construction/constant extrapolation and grouped split APIs on tiny arrays.
+  Independent analytical checks passed for target weights, metric credit and
+  preservation of pairwise margins by the class-mean softmax gauge.
+- No source implementation, production input edits, model training, CV performance
+  measurements or automated implementation acceptance tests were performed.
+  Next: implement against the fixed specification, then execute its acceptance
+  suite and a bounded synthetic pilot before full-data experimental work.
+
+
+## 2026-11-07 — Implement SIAC five-fold exploration
+
+- Implemented [SPEC-0022](../specs/0022-explore-ml.md) through
+  `scripts/explore_ml.py`, `pclass-dark explore-ml` and reusable Python modules.
+  SIAC uses 18 features (SCD excluded), cluster-specific centered cubic splines,
+  similarity-informed soft targets and deterministic mini-batch AdamW. Added
+  ordinary-target additive and two constant controls on matched folds.
+- Added strict cohort/alias/conflict handling, complete retained-label similarity
+  alignment, homology-grouped or explicitly exploratory accession splits, inner
+  epoch selection and outer refit, unsupported-label accounting, exact/semantic
+  hit rates, macro/size diagnostics, optional repeated prediction stability,
+  margin explanations, plain-array model reload and streamed reports. Source
+  inputs and existing production inference remain unchanged.
+- Added validation-only audits, bounded CPU spawn workers with shared mmap numerical
+  arrays, pre-fit GPU probing/CPU fallback, memory admission, immutable task-level
+  checkpoints, checksum verification and recovery after interrupted report
+  publication. Rejected resumes preserve existing input arrays/audits; foreign
+  stage files are preserved and refused. Added optional `ml` dependencies,
+  packaging entries, [usage/API guide](../explore-ml.md), README and index updates.
+- Implemented refinements are recorded in the specification: conservative
+  coordinator high-water RSS replaces a separate worker-memory probe; expanded
+  bases are cached only for the active fit; `fit_siac` returns model plus epoch
+  records, metric helpers return dictionaries; aggregate similarity sums permit
+  1e-8 absolute summation-order tolerance. Float32 is explicit even if callers
+  change the Torch default dtype. GPU numerical validation remains unavailable.
+- Automated validation:
+  - Final `python -m pytest tests/test_explore_ml.py -q`: **24 passed, 1 skipped**
+    (GPU unavailable), including analytical gradients/metrics, held-out additive
+    recovery, train-only splines, serial/parallel consistency, repeated stability,
+    unsupported labels, identity exclusions, model reload/schema validation,
+    interrupted/incompatible/corrupt resume and publication, input-inode preservation,
+    foreign-stage protection, CLI/API/script help, lazy imports and dtype isolation.
+  - Broader feature/structure/CLI selection: **164 passed, 2 skipped** before the
+    last dtype regression; final focused SIAC run above rechecked modified ML code.
+  - `python -m pytest -q`: **760 passed, 4 skipped, 1 setup error**, 765.87 s.
+    Existing `test_spawned_pclass_worker_splits_and_reuses` could not create its
+    127.0.0.1 HTTP fixture inside the restricted sandbox. Reran only that test with
+    loopback permission: **1 passed in 2.54 s**. Do not report the original run as
+    an uninterrupted all-passing suite. One preexisting AMD_SERIALIZE_KERNEL
+    environment warning appeared in an embedding test.
+  - Ruff checks/formatting, `git diff --check`, local documentation links, feature
+    order and pilot input hashes checked. Built source-only wheel and sdist in
+    `/tmp/pclass-dark-siac-package-otizj7mw/`, outputs
+    `/tmp/pclass-dark-siac-dist/`, log `/tmp/pclass-dark-siac-build-final.log`.
+    Verified script/guide/modules/`ml` extra inclusion and installed-wheel command
+    help from `/tmp/pclass-dark-siac-installed/`. Initial checkout sdist build was
+    stopped when it began copying selected multi-GB reference data; removed only
+    its newly generated staging tree. No package was published.
+- Ran the bounded [reproducible CPU synthetic pilot](notes/2026-11-07-siac-pilot.md):
+  90 artificial examples, three labels, seed 42, five folds, 20-epoch cap, patience 5,
+  learning rate 0.05, batch 64, one worker/thread, no homology claim. Retained inputs,
+  exact versions/code hashes and output metrics under
+  `docs/research/notes/2026-11-07-siac-pilot/`; full ephemeral results under
+  `/tmp/pclass-dark-siac-pilot-20261107/results-final/`. Experiment
+  `5e1a1cdc0914d3e856b038fcf3d0c983b5f07e1766912991da1dd54537879aed`.
+  SIAC and hard-target control both recover the trivial rule (exact/weighted=1);
+  constants exact=1/3, weighted=0.7333. This is software validation, not evidence
+  of protein performance or a smoothing benefit. Starting Git revision 7ca58d8f
+  plus this working-tree implementation; full scientific source hashes retained.
+- No full-reference experiment or deployment fit ran. Next: resolve ambiguous
+  reference memberships or explicitly choose audited exclusion, supply documented
+  homology groups for biological generalization, then run the five-fold experiment.
+
+
+## 2026-11-07 — Rename SIAC exploration script
+
+- Renamed `scripts/explore_ml.py` to `scripts/explore-ml.py`; updated README,
+  usage guide, SPEC-0022, pilot reproduction command, sdist manifest and script
+  integration test. Historical entries above retain the original filename.
+  The importable `pclass_dark.explore_ml` module and `pclass-dark explore-ml`
+  command keep their existing names. Scientific implementation and saved pilot
+  code identities are unchanged.
+- Validation: renamed-script help/lazy-import regression and CLI tests passed;
+  manifest target and documentation references checked; Ruff and whitespace
+  checks passed. No model training or input-table changes.
+
+
+## 2026-11-07 — Default SIAC to random stratified five-fold splits
+
+- At the user's explicit request, removed the default requirement for homology
+  groups/provenance. API and CLI now default to accession mode with seeded shuffled
+  StratifiedKFold for outer and inner splits. Exact sequence aliases still collapse
+  before splitting; optional explicitly requested homology mode retains its grouped
+  splitter. Reports continue to mark random evaluation as homology uncontrolled.
+- Updated SPEC-0022, README, usage guide, index and historical pilot interpretation.
+  The prior homology-default decision is superseded for this exploration. Conflicting
+  label handling is unchanged; existing input tables are not modified. Old cached
+  experiments have different source/split contracts and need a fresh output directory.
+- Validation: SIAC and CLI selection **50 passed, 1 skipped** (GPU unavailable).
+  Regression covers default API/command execution without group files, independently
+  checks seeded StratifiedKFold outer/inner assignments, class proportions and seed
+  sensitivity. Existing explicit homology, serial/parallel, reports, stability and
+  resume tests remain passing. Final changed regression rerun, Ruff checks and
+  whitespace/documentation checks passed. No full-reference training performed.
+
+
+## 2026-11-07 — Request eight SIAC workers by default
+
+- API and CLI now default to eight requested workers, with allowed range 1..8.
+  CPU admission caps actual workers by usable CPUs divided by per-worker threads,
+  available fold tasks (5*repeats), and memory budget. Low-CPU machines clamp the
+  requested default instead of failing validation. Single-repeat CV can run at
+  most five fold jobs concurrently; repeated CV can use eight. GPU remains serial.
+- Updated SPEC-0022 and usage guide; preserved the historical pilot's explicit
+  single-worker reproduction setting. Serial test fixtures explicitly request one
+  worker so failure injection and serial/parallel comparisons remain meaningful.
+- Validation: SIAC/CLI tests **51 passed, 1 skipped** (GPU unavailable). New regression
+  checks API/CLI default eight, two-CPU admission, five-task cap, eight workers for
+  repeated CV, serial override and rejection above eight. Ruff formatting/checks,
+  documentation references and `git diff --check` passed. No full-data training.
+
+
+## 2026-11-07 — SIAC progress logging and membership explanation
+
+- Added scoped timestamped stderr progress for source verification/snapshotting,
+  feature/index and similarity scans, split/device/worker admission, fold/model
+  selection/refit epochs/losses, early stopping, reused/committed tasks, aggregation
+  and final publication. Scan/batch counters throttle to five seconds; spawned
+  workers get matching handlers. CLI restores existing handlers/levels afterward;
+  library imports do not configure logging. Persistent numerical epoch history
+  remains training.tsv. Added ml_progress.py to scientific code provenance.
+- Improved conflicting-target errors with the CLI exclusion option, conflict audit
+  path and --resume retry guidance. No default exclusions, automatic target choices,
+  numerical algorithm changes or input modifications. Updated SPEC-0022 and guide.
+- Verified original Q2FH94 (cluster_0868) and Q2FYU1 (cluster_1372) sequences are
+  exactly equal, length 207, SHA-256
+  `000e1ae445249eb65e86ecc55aa05066c28e936c33901f41d9d88c833448a7de`.
+  Source: `/home/jmao/projects/profunc/datasets/20260911T184540Z-d7e84090016d/accession.fasta`.
+  Prepared aliases collapse both to representative Q2FH94; memberships preserve
+  both clusters. The feature writer joins both memberships to one feature vector.
+  Sequence deduplication succeeded; the target ambiguity is unrelated to windows
+  or export rounding. This does not establish either annotation is biologically wrong.
+- Validation: `python -m pytest tests/test_explore_ml.py tests/test_cli.py -q -x`:
+  **54 passed, 1 skipped** (GPU unavailable), including real spawned-process stderr,
+  epoch/phase messages, repeated CLI handler cleanup, actionable conflict diagnostics,
+  throttled counts and existing numerical/parallel/resume regressions. Ruff checks,
+  formatting, documentation links and whitespace checks passed. No full-reference
+  training performed.
+
+
+## 2026-11-07 — Automatic identical-sequence prefilter with removal accounting
+
+- At the user's request, exploration API/CLI now default to an audited identity
+  prefilter: collapse identical sequences with one consistent target, and remove
+  the entire ambiguous identity when different targets remain. Never choose an
+  arbitrary cluster or equate rounded feature vectors with sequence identity.
+  The sequence-index SHA-256 is used when available; accession-only fallback logs
+  the lack of cross-accession verification. Explicit --conflict-policy error and
+  the strict low-level load_cohort default remain available.
+- Added population.prefilter_counts to preflight/summary reports, distinguishing
+  original feature rows/accessions, unique identities, repeated membership rows,
+  same-target rows collapsed, ambiguous identities/rows excluded and final count.
+  Removed rows reconcile with retained examples and audit TSVs. Updated the guide,
+  SPEC-0022 and README CAUTIONS; previous default-error policy is superseded.
+- Validated against the actual feature table with load_cohort(features,
+  sequence_index=features.sequences.tsv, conflict_policy='exclude') without fitting
+  a model or modifying inputs. Preparation ID:
+  `8e5994726cb958fce5d2396835f9a3767da897007110a9fda4f2e3b06cccbe4e`.
+  Input: 381,627 membership rows, 380,578 accessions/sequence identities; 1,049
+  rows beyond one per identity. Prefilter removes 1,039 ambiguous identities
+  (2,088 source rows), collapses zero additional same-target rows, and retains
+  **379,539 unique sequences across 3,443 labels**. The original selected reference
+  manifest records 455,508 clustered accessions and 575,748 total FASTA records;
+  prior exact-sequence deduplication plus cluster filtering already produced
+  the 380,578 retained sequences. These populations are not interchangeable counts.
+- Validation: `python -m pytest tests/test_explore_ml.py tests/test_cli.py -q -x`:
+  **56 passed, 1 skipped** (GPU unavailable). Added same-target hash-alias collapse,
+  whole ambiguous-hash exclusion, no feature-equality dedup without hash evidence,
+  exact removal accounting, default CLI filtering/progress and summary denominators.
+  Existing explicit-error and conflict-audit tests retained. Ruff formatting/checks,
+  documentation links and whitespace checks passed. No full-data training ran.
+
+
+## 2026-11-07 — Clarify SIAC training stages and shorten epoch progress
+
+- Training messages now identify Repeat r/R, Fold f/5 and one of four numbered
+  stages: SIAC epoch-selection (1/4), SIAC outer-refit (2/4), HARD epoch-selection
+  (3/4), HARD outer-refit (4/4). START/DONE transitions and all periodic batch/epoch
+  lines share the contextual label so concurrent workers remain distinguishable.
+- Removed validation_loss and best_epoch fields from terminal epoch lines; they
+  remain in training.tsv and still govern inner epoch selection. Numerical training,
+  thresholds, data and saved report schemas are unchanged. Updated SPEC-0022 and
+  the user guide with the exact log example and stage definitions.
+- Validation: `python -m pytest tests/test_explore_ml.py tests/test_cli.py -q -x`:
+  **56 passed, 1 skipped** (GPU unavailable). Logging regressions check all four
+  stages, repeat/fold totals, spawned worker context, terminal validation-loss
+  absence and saved validation history. Ruff checks/formatting and documentation
+  links/whitespace checks passed. No full-reference training performed.
+
+## 2026-11-07 — Summarize completed reference SIAC exploration
+
+- Assessed the user's completed `work/explore-ml/` experiment
+  `4683ddea21e305608fc8e81f38c2f71276d83d5e194fe2547890acec98db8163`.
+  Verified contract identity and checksums of summary, fold metrics, per-cluster
+  and stability reports. Added the [results note](notes/2026-11-07-siac-reference-results.md)
+  with population, settings, provenance, limitations and reproducible report queries.
+- Five random-stratified folds, one repeat, seed 42; 379,539 sequences, 3,443 labels,
+  18 inputs, 1,039 ambiguous identities excluded. GPU cuda:0, one effective worker.
+  SIAC alpha=.1, k=10, power=2; eight knots, max 100 epochs. Source hashes, versions
+  and original dirty revision are recorded by the completed run manifest.
+- SIAC exact/weighted/top-5: 59.48% / 70.76% / 77.16%; ordinary-target control:
+  60.04% / 71.15% / 77.70%. Control makes 2,139 more exact predictions and wins both
+  primary metrics in every fold. Preserve this negative result: the tested target
+  smoothing did not improve held-out scores. Macro recalls 38.08% / 40.33%; small
+  clusters perform substantially worse than overall accuracy suggests.
+- Fold SDs are small (SIAC exact 0.193 percentage points, weighted 0.175), but are
+  not confidence intervals. One repeat cannot measure per-protein prediction
+  agreement; stability fields are NA. All ten learned models selected the cap of
+  100 epochs, so convergence is not established. Homology is uncontrolled and
+  supplied similarity generation provenance unverified: no remote-homology claim.
+- No fitting, parameter selection, input changes or work-report changes in this
+  assessment. Documentation content/link/formatting checks only; code tests are
+  not needed. Follow-up options: repeated held-out predictions for stability and
+  inner-validation-only assessment of longer fitting or revised smoothing settings.
+
+## 2026-11-07 — Train all-reference model and expose query prediction
+
+- Added [SPEC-0023](../specs/0023-final-ml-model.md), ml_model.py / CLI adapters,
+  scripts/train-ml.py and scripts/predict-ml.py, root train-ml/predict-ml commands,
+  package inclusion and [usage/API guide](../ml-model.md). Refits use every eligible
+  CV example once, not concatenated repeated-CV folds or averaged spline weights.
+  HARD is the default based on source CV; similarity-informed SIAC remains optional.
+- Verified complete input snapshots, fitted full-cohort preprocessing and selected
+  epoch budget from inner-selected fold counts. Portable plain-array bundle has
+  strict checksums/schema, source/current code provenance, recipe identity,
+  owned failure/restart behavior and no dependence on the CV folder for prediction.
+  Query paths support exact 18-feature TSV, inline sequence and streamed FASTA,
+  matching frozen full-coverage feature extraction and .3f export before saved
+  preprocessing. Added top-five logits/scores, JSON explanations/flags and atomic
+  output staging. Imports do not initialize models or parse arguments.
+- Actually trained `work/ml-model`: all 379,539 sequences / 3,443 clusters, HARD,
+  100 epochs, final seed 3525665611, GPU cuda:0 (AMD Radeon Graphics), 8 CPU threads.
+  Fit/publication took 123.97 s after source validation; terminal log
+  `work/ml-model-fit.log`, final mean training loss 1.777485 (not accuracy).
+  Source experiment 4683ddea21e305608fc8e81f38c2f71276d83d5e194fe2547890acec98db8163.
+  Model ID e24b23cbe6240e5d3519ff1a3efdff174b6f33e74fdb7037b88e7b5ebbdc16f9;
+  weights SHA-256 d267fd34a7ee6394488573f3c76945ccbf23649a2fc892b15af0d05f8bf27789.
+  Full reproducibility/settings and selected artifact copies:
+  [final-model record](notes/2026-11-07-final-ml-model.md).
+- Offline GPU query smoke on excluded ambiguous Q2FH94 (207 aa) reproduced all 18
+  rounded reference values exactly. Predicted cluster_0868, score 0.367643; margin
+  and additive explanation reconcile. This is pipeline validation, not resolution
+  of the biological conflict or an independent accuracy estimate. Source CV HARD
+  exact 60.04% / weighted 71.15% remain historical evidence only.
+- Validation: final ML/model/CLI selection with GPU access **70 passed** (60.86 s);
+  restricted run 68 passed / 2 skipped, followed by actual GPU checks. Tests cover
+  full-cohort/repeat accounting, median/override epochs, inherited configs, strict
+  source/bundle data, model reload/portable prediction, query schemas/rounding,
+  raw-feature parity, late-error output atomicity, interrupted publication/restart,
+  lazy imports, script/root CLI and existing exploration regressions.
+- Existing balanced GPU toy test first failed the strict 1e-4 logit check. Diagnosed
+  near-zero bias-gradient sensitivity to float32 reductions with AdamW eps=1e-8:
+  max probability drift 0.0003477, no changed labels; nondegenerate case matched
+  to 3.73e-9 logits. No optimizer/model changes made. Explicit balanced-case 5e-4
+  score bound and ordinary-case 1e-4 checks now reflect measured behavior; initial
+  gradient checked against analytical zero. SPEC-0022/0023 document the exception.
+  No full CPU/GPU reference retraining-equivalence claim.
+- Source-only wheel/sdist built and contents verified; installed-wheel help, real
+  bundle loading and CPU prediction passed. Logs `/tmp/pclass-dark-final-ml-build.log`;
+  no release published. Ruff/format/whitespace, doc links and final bundle/source
+  hash checks passed. Existing source data/CV reports remain unchanged. Next:
+  apply the model to actual queries and evaluate a separate held-out deployment set.
+
+## 2026-11-07 — Interpret seq2 query in biophysical language
+
+- Ran the existing predict-ml.py raw FASTA path on work/seq2.fasta (129 residues),
+  offline cached GPU extraction, saved explanation to work/seq2-interpretation.jsonl
+  and a readable report to work/seq2-interpretation.md. No code/model/input changes.
+  Query SHA-256 eaf1f8d7f5bf78bbefe1100d912a09893361c57dda057f634adb5c5af6dfe79c;
+  no exact match in final training aliases (homology not assessed).
+- Model e24b23cbe6240e5d3519ff1a3efdff174b6f33e74fdb7037b88e7b5ebbdc16f9:
+  cluster_1096 score 0.853623; runner-up cluster_2264 score 0.037153. Verified live
+  descriptions against original preparation reference files and clusters_meta hash.
+  Top annotation: peptidoglycan muralytic/hydrolase; runner-up NADH dehydrogenase.
+- Comparative explanation: hydropathy -0.472 (+2.622 logits), length 129 (+1.066),
+  surface acidic fraction .097 (+.787), buried basic fraction zero (+.595) support
+  the top. Surface basic fraction .194 (-1.190), surface charged fraction .280
+  (-.831), among other descriptors, favor the runner-up. Baseline +2.038 plus net
+  feature evidence +1.097 yields +3.134 margin. All 18 features available/in support.
+  Contributions explain top versus runner-up, not independent biological causes;
+  scores are uncalibrated and this query is not a measured accuracy result.
+- Verified explanation reconstruction within float32 tolerance, source-reference
+  identity/metadata binding and report content/formatting. No training or automated
+  implementation tests needed for this read-only query analysis/reporting task.
+
+## 2026-11-07 — Revise seq2 interpretation to chosen-cluster support
+
+- At the user's request, revised work/seq2-interpretation.md into an editable
+  human-language template using each feature curve's contribution to cluster_1096,
+  centered by its average across all 379,539 training examples. Replaced the
+  terminology for the alternative with "second choice". No model or CLI/schema edits.
+- Recomputed own-class values from the saved centered spline basis/weights:
+  length +2.459, strand fraction +2.341, hydropathy +2.153, exposed fraction +1.359.
+  Basic fraction among exposed residues .194 contributes +.144 (slight support),
+  rather than the earlier -1.190 difference against the second choice. The only
+  negative own-class contribution is surface charged fraction .280, -.190.
+  Baseline 2.451 + net feature contributions 15.402 reconstructs logit 17.853.
+- Retained chosen-only numerical evidence in
+  work/seq2-chosen-cluster-support.json; preserved the original comparative JSON.
+  The revised report explicitly distinguishes these two references and notes that
+  a future predict-ml.py summary needs own-class fields instead of relabeling margins.
+  Prior comparative findings remain valid for the original comparison; this report
+  supersedes that presentation, not its underlying numerical evidence.
+- Validation: reconstructed the top logit within float32 tolerance, checked all
+  18 features and sign/direction in the template. Independently evaluated centered
+  curves across the full saved training X in bounded batches to verify their mean
+  contributions are within 1e-6 of zero. Markdown/whitespace checks passed.
+  No training or implementation tests were needed for this analysis/report edit.
+
+
+### 2026-11-07 — Shortened prediction interpretation reports
+
+Implemented [SPEC-0024](../specs/0024-ml-interpretation.md) using the user's shortened
+work/seq2-interpretation.md template. predict-ml.py / pclass-dark predict-ml now
+support --format markdown: predicted function, brief explanation and all 18 signed
+chosen-cluster feature supports relative to their training means. JSON adds own-class
+terms without changing comparative fields. Optional labels are bound to the saved
+preparation and reference hashes; unavailable metadata falls back to cluster IDs.
+
+Validation: 77 passed, 2 GPU tests skipped across model/exploration/CLI/interpretation
+suites; final wording check 6 passed; Ruff and whitespace checks passed. CPU offline
+raw FASTA command: python scripts/predict-ml.py --model-dir work/ml-model --fasta
+work/seq2.fasta --format markdown --output work/seq2-generated-interpretation.md
+--device cpu. Its 18 contributions matched independently saved seq2 own-class terms
+at 1e-7 tolerance. Chosen cluster_1096 score 0.854; basic surface-residue support
++0.144 and charged surface-residue support -0.190. Preserved the user's editable
+report. Existing full-model bundle and weights unchanged; this is interpretation
+validation, not additional held-out performance evidence. Usage in
+[model guide](../ml-model.md). No retraining required.
+
+
+### 2026-11-07 — Default prediction format
+
+Changed predict-ml.py / pclass-dark predict-ml to emit the Markdown interpretation
+by default, as requested. --output report.md saves it; stdout remains available.
+Explicit --format tsv and --format jsonl preserve machine-readable alternatives.
+Updated README, model guide and SPEC-0024. Regression tests verify default
+Markdown on stdout and in a saved file, explicit TSV, and overwrite protection.
+Validation: 21 passed in 5.44s. Ruff and git diff --check passed.
+
+
+### 2026-11-07 — Automatic interpretation file publication
+
+Clarified the requested default: Markdown must be saved automatically, not only
+selected as stdout format. Input seq2.fasta now writes seq2-interpretation.md
+beside the input; feature tables follow the same rule. Inline sequences use a
+sanitized query ID in the current directory. --output overrides the path and
+--stdout explicitly prints instead; TSV/JSONL retain stdout defaults. Existing
+files are protected, publication is atomic, and the saved path is reported on
+stderr. Updated SPEC-0024, README and model guide. Validation: 22 model and
+interpretation tests passed, including automatic FASTA/TSV/inline naming,
+collisions, stdout override and late failure protection; Ruff and diff checks
+passed. This supersedes the preceding stdout-default behavior.
+
+
+### 2026-11-07 — Top-five interpretation summary
+
+Added a Top 5 predictions table to the default Markdown interpretation, showing
+cluster IDs, descriptions capped at 24 displayed characters (including ellipsis)
+and original softmax scores to three decimals. Preserves prediction order and
+full function descriptions in the prose; missing labels show Unavailable.
+Updated SPEC-0024 and model guide. Validation: 23 model/interpretation tests
+passed; Ruff and git diff --check passed. The previous saved seq2 contribution
+fixture is no longer present in work/, so no existing sample report was refreshed.
+
+
+### 2026-11-07 — Terminal top-five predictions
+
+Markdown file predictions now also print a per-query top-five table on stdout,
+sharing the report formatter for cluster IDs, 24-character descriptions and
+softmax scores. Summaries are staged on disk and displayed after successful
+publication, preserving bounded memory and avoiding partial success on errors.
+Explicit --stdout prints the full report once; TSV/JSONL behavior is unchanged.
+Updated SPEC-0024, README and model guide. Validation: 23 model/interpretation
+tests passed, including multi-query summary parity, default file output,
+collision silence and late errors; Ruff and git diff --check passed.
+
+
+### 2026-11-07 — Completed exploration CPU-fallback resume
+
+Fixed completed-run resume to apply the same GPU memory admission and automatic
+CPU fallback as initial preflight before comparing the recorded actual device.
+Uses checksum-verified saved arrays through read-only memory maps, with no refit
+or artifact mutation. A regression mocks GPU availability and insufficient memory,
+trains on CPU, then verifies complete reuse and unchanged experiment checksums;
+it also verifies that a newly admitted GPU still rejects a real device change.
+Updated [SPEC-0022](../specs/0022-explore-ml.md). Validation: exploration suite
+32 passed, 2 GPU tests skipped; model/interpretation suites 23 passed. Ruff and
+git diff --check passed. GPU admission behavior exercised through mocks; actual
+GPU execution was not tested in this environment.
+
+
+### 2026-11-07 — Sparse-target memory admission
+
+Corrected exploration _resources and final fitting _admit to include the full
+sparse neighbor tables, simultaneous host copies and sparse batch-loss workspace.
+A shared pure estimator accounts for int64 indices and float32 weights, active
+labels/alpha, neighbor-width capping and per-worker copies, including hard-target
+allocations. GPU estimates now include transferred tables and batch workspace,
+so oversized auto requests fall back to CPU before fitting. Resource audits expose
+the component byte estimates. Updated SPEC-0022 and SPEC-0023.
+
+Validation: 58 passed, 2 GPU tests skipped across memory, exploration, final-model
+and interpretation suites. New independent array-size and mocked 10,000-label
+tests cover host refusal, worker reduction, GPU fallback and explicit refusal
+without allocating large tables. Ruff and git diff --check passed. Actual GPU
+execution was not exercised; no training algorithm or target semantics changed.
+
+
+### 2026-11-07 — Bounded-memory semantic-constant control
+
+Changed semantic-constant report scores to (train_counts @ S)[active], eliminating
+the advanced-indexing copy of all active similarity columns in every fold worker.
+The shared read-only similarity matrix remains available through its memory map;
+only label-sized score vectors are created. Active-label restriction and stable
+tie breaking are preserved. Updated [SPEC-0022](../specs/0022-explore-ml.md).
+
+Validation: 60 passed, 2 GPU tests skipped across exploration, final-model, memory
+and interpretation suites. Added read-only mmap regression rejecting dense column
+selection and checking weighted-score winners, ties, and an inactive label with
+the highest unrestricted score. Ruff and git diff --check passed. No new
+performance experiment or actual GPU execution was performed.
