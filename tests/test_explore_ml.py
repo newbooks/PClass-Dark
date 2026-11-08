@@ -1075,3 +1075,48 @@ def test_complete_resume_reapplies_gpu_memory_fallback(inputs, tmp_path, monkeyp
     with pytest.raises(IntegrityError, match="Changed actual device"):
         ml.run_exploration(replace(c, resume=True))
     assert before == {p: sha256(p) for p in c.output_dir.rglob("*") if p.is_file()}
+
+
+@pytest.mark.parametrize("training, expected", [([0, 2], "C0"), ([0, 2, 2], "C2")])
+def test_semantic_constant_reports_without_matrix_column_copy(
+    tmp_path, monkeypatch, training, expected
+):
+    from types import SimpleNamespace
+
+    from pclass_dark import ml_reports as reports
+
+    class NoColumnCopy(np.ndarray):
+        def __getitem__(self, key):
+            if (
+                isinstance(key, tuple)
+                and len(key) == 2
+                and isinstance(key[0], slice)
+                and isinstance(key[1], np.ndarray)
+            ):
+                raise AssertionError("Dense column selection copies the shared matrix")
+            return super().__getitem__(key)
+
+    matrix = np.array([[1.0, 0.9, 0.2], [0.9, 1.0, 0.9], [0.2, 0.9, 1.0]])
+    np.save(tmp_path / "S.npy", matrix)
+    shared = np.load(tmp_path / "S.npy", mmap_mode="r").view(NoColumnCopy)
+    assert not shared.flags.writeable
+    n = len(training)
+    cohort = SimpleNamespace(
+        y=np.array([*training, 0, 1, 2]),
+        labels=("C0", "C1", "C2"),
+        example_ids=tuple(f"q{i}" for i in range(n + 3)),
+    )
+    plan = SimpleNamespace(
+        train=np.arange(n), test=np.arange(n, n + 3), repeat=0, fold=0
+    )
+    monkeypatch.setattr(reports, "CONFIGS", ("semantic_constant",))
+    reports.produce_task_reports(
+        tmp_path, cohort, SimpleNamespace(S=shared), plan, {}, batch_size=2
+    )
+    rows = list(read_dicts(tmp_path / "oof_predictions.tsv"))
+    # Independent sums: inactive C1 is highest; among active C0/C2 choose
+    # the lowest label on a tie, otherwise C2 wins with its extra observation.
+    assert sum(matrix[label, 1] for label in training) > max(
+        sum(matrix[label, c] for label in training) for c in [0, 2]
+    )
+    assert {row["pred_cluster_id"] for row in rows} == {expected}

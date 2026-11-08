@@ -969,3 +969,17 @@ memory/exploration/final-model/interpretation suites. Analytical actual-array
 size checks and mocked 10,000-label admission cover worker reduction, host budget
 refusal, auto CPU fallback and explicit GPU refusal without large allocations.
 Ruff and git diff --check passed; real GPU execution was not exercised.
+
+## Semantic-constant report memory correction
+
+Compute semantic-constant scores as (train_counts @ S)[active], rather than
+train_counts @ S[:,active]. The full similarity matrix remains read-only/mmap
+backed; only score vectors are materialized. Preserve active-label restriction,
+training-only counts, ordering and first-active-label tie breaking. Validate via
+small independent weighted-sum examples and a read-only memmap view that rejects
+full-column advanced indexing, including tied scores and an inactive best label.
+
+Semantic-constant correction validation: 60 passed, 2 GPU tests skipped across
+exploration, final-model, memory and interpretation suites. Read-only mmap
+regression covers active-only predictions and deterministic ties without column
+copying. Ruff and git diff --check passed.

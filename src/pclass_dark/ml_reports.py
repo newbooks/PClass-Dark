@@ -237,7 +237,9 @@ def produce_task_reports(path, cohort, similarity, plan, models, *, batch_size):
     train_counts = np.bincount(cohort.y[plan.train], minlength=len(cohort.labels))
     active = np.flatnonzero(train_counts)
     majority = active[np.argmax(train_counts[active])]
-    central = active[np.argmax(train_counts @ similarity.S[:, active])]
+    # Multiply the shared matrix first; selecting columns would copy C-by-active
+    # values in each worker. Only the resulting score vector needs indexing.
+    central = active[np.argmax((train_counts @ similarity.S)[active])]
     truth = cohort.y[plan.test]
     metrics, clusters = [], []
     names = ("oof_predictions.tsv", "oof_topk.tsv", "explanations.tsv")

@@ -3106,3 +3106,18 @@ and interpretation suites. New independent array-size and mocked 10,000-label
 tests cover host refusal, worker reduction, GPU fallback and explicit refusal
 without allocating large tables. Ruff and git diff --check passed. Actual GPU
 execution was not exercised; no training algorithm or target semantics changed.
+
+
+### 2026-11-07 — Bounded-memory semantic-constant control
+
+Changed semantic-constant report scores to (train_counts @ S)[active], eliminating
+the advanced-indexing copy of all active similarity columns in every fold worker.
+The shared read-only similarity matrix remains available through its memory map;
+only label-sized score vectors are created. Active-label restriction and stable
+tie breaking are preserved. Updated [SPEC-0022](../specs/0022-explore-ml.md).
+
+Validation: 60 passed, 2 GPU tests skipped across exploration, final-model, memory
+and interpretation suites. Added read-only mmap regression rejecting dense column
+selection and checking weighted-score winners, ties, and an inactive label with
+the highest unrestricted score. Ruff and git diff --check passed. No new
+performance experiment or actual GPU execution was performed.
