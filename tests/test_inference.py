@@ -243,7 +243,17 @@ def test_cli_stdout_and_atomic_invalid_fasta(query_library, fake_model, tmp_path
     root, _ = query_library
     runner = CliRunner()
     result = runner.invoke(
-        app, ["infer", "--seq", "A", "--library-dir", str(root), "--format", "json"]
+        app,
+        [
+            "infer",
+            "--seq",
+            "A",
+            "--library-dir",
+            str(root),
+            "--format",
+            "json",
+            "--no-reports",
+        ],
     )
     assert result.exit_code == 0, result.output
     assert json.loads(result.stdout)["queries"][0]["query_id"] == "query"
@@ -297,7 +307,7 @@ def test_model_failure_no_report_and_snapshot_race(query_library, monkeypatch):
 
     monkeypatch.setattr(infer, "_backend_context", context)
     result = CliRunner().invoke(
-        app, ["infer", "--seq", "A", "--library-dir", str(root)]
+        app, ["infer", "--seq", "A", "--library-dir", str(root), "--no-reports"]
     )
     assert result.exit_code == 1 and not result.stdout
     assert "--device cpu" in result.stderr

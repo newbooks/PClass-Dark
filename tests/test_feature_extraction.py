@@ -95,7 +95,10 @@ def read(path):
         return list(csv.DictReader(stream, delimiter="\t"))
 
 
-def test_membership_table_precision_qc_and_complete_resume(cohort, fake_predictor):
+def test_membership_table_precision_qc_and_complete_resume(
+    cohort, fake_predictor, caplog
+):
+    caplog.set_level("INFO", logger=extraction.__name__)
     prepared, output = cohort
     result = extraction.extract_features(prepared, output, workers=1, offline=True)
     assert (
@@ -104,6 +107,7 @@ def test_membership_table_precision_qc_and_complete_resume(cohort, fake_predicto
         and result.cluster_count == 2
     )
     assert result.computed_sequences == 4 and len(fake_predictor.calls) == 3
+    assert "Feature extraction complete: 4/4 (4 computed, 0 reused)" in caplog.text
     table = read(output)
     assert len(table[0]) == 21 and list(table[0]) == list(reports.HEADER)
     assert [(r["accession_id"], r["cluster_id"]) for r in table] == [
@@ -136,7 +140,8 @@ def test_membership_table_precision_qc_and_complete_resume(cohort, fake_predicto
         extraction.extract_features(prepared, output)
 
 
-def test_interrupted_resume_and_corrupt_receipt(cohort, fake_predictor):
+def test_interrupted_resume_and_corrupt_receipt(cohort, fake_predictor, caplog):
+    caplog.set_level("INFO", logger=extraction.__name__)
     prepared, output = cohort
     fake_predictor.fail_after = 1
     with pytest.raises(RuntimeError, match="A|B|C|failed"):
@@ -149,6 +154,7 @@ def test_interrupted_resume_and_corrupt_receipt(cohort, fake_predictor):
     fake_predictor.fail_after = None
     result = extraction.extract_features(prepared, output, resume=True, offline=True)
     assert result.reused_sequences == 1 and result.computed_sequences == 3
+    assert "Feature extraction complete: 4/4 (3 computed, 1 reused)" in caplog.text
     assert len(fake_predictor.calls) == 3
     # Verify corruption is not concealed by complete-output reuse.
     db = store.connect(family.work / "state.sqlite")
@@ -771,3 +777,202 @@ def test_complete_resume_without_work_receipts(cohort, fake_predictor, monkeypat
         assert original == {name: family.path(name).read_bytes() for name in original}
     assert fake_predictor.calls == calls
     assert fake_predictor.prepares == prepares
+
+
+@pytest.mark.parametrize("managed", [False, True])
+def test_library_cache_admission_preserves_standalone_guard(
+    cohort, tmp_path, monkeypatch, fake_predictor, managed
+):
+    prepared, _ = cohort
+    library = tmp_path / "library"
+    output = library / "additive-features" / ("a" * 64) / "features.tsv"
+    output.parent.mkdir(parents=True)
+    monkeypatch.setattr("pclass_dark.paths.default_library_output_dir", lambda: library)
+    if not managed:
+        with pytest.raises(ValueError, match="protected input/data"):
+            extraction.extract_features(prepared, output, offline=True)
+        assert not output.exists()
+        assert not fake_predictor.calls
+    else:
+        result = extraction.extract_features(
+            prepared, output, offline=True, _library_root=library
+        )
+        assert result.sequence_count == 4
+        assert reports.verify_family(reports.Family(output))
+
+
+@pytest.mark.parametrize(
+    "relative",
+    [
+        "features.tsv",
+        "additive-features/not-a-digest/features.tsv",
+        "additive-features/" + "a" * 64 + "/other.tsv",
+        "signatures/" + "a" * 64 + "/features.tsv",
+    ],
+)
+def test_managed_context_rejects_other_library_paths(cohort, tmp_path, relative):
+    prepared, _ = cohort
+    library = tmp_path / "library"
+    output = library / relative
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with pytest.raises(ValueError, match="Invalid managed library"):
+        extraction.extract_features(prepared, output, _library_root=library)
+    assert not output.exists()
+
+
+def test_managed_context_still_protects_setup_inputs(cohort, monkeypatch):
+    prepared, _ = cohort
+    setup = prepared.parent.parent
+    output = setup / "additive-features" / ("a" * 64) / "features.tsv"
+    output.parent.mkdir(parents=True)
+    monkeypatch.setattr("pclass_dark.paths.default_library_output_dir", lambda: setup)
+    with pytest.raises(ValueError, match="protected input/data"):
+        extraction.extract_features(prepared, output, _library_root=setup)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("link", ["symlink", "hardlink"])
+def test_managed_cache_rejects_input_links(cohort, tmp_path, monkeypatch, link):
+    prepared, _ = cohort
+    library = tmp_path / "library"
+    output = library / "additive-features" / ("a" * 64) / "features.tsv"
+    output.parent.mkdir(parents=True)
+    source = prepared / "clusters.tsv"
+    original = source.read_bytes()
+    if link == "symlink":
+        output.symlink_to(source)
+    else:
+        os.link(source, output)
+    monkeypatch.setattr("pclass_dark.paths.default_library_output_dir", lambda: library)
+    with pytest.raises((ValueError, IntegrityError), match="[Ss]ymlink|hardlinks"):
+        extraction.extract_features(prepared, output, _library_root=library)
+    assert source.read_bytes() == original
+
+
+def test_sequence_progress_thousands_and_total(tmp_path, fake_predictor, caplog):
+    from conftest import protein
+    from pclass_dark.reference_data import sequence_id
+
+    caplog.set_level("INFO", logger=extraction.__name__)
+    db = store.connect(tmp_path / "progress.sqlite")
+    try:
+        store.create(db)
+        for i in range(1001):
+            sequence = protein(i)
+            db.execute(
+                "INSERT INTO sequences VALUES(?,?,?,?,?)",
+                (
+                    sequence_id(sequence),
+                    f"P{i:04d}",
+                    sequence,
+                    len(sequence),
+                    len(sequence),
+                ),
+            )
+        db.commit()
+        run = {"extraction_id": "a" * 64, "execution_metadata": {"device": "cpu"}}
+        plan = {"processes": 0, "max_reserved_bytes": 0, "oversized_sequences": []}
+        computed, reused = extraction._compute(
+            db, run, fake_predictor(), plan, lambda: None
+        )
+        assert (computed, reused) == (1001, 0)
+        assert "Feature extraction complete: 1,000/1,001" in caplog.messages
+        assert (
+            "Feature extraction complete: 1,001/1,001 (1,001 computed, 0 reused)"
+            in caplog.messages
+        )
+    finally:
+        db.close()
+
+
+def test_audited_logging_hashes_and_unknown_source_rejected(monkeypatch):
+    from pclass_dark.artifacts import sha256
+    from pclass_dark.feature_code_compat import (
+        CANONICAL_EXTRACTOR,
+        canonical_extractor_hash,
+    )
+
+    current = sha256(Path(extraction.__file__))
+    for raw in (
+        CANONICAL_EXTRACTOR,
+        "18cb0f5cddb55f0af6059abae634369d629de2e150161d8f4b8c5130c4a4b1d6",
+        current,
+    ):
+        assert canonical_extractor_hash(raw) == CANONICAL_EXTRACTOR
+    assert (
+        canonical_extractor_hash("unknown-scientific-revision")
+        == "unknown-scientific-revision"
+    )
+    raw = extraction._raw_code_hashes()
+    raw["feature_extraction"] = "unknown-scientific-revision"
+    monkeypatch.setattr(extraction, "_raw_code_hashes", lambda: dict(raw))
+    assert (
+        extraction._code_hashes()["feature_extraction"] == "unknown-scientific-revision"
+    )
+    assert (
+        extraction._code_hashes()["structural_features"] == raw["structural_features"]
+    )
+
+
+def test_logging_change_during_extraction_preserves_contract(
+    cohort, fake_predictor, monkeypatch
+):
+    from pclass_dark.feature_code_compat import CANONICAL_EXTRACTOR
+
+    prepared, output = cohort
+    raw = extraction._raw_code_hashes
+    compute = extraction._compute
+    revision = [CANONICAL_EXTRACTOR]
+
+    def code():
+        values = raw()
+        values["feature_extraction"] = revision[0]
+        return values
+
+    def complete(*args, **kwargs):
+        result = compute(*args, **kwargs)
+        revision[0] = "18cb0f5cddb55f0af6059abae634369d629de2e150161d8f4b8c5130c4a4b1d6"
+        return result
+
+    monkeypatch.setattr(extraction, "_raw_code_hashes", code)
+    monkeypatch.setattr(extraction, "_compute", complete)
+    result = extraction.extract_features(prepared, output)
+    manifest = read_json(result.manifest_path)
+    assert (
+        manifest["identity_inputs"]["contract_inputs"]["code"]["feature_extraction"]
+        == CANONICAL_EXTRACTOR
+    )
+    assert (
+        manifest["execution"]["publication_code"]["feature_extraction"] == revision[0]
+    )
+    assert result.computed_sequences == 4
+
+
+def test_publish_after_code_drift_reuses_all_receipts(
+    cohort, fake_predictor, monkeypatch
+):
+    prepared, output = cohort
+    original = extraction._code_hashes
+    calls = 0
+
+    def drift():
+        nonlocal calls
+        calls += 1
+        code = original()
+        if calls > 1:
+            code["feature_extraction"] = "unreviewed-change"
+        return code
+
+    monkeypatch.setattr(extraction, "_code_hashes", drift)
+    with pytest.raises(IntegrityError, match="code: feature_extraction"):
+        extraction.extract_features(prepared, output)
+    assert not output.exists()
+    monkeypatch.setattr(extraction, "_code_hashes", original)
+    monkeypatch.setattr(
+        fake_predictor,
+        "predict",
+        lambda *args: pytest.fail("recomputed completed feature"),
+    )
+    result = extraction.extract_features(prepared, output, resume=True)
+    assert result.computed_sequences == 0 and result.reused_sequences == 4
+    assert reports.verify_family(reports.Family(output))["status"] == "complete"

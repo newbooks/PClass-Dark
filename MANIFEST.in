@@ -25,3 +25,6 @@ include docs/explore-ml.md
 include scripts/train-ml.py
 include scripts/predict-ml.py
 include docs/ml-model.md
+
+include docs/integrated-classification.md
+recursive-include docs/schemas *.json

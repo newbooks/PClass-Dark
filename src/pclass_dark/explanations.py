@@ -102,6 +102,7 @@ def _assemble(root, cluster_id, detailed, immutable):
     if selector["schema"] not in {
         "pclass-dark.library-selection.v1",
         "pclass-dark.library-selection.v2",
+        "pclass-dark.library-selection.v3",
     }:
         raise IntegrityError("Unknown library selection schema")
     manifest = read_json(

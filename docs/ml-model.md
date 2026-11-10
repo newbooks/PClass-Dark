@@ -8,7 +8,6 @@ parameters or duplicate examples across repeated CV runs.
 ```bash
 pip install -e '.[ml]'
 python scripts/train-ml.py --experiment work/explore-ml --output-dir work/ml-model
-# Equivalent: pclass-dark train-ml --experiment work/explore-ml --output-dir work/ml-model
 ```
 
 Default `--config hard` uses ordinary targets: it performed slightly better than
@@ -55,8 +54,8 @@ features computed under another scientific contract.
 
 ```bash
 python scripts/predict-ml.py --model-dir work/ml-model --features query_features.tsv
-pclass-dark predict-ml --model-dir work/ml-model --features query_features.tsv \
-  --output query_predictions.tsv
+python scripts/predict-ml.py --model-dir work/ml-model --features query_features.tsv \
+  --format tsv --output query_predictions.tsv
 ```
 
 Prediction applies the reference export precision (three decimal places for the
@@ -161,3 +160,12 @@ for result in predict_sequences(model, [("example", "MDEKRH")], offline=True):
 Imports perform no model loading, downloads, computation or argument parsing.
 Model files use plain numerical arrays and schema-checked JSON, never pickle.
 See [SPEC-0023](specs/0023-final-ml-model.md) for exact contracts and validation.
+
+Standalone fitting/prediction scripts and their Python APIs remain supported;
+there are no root `train-ml` or `predict-ml` subcommands.
+
+## Production integration
+
+For library-owned fitting without an exploration directory and combined signature/
+additive inference, use [the integrated workflow](integrated-classification.md).
+Standalone scripts and their existing model bundles remain supported.

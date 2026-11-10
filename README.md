@@ -8,6 +8,13 @@ The central idea is to identify **conserved functional signatures across protein
 
 PClass-Dark complements [PClass](https://github.com/newbooks/pclass), which uses learned PLM embeddings and approximate nearest-neighbor (ANN) search to infer function from annotated reference proteins.
 
+Production classification now supports shared additive evidence through
+`setup-data`, `build-library` and `infer`. Inference saves comprehensive JSON and
+an interpretation Markdown report, and prints the accepted-candidate reranking
+and top-five suggestions. See [integrated classification](docs/integrated-classification.md)
+for setup, report formats and compatibility options. Standalone ML scripts remain
+available; production fitting requires no exploration run.
+
 ## Installation and Interfaces
 
 The initial package version is **0.0.1** and requires Python 3.10 or newer.
@@ -47,14 +54,16 @@ embedding stack with `pip install -e '.[embeddings]'`. For development, use
 
 `build-library` also prepares the frozen ProStruct RSA/ALL-CEF and Q3 heads.
 Together with the existing pinned ESM-2 checkpoint, these supply all pretrained
-components needed for the planned 19-feature reranking workflow. No retraining
-or structural reference inference runs during model preparation. The Python
+components needed for full-sequence feature extraction and additive reranking.
+The structural heads remain frozen; the additive classifier is fitted separately
+by the integrated build. The Python
 `StructuralPredictor` API supports full-sequence prediction, GPU/CPU execution
 and offline checkpoint use. See [structural prediction](docs/structural-prediction.md)
 for usage, model provenance and the existing unique-sequence accession files.
 The experimental [feature extractor](docs/feature-extraction.md) automatically
 reads selected unique sequences and writes a labeled 19-feature table with
-three decimal places to the launch working directory. The `rerank` command and ML evaluation remain future work.
+three decimal places to the launch working directory. Production additive reranking
+is integrated into `infer`; standalone scripts remain available for exploration.
 
 ## Shared Data and Distribution
 
@@ -231,12 +240,14 @@ belongs to the user. See [SPEC-0007](docs/specs/0007-query-ranking-presentation.
 pip install '.[embeddings]'
 pclass-dark infer --seq ACDEFGHIKLMNPQRSTVWY
 pclass-dark infer --fasta queries.fasta --device cpu --workers 8
-pclass-dark infer --fasta queries.fasta --format json > matches.json
+pclass-dark infer --fasta queries.fasta --format json --no-reports > matches.json
 ```
 
 Provide exactly one of `--seq` or `--fasta`; FASTA supports multiple queries.
 Sequences must use uppercase reference residues (`ACDEFGHIKLMNPQRSTVWYXBZUO`).
-Reports go to stdout and diagnostics to stderr. Embedding prefers GPU with CPU
+The CLI also saves comprehensive JSON and interpretation Markdown by default;
+use `--no-reports` for stdout-only operation. Diagnostics go to stderr.
+Embedding prefers GPU with CPU
 fallback during initialization; explicit `--device cpu` is available. CPU threads
 default to eight, clamped to available CPUs. `--offline` requires cached model
 assets. Inference uses the selected production/C/B library and needs no reference
@@ -540,17 +551,20 @@ The methods are complementary. PClass-Dark aims to extend functional coverage be
 The experimental **Similarity-Informed Additive Classifier (SIAC)** predicts
 `cluster_id` from 18 biophysical descriptors, excluding `sequence_charge_decoration`.
 It uses cluster similarity in soft training targets and learns cluster-specific
-feature contribution curves. `scripts/explore-ml.py` and `pclass-dark explore-ml`
-report exact and similarity-weighted hit rates using random stratified five-fold
+feature contribution curves. `scripts/explore-ml.py` reports exact and
+similarity-weighted hit rates using random stratified five-fold
 cross-validation (no homology files required), with optional repeated prediction stability analysis. Install
 `pip install -e '.[ml]'`; see the [SIAC guide](docs/explore-ml.md) and
 [implementation specification](docs/specs/0022-explore-ml.md). The first
 [reference CV results](docs/research/notes/2026-11-07-siac-reference-results.md)
 use random splits with homology uncontrolled.
 
+These ML utilities are script/API interfaces; the production CLI uses
+`setup-data`, `build-library` and `infer`.
+
 A completed exploration can be refitted into one portable model using
-`scripts/train-ml.py` / `pclass-dark train-ml`. Query feature tables, FASTA files
-and raw sequences are supported by `scripts/predict-ml.py` / `pclass-dark predict-ml`.
+`scripts/train-ml.py`. Query feature tables, FASTA files
+and raw sequences are supported by `scripts/predict-ml.py`.
 Predictions default to a Markdown interpretation with chosen-cluster feature
 support, saved beside the input as `<input-stem>-interpretation.md`.
 The top-five matches are also printed in the terminal.

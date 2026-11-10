@@ -461,6 +461,9 @@ class InferenceSession:
                     )
                 self._embed(backend)
                 self._score(pair, available, contract)
+                if hasattr(self, "_supplemental_compute"):
+                    self._supplemental_compute(backend)
+                (self._directory / "queries.jsonl").unlink(missing_ok=True)
                 for p in {root, pair.library.source_root}:
                     check_cleanup_pending(p)
                 if self._snapshot(pair, root) != snapshot:
@@ -518,7 +521,8 @@ class InferenceSession:
             matrix.flush()
         finally:
             matrix._mmap.close()
-        (self._directory / "queries.jsonl").unlink()
+        if not hasattr(self, "_supplemental_compute"):
+            (self._directory / "queries.jsonl").unlink()
         self._quota()
 
     def _forward(self, backend, matrix, batch, offset):

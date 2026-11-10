@@ -370,7 +370,7 @@ def _fit_result(root, manifest, reused):
     )
 
 
-def fit_final_model(
+def _fit_model(
     experiment="explore-ml",
     output_dir="ml-model",
     *,
@@ -380,6 +380,7 @@ def fit_final_model(
     threads=8,
     memory_budget_gib=8.0,
     resume=False,
+    _reference=None,
 ):
     """Refit all verified reference examples once; publish a portable complete model.
 
@@ -436,7 +437,11 @@ def fit_final_model(
             allowed = set(BUNDLE_FILES) | {"manifest.json", "run.json", ".fit-stage"}
             if any(p.name not in allowed or p.is_symlink() for p in root.iterdir()):
                 raise IntegrityError("Foreign final model output")
-        LOG.info("Final fit: configuration=%s; source=%s", configuration, source)
+        LOG.info(
+            "Final fit: configuration=%s; source=%s",
+            configuration,
+            source if _reference is None else "prepared reference arrays",
+        )
         (
             source,
             m,
@@ -450,7 +455,11 @@ def fit_final_model(
             selected,
             evidence,
             fc,
-        ) = _training_source(source, configuration, epochs)
+        ) = (
+            _training_source(source, configuration, epochs)
+            if _reference is None
+            else _reference
+        )
         actual, fallback = resolve_device(device, threads=threads)
         actual, resources = _admit(X, y, S, settings, actual, device, memory_budget_gib)
         parameters = {
@@ -478,6 +487,10 @@ def fit_final_model(
             "versions": _versions(),
             "code": _fit_code(),
         }
+        if _reference is not None:
+            contract["source_kind"] = "prepared_reference"
+            contract["source_experiment_id"] = None
+            contract["source_reference_id"] = m["experiment_id"]
         model_id = identity(contract)
         if (root / "manifest.json").exists():
             loaded = load_final_model(root)
@@ -567,7 +580,12 @@ def fit_final_model(
                 "source_cv_evidence": evidence,
                 "source_path": str(source),
                 "evaluation_note": (
-                    "Source CV evidence only; final fit has no new held-out estimate."
+                    "No new held-out estimate. "
+                    + (
+                        "Source CV evidence only."
+                        if _reference is None
+                        else "Full prepared-reference fit; no exploration required."
+                    )
                 ),
                 "execution": {
                     "device": actual,
@@ -578,6 +596,16 @@ def fit_final_model(
                     "completed_at": time.time(),
                 },
             }
+            if _reference is not None:
+                manifest.update(
+                    source_kind="prepared_reference",
+                    source_experiment_id=None,
+                    source_cv_evidence=None,
+                    source_path=None,
+                    source_reference=dict(
+                        id=m["experiment_id"], provenance=m["provenance"]
+                    ),
+                )
             for name in BUNDLE_FILES:
                 with (stage / name).open("rb") as stream:
                     os.fsync(stream.fileno())
@@ -595,6 +623,108 @@ def fit_final_model(
             run.update(status="failed", last_error=str(exc))
             write_json(root / "run.json", run)
             raise
+
+
+def fit_final_model(experiment="explore-ml", output_dir="ml-model", **options):
+    """Refit a verified completed exploration, preserving its historical API."""
+    return _fit_model(experiment, output_dir, **options)
+
+
+def fit_reference_model(
+    X,
+    y,
+    labels,
+    similarity,
+    feature_contract,
+    recipe,
+    output_dir,
+    *,
+    provenance,
+    device="auto",
+    threads=8,
+    memory_budget_gib=8.0,
+    resume=False,
+):
+    """Fit explicit reference arrays without a CV artifact. Return FinalFitResult.
+
+    Raises ValueError/IntegrityError for invalid inputs/state, OSError for IO,
+    RuntimeError for fitting failures. Does not mutate input arrays.
+    """
+    from .additive_reference import validate_recipe
+
+    recipe = validate_recipe(recipe)
+    X, y = np.asarray(X), np.asarray(y)
+    S = np.asarray(similarity.S if hasattr(similarity, "S") else similarity)
+    labels = tuple(labels)
+    if (
+        X.dtype != np.float64
+        or y.dtype != np.int64
+        or S.dtype != np.float64
+        or X.shape != (len(y), 18)
+        or y.ndim != 1
+        or not len(y)
+        or len(labels) < 2
+        or labels != tuple(sorted(set(labels)))
+        or S.shape != (len(labels), len(labels))
+        or np.isinf(X).any()
+        or np.isnan(X).all(axis=0).any()
+        or y.min() < 0
+        or y.max() >= len(labels)
+        or set(y) != set(range(len(labels)))
+        or not np.isfinite(S).all()
+        or (S < 0).any()
+        or (S > 1).any()
+        or not np.array_equal(S, S.T)
+        or not np.all(np.diag(S) == 1)
+    ):
+        raise IntegrityError("Invalid explicit reference arrays/labels")
+    if (
+        feature_contract.get("schema") != "pclass-dark.ml-feature-contract.v1"
+        or feature_contract.get("feature_names") != list(FEATURES)
+        or feature_contract.get("precision") != ".3f"
+    ):
+        raise IntegrityError("Invalid reference feature contract")
+    import hashlib
+
+    def digest(array):
+        return hashlib.sha256(
+            memoryview(np.ascontiguousarray(array)).cast("B")
+        ).hexdigest()
+
+    source_id = identity(
+        {
+            "arrays": [digest(a) for a in (X, y, S)],
+            "labels": labels,
+            "provenance": provenance,
+        }
+    )
+    source = Path(output_dir).resolve().parent / ".reference-input"
+    settings = dict(recipe, max_epochs=recipe["epochs"])
+    reference = (
+        source,
+        {"experiment_id": source_id, "provenance": provenance},
+        {},
+        X,
+        y,
+        S,
+        labels,
+        settings,
+        recipe["epochs"],
+        [],
+        {},
+        feature_contract,
+    )
+    return _fit_model(
+        source,
+        output_dir,
+        configuration=recipe["configuration"],
+        epochs=recipe["epochs"],
+        device=device,
+        threads=threads,
+        memory_budget_gib=memory_budget_gib,
+        resume=resume,
+        _reference=reference,
+    )
 
 
 def _rounded_features(model, X):
@@ -726,7 +856,16 @@ def _raw_contract(model):
             "supply precomputed features"
         )
     for name in ("structural_features", "structure", "structural_models", "embeddings"):
-        if contract["code"].get(name) != sha256(Path(__file__).with_name(name + ".py")):
+        recorded = contract["code"].get(name)
+        # This revision only adds a borrowed-backend constructor. Standalone
+        # extraction arithmetic and the pinned feature recipe are unchanged.
+        compatible = name == "structure" and recorded == (
+            "5414b040d300fb09598b5b7566fcdab36ecbe4fd8f43ef62501cf8a364fe336d"
+        )
+        if (
+            recorded != sha256(Path(__file__).with_name(name + ".py"))
+            and not compatible
+        ):
             raise IntegrityError(
                 f"Query extraction implementation differs from training: {name}"
             )
@@ -773,3 +912,47 @@ def predict_sequences(model, queries, *, device="auto", offline=True, threads=8)
             model, X, [query_id], feature_device=prediction.device
         ):
             yield replace(result, sequence_length=len(prediction.sequence))
+
+
+def score_candidates(model, X, candidate_labels, *, batch_size=32):
+    """Yield global and requested scores without retaining a full-input matrix.
+
+    Unknown candidates are explicit unscored rows. Ties use lexical cluster IDs.
+    """
+    from scipy.special import logsumexp
+
+    X = _rounded_features(model, X)
+    if len(candidate_labels) != len(X) or type(batch_size) is not int or batch_size < 1:
+        raise ValueError("Invalid candidate/query alignment or batch size")
+    index = {label: i for i, label in enumerate(model.labels)}
+    for start in range(0, len(X), batch_size):
+        logits = model.classifier.logits(X[start : start + batch_size])
+        for j, values in enumerate(logits):
+            candidates = tuple(candidate_labels[start + j])
+            if len(candidates) != len(set(candidates)):
+                raise ValueError("Duplicate requested cluster ID")
+            order = np.lexsort((np.asarray(model.labels), -values))
+            ranks = np.empty(len(order), dtype=np.int64)
+            ranks[order] = np.arange(1, len(order) + 1)
+            probs = np.exp(
+                values.astype(np.float64) - logsumexp(values.astype(np.float64))
+            )
+
+            def row(label, values=values, probs=probs, ranks=ranks):
+                k = index.get(label)
+                return dict(
+                    cluster_id=label,
+                    logit=float(values[k]) if k is not None else None,
+                    softmax_score=float(probs[k]) if k is not None else None,
+                    global_rank=int(ranks[k]) if k is not None else None,
+                    score_available=k is not None,
+                    reason=None if k is not None else "not_in_classifier_vocabulary",
+                )
+
+            yield dict(
+                global_top5=[
+                    dict(row(model.labels[k]), rank=r + 1)
+                    for r, k in enumerate(order[:5])
+                ],
+                candidates=[row(label) for label in candidates],
+            )

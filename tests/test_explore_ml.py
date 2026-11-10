@@ -8,11 +8,10 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-from typer.testing import CliRunner
 
+from ml_script_cli import invoke_script
 from pclass_dark import explore_ml as ml
 from pclass_dark.artifacts import IntegrityError, read_json, sha256, write_json
-from pclass_dark.cli import app
 from pclass_dark.ml_data import (
     INDEX_HEADER,
     PAIR_HEADER,
@@ -283,14 +282,10 @@ def test_validation_and_cli(inputs, tmp_path):
     assert ready.status == "ready" and not (c.output_dir / "manifest.json").exists()
     result = ml.run_exploration(replace(c, validate_only=False, resume=True))
     assert result.status == "complete"
-    runner = CliRunner()
-    assert runner.invoke(app, ["explore-ml", "--help"]).exit_code == 0
-    bad = runner.invoke(
-        app, ["explore-ml", "--split-mode", "accession", "--alpha", "0"]
-    )
+    assert invoke_script(["explore-ml", "--help"]).exit_code == 0
+    bad = invoke_script(["explore-ml", "--split-mode", "accession", "--alpha", "0"])
     assert bad.exit_code == 2
-    cli = runner.invoke(
-        app,
+    cli = invoke_script(
         [
             "explore-ml",
             "--features",
@@ -304,7 +299,7 @@ def test_validation_and_cli(inputs, tmp_path):
             "--device",
             "cpu",
             "--validate-only",
-        ],
+        ]
     )
     assert cli.exit_code == 0, cli.output
 
@@ -765,8 +760,7 @@ def test_default_random_splits_need_no_homology_files(inputs, tmp_path):
     )
 
     # Omit --split-mode from the command as well as all grouping file options.
-    cli = CliRunner().invoke(
-        app,
+    cli = invoke_script(
         [
             "explore-ml",
             "--features",
@@ -778,7 +772,7 @@ def test_default_random_splits_need_no_homology_files(inputs, tmp_path):
             "--device",
             "cpu",
             "--validate-only",
-        ],
+        ]
     )
     assert cli.exit_code == 0, cli.output
     assert read_json(tmp_path / "random-cli" / "preflight.json")["status"] == "ready"
@@ -815,8 +809,7 @@ def test_default_eight_workers_and_cpu_task_limits(inputs, tmp_path, monkeypatch
     )
     with pytest.raises(ValueError):
         replace(c, workers=9)
-    cli = CliRunner().invoke(
-        app,
+    cli = invoke_script(
         [
             "explore-ml",
             "--features",
@@ -828,7 +821,7 @@ def test_default_eight_workers_and_cpu_task_limits(inputs, tmp_path, monkeypatch
             "--device",
             "cpu",
             "--validate-only",
-        ],
+        ]
     )
     assert cli.exit_code == 0, cli.output
     audit = read_json(tmp_path / "workers-cli" / "preflight.json")
@@ -839,7 +832,6 @@ def test_default_eight_workers_and_cpu_task_limits(inputs, tmp_path, monkeypatch
 def test_cli_progress_and_actionable_conflict_audit(inputs, tmp_path):
     import logging
 
-    runner = CliRunner()
     logger = logging.getLogger("pclass_dark")
     before_handlers, before_level = list(logger.handlers), logger.level
     command = [
@@ -857,7 +849,7 @@ def test_cli_progress_and_actionable_conflict_audit(inputs, tmp_path):
         "--max-epochs",
         "1",
     ]
-    result = runner.invoke(app, command)
+    result = invoke_script(command)
     assert result.exit_code == 0, result.output
     for message in (
         "Preflight:",
@@ -890,7 +882,7 @@ def test_cli_progress_and_actionable_conflict_audit(inputs, tmp_path):
     )
 
     # Repeated CLI invocations must not retain handlers pointing at closed streams.
-    second = runner.invoke(app, [*command, "--resume"])
+    second = invoke_script([*command, "--resume"])
     assert second.exit_code == 0, second.output
     assert "Reusing verified complete experiment" in second.stderr
     assert logger.handlers == before_handlers
@@ -903,7 +895,7 @@ def test_cli_progress_and_actionable_conflict_audit(inputs, tmp_path):
     conflict_command[conflict_command.index("--output-dir") + 1] = str(
         tmp_path / "logged-conflicts"
     )
-    failed = runner.invoke(app, conflict_command)
+    failed = invoke_script(conflict_command)
     assert failed.exit_code == 1
     assert "multiple cluster_id labels for the same sequence" in failed.stderr
     assert "conflicts.tsv" in failed.stderr
@@ -1027,8 +1019,7 @@ def test_default_cli_prefilter_logs_and_proceeds(inputs, tmp_path):
     with f.open("a") as handle:
         handle.write("\t".join([*table[1][:-1], "C2"]) + "\n")
         handle.write("\t".join(table[2]) + "\n")
-    result = CliRunner().invoke(
-        app,
+    result = invoke_script(
         [
             "explore-ml",
             "--features",
@@ -1043,7 +1034,7 @@ def test_default_cli_prefilter_logs_and_proceeds(inputs, tmp_path):
             "1",
             "--max-epochs",
             "1",
-        ],
+        ]
     )
     assert result.exit_code == 0, result.output
     assert "removed 1 ambiguous sequences (2 source rows)" in result.stderr

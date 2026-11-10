@@ -1,0 +1,1 @@
+{"$id":"pclass-dark.additive-selection.v1","$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"schema":{"const":"pclass-dark.additive-selection.v1"}},"required":["schema","preparation_id","prepared_manifest_sha256","reference_id","reference","reference_manifest_sha256","recipe_id"],"type":"object"}

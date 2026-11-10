@@ -105,6 +105,8 @@ class LibraryResult:
     cleanup: CleanupResult | None = None
     structural_model_id: str | None = None
     structural_model_dir: Path | None = None
+    additive_model_id: str | None = None
+    additive_model_dir: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -872,6 +874,10 @@ def build_library(
     force=False,
     cross_validate=False,
     clean=False,
+    additive=False,
+    additive_device="auto",
+    additive_memory_gib=8.0,
+    offline=False,
 ):
     """Build signatures/distributions, or validate and clean an existing library."""
     from .library_build import build
@@ -880,6 +886,12 @@ def build_library(
     data_dir = default_setup_input_dir() if data_dir is None else data_dir
     output_dir = default_library_output_dir() if output_dir is None else output_dir
 
+    if type(additive) is not bool or type(offline) is not bool:
+        raise ValueError("additive and offline must be boolean")
+    if clean and (additive_device != "auto" or additive_memory_gib != 8.0):
+        raise ValueError("--clean cannot use additive fitting overrides")
+    if not additive and (additive_device != "auto" or additive_memory_gib != 8.0):
+        raise ValueError("Additive fitting overrides require additive building")
     if type(clean) is not bool:
         raise ValueError("clean must be a boolean")
     if clean and cluster_ids is not None:
@@ -917,6 +929,11 @@ def build_library(
             )
         with _cleanup_guard_pair(roots["setup"], roots["library"]):
             recovered = recover_cleanup(data_dir, output_dir)
+            selection = read_json(Path(output_dir) / "selection.json")
+            if "integrated" in selection:
+                from .additive_build import verify_integrated
+
+                verify_integrated(Path(output_dir), selection)
             pair = load_selected_library(output_dir)
             if pair.relative is None:
                 raise ValueError(
@@ -939,6 +956,23 @@ def build_library(
                 return result
             snapshot = gate_snapshot(roots["setup"], roots["library"])
         return _after_build(data_dir, output_dir, snapshot, result)
+    if additive:
+        from .additive_build import build_additive_library
+
+        return build_additive_library(
+            data_dir,
+            output_dir,
+            workers=workers,
+            memory_mib=memory_mib,
+            epsilon=epsilon,
+            sigma_floor=sigma_floor,
+            cluster_ids=cluster_ids,
+            force=force,
+            cross_validate=cross_validate,
+            device=additive_device,
+            memory_budget_gib=additive_memory_gib,
+            offline=offline,
+        )
     result = build(
         data_dir,
         output_dir,
@@ -960,6 +994,19 @@ def build_library(
     except (ValueError, RuntimeError, OSError) as exc:
         exc.production_result = result
         raise
+    with transaction_guard(Path(output_dir)):
+        selected = read_json(Path(output_dir) / "selection.json")
+        if selected.get("schema") == "pclass-dark.library-selection.v3":
+            selected["schema"] = "pclass-dark.library-selection.v2"
+            for key in (
+                "integrated",
+                "integrated_id",
+                "integrated_manifest_sha256",
+                "additive_model_id",
+            ):
+                selected.pop(key, None)
+        selected["additive_status"] = "disabled_by_build"
+        write_json(Path(output_dir) / "selection.json", selected)
     return replace(
         result,
         structural_model_id=structural.model_id,

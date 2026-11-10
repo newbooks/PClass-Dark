@@ -542,6 +542,7 @@ def build(
     force,
     cross_validate,
     _cleanup_snapshot=None,
+    _defer_selection=False,
 ):
     from .library import (
         LibraryResult,
@@ -761,7 +762,8 @@ def build(
                             load_relative_scores(relative, library=library)
                         else:
                             publish(root, stage, relative, force, relative_transaction)
-                    _select(root, production, relative, pm["id"], em["id"])
+                    if not _defer_selection:
+                        _select(root, production, relative, pm["id"], em["id"])
             reuse = {
                 "production": production_reused,
                 "imported": 0,

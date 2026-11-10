@@ -1,0 +1,1 @@
+{"$id":"pclass-dark.integrated-library.v1","$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"schema":{"const":"pclass-dark.integrated-library.v1"},"status":{"const":"complete"}},"required":["schema","id","status","identity_inputs","files"],"type":"object"}

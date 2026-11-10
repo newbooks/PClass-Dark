@@ -891,6 +891,7 @@ class Planner:
             "pclass-dark.selection.v1",
             "pclass-dark.library-selection.v1",
             "pclass-dark.library-selection.v2",
+            "pclass-dark.library-selection.v3",
         }:
             self.retain_ids(node, m.get("preparation_id"), m.get("embedding_id"))
             if m.get("library_id") in self.production:

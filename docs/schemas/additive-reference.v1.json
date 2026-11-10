@@ -1,0 +1,1 @@
+{"$id":"pclass-dark.additive-reference.v1","$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"schema":{"const":"pclass-dark.additive-reference.v1"},"status":{"const":"complete"}},"required":["schema","id","status","identity_inputs","files"],"type":"object"}

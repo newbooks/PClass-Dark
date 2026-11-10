@@ -73,7 +73,7 @@ def _versions():
     return result
 
 
-def _code_hashes():
+def _raw_code_hashes():
     modules = (
         "feature_extraction",
         "feature_store",
@@ -88,6 +88,15 @@ def _code_hashes():
         "paths",
     )
     code = {name: sha256(Path(__file__).with_name(name + ".py")) for name in modules}
+    return code
+
+
+def _code_hashes():
+    """Return strict code identities, with audited lifecycle-only equivalence."""
+    from .feature_code_compat import canonical_extractor_hash
+
+    code = _raw_code_hashes()
+    code["feature_extraction"] = canonical_extractor_hash(code["feature_extraction"])
     return code
 
 
@@ -154,7 +163,7 @@ def _options(device, offline, batch, workers, resume, force):
         )
 
 
-def _family(output, prepared, root, bundle):
+def _family(output, prepared, root, bundle, *, library_root=None):
     from .paths import PACKAGE_DIR, default_library_output_dir, default_setup_input_dir
 
     path = Path(output).absolute()
@@ -166,13 +175,25 @@ def _family(output, prepared, root, bundle):
     ):
         raise ValueError("Output must be a .tsv path with an existing parent")
     family = reports.Family(path)
+    library = Path(default_library_output_dir())
+    if library_root is not None:
+        managed = Path(library_root).absolute()
+        # Only the builder-owned feature family may live within the library.
+        # Do not turn the internal context into a general protected-path bypass.
+        key = path.parent.name
+        expected = safe_file(managed, f"additive-features/{key}/features.tsv")
+        if not re.fullmatch(r"[0-9a-f]{64}", key) or path != expected:
+            raise ValueError("Invalid managed library feature-cache path")
+        if managed.resolve() == library.resolve():
+            library = None
     protected = [
         prepared,
         bundle.path,
         PACKAGE_DIR / "resources",
-        Path(default_library_output_dir()),
         Path(default_setup_input_dir()),
     ]
+    if library is not None:
+        protected.append(library)
     if prepared.parent.name == "prepared":
         protected.append(root)
     for parent in protected:
@@ -293,6 +314,7 @@ def _aggregate(sequence, prediction):
 
 def _compute(db, run, predictor, plan, save_run):
     eid = run["extraction_id"]
+    total = db.execute("SELECT COUNT(*) FROM sequences").fetchone()[0]
     # Validate every completed receipt even when it no longer corresponds to pending
     # rows.
     if db.execute(
@@ -334,7 +356,11 @@ def _compute(db, run, predictor, plan, save_run):
             uncommitted = 0
             last_commit = time.monotonic()
         if (computed + reused) % 1000 == 0:
-            LOG.info("Features complete: %d", computed + reused)
+            LOG.info(
+                "Feature extraction complete: %s/%s",
+                f"{computed + reused:,}",
+                f"{total:,}",
+            )
 
     def drain(all_tasks=False):
         nonlocal reserved
@@ -426,7 +452,13 @@ def _compute(db, run, predictor, plan, save_run):
     finally:
         if executor is not None:
             executor.shutdown(wait=True, cancel_futures=True)
-    LOG.info("Features complete: %d computed, %d reused", computed, reused)
+    LOG.info(
+        "Feature extraction complete: %s/%s (%s computed, %s reused)",
+        f"{computed + reused:,}",
+        f"{total:,}",
+        f"{computed:,}",
+        f"{reused:,}",
+    )
     save_run()
     return computed, reused
 
@@ -553,6 +585,7 @@ def extract_features(
     workers=1,
     resume=False,
     force=False,
+    _library_root=None,
 ):
     """Extract the selected unique sequences to a cwd-local labeled feature family.
 
@@ -560,6 +593,8 @@ def extract_features(
     Raises ValueError/IntegrityError on invalid input or corrupt/incompatible work,
     SetupBusyError on contention, and RuntimeError on prediction/worker failures.
     Does not train or evaluate a classifier and never changes source selectors.
+    _library_root is private builder context for the exact managed cache family;
+    standalone callers must leave it unset.
     """
     _options(device, offline, window_batch_size, workers, resume, force)
     for name, value in (
@@ -575,7 +610,7 @@ def extract_features(
             raise ValueError(f"{name} must be a text filesystem path")
     path, selection, root = store.resolve_preparation(prepared_dir)
     bundle = verify_structural_models(model_dir)
-    family = _family(output, path, root, bundle)
+    family = _family(output, path, root, bundle, library_root=_library_root)
     try:
         with FileLock(str(family.lock), timeout=0):
             return _extract(
@@ -788,8 +823,25 @@ def _extract(
             "reused_sequences": reused,
             "warnings": ["oversized_serial"] if plan["oversized_sequences"] else [],
         }
-        if _code_hashes() != contract["code"] or _versions() != contract["versions"]:
-            raise IntegrityError("Extraction code/dependencies changed during the run")
+        current_code, current_versions = _code_hashes(), _versions()
+        changed_code = sorted(
+            k
+            for k in set(current_code) | set(contract["code"])
+            if current_code.get(k) != contract["code"].get(k)
+        )
+        changed_versions = sorted(
+            k
+            for k in set(current_versions) | set(contract["versions"])
+            if current_versions.get(k) != contract["versions"].get(k)
+        )
+        if changed_code or changed_versions:
+            raise IntegrityError(
+                "Extraction code/dependencies changed during the run "
+                f"(code: {', '.join(changed_code) or 'none'}; "
+                f"dependencies: {', '.join(changed_versions) or 'none'})"
+            )
+        execution["publication_code"] = _raw_code_hashes()
+        execution["code_identity_policy"] = "audited-extractor-lifecycle-equivalence-v1"
         if store.snapshot_hashes(db) != run["snapshot_hashes"]:
             raise IntegrityError("Feature snapshot changed during the run")
         _stage(db, run, family, execution)

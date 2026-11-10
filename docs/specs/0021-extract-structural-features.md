@@ -837,3 +837,75 @@ Implemented the early return before work-state creation. Validation: regression
 failed before the fix; extractor, structural-feature and structural-prediction
 suites passed afterward: 116 passed, 1 skipped (GPU unavailable). Ruff checks,
 formatting and whitespace checks passed.
+
+
+### Production-managed cache exception — 2026-11-09
+
+SPEC-0026 section 22 adds private `_library_root` builder context to
+`extract_features` and its path validator. Only the exact
+`<library-root>/additive-features/<64-lowercase-hex-id>/features.tsv` family may
+bypass that library root's experimental-output restriction. Standalone script/API
+calls remain restricted; setup/prepared inputs, model bundles, package resources,
+symlinks and input hardlinks remain protected. No scientific, worker/device,
+publication or artifact-schema contract changes. Validation is recorded in
+[SPEC-0026](0026-integrated-additive-implementation.md#22-managed-feature-cache-path-repair--2026-11-09).
+
+
+### Sequence progress wording — 2026-11-09
+
+Report periodic progress as `Feature extraction complete: 1,000/380,578`,
+counting completed unique sequences (computed plus reused receipts) against the
+SQLite sequence inventory total. Format both counts with thousands separators.
+Keep the 1,000-sequence logging interval; the final message includes completed/total
+and the separate computed/reused counts. This is a logging-only change; calculations,
+publication and resume semantics remain unchanged. Validation: extractor suite
+58 passed, plus the 1,001-sequence periodic-format regression 1 passed. Checks
+include fresh and resumed sequence counts, membership-count distinction and
+thousands separators. Ruff and git diff --check passed.
+
+
+### Audited logging-only source compatibility — 2026-11-10
+
+A production extraction completed all 380578 receipts but refused publication
+because feature_extraction.py changed while running. Reversing only the progress
+message/count-display edits in current source exactly reproduces the saved SHA-256
+622223dd6288afcd583ece890ff82866e6f5fd790abb00393252dd2344fc1ea7;
+the post-logging revision is 18cb0f5cddb55f0af6059abae634369d629de2e150161d8f4b8c5130c4a4b1d6.
+All other code hashes and dependency versions match. Preserve their common numeric
+contract identity through a finite, audited whole-file hash allowlist. Include the
+compatibility shim's final source hash only after reviewing its lifecycle-only
+diff. Unknown extractor hashes, other module changes and dependency drift remain
+incompatible. Never rewrite receipts/contracts to pretend they were computed by
+new scientific code. Record raw publication code hashes separately from canonical
+contract hashes, and name changed modules/packages in drift errors.
+
+Tests must cover both known logging versions, unknown-source rejection, runtime
+drift rejection and publication recovery reusing all receipts without invoking
+prediction again. Production recovery resumes the existing managed cache, with
+no force, deletion or feature recomputation. The absent library selector is an
+expected failed-build outcome: inference remains unavailable until additive fitting
+and final publication succeed. Actual validation/recovery results follow.
+
+
+Production recovery completed successfully (exit 0): all 380578 cached sequence
+features reused, zero recomputed; 381627 membership rows yielded 379539 training
+identities after excluding 1039 ambiguous identities (2088 rows). Full-data HARD
+training completed 100 epochs on cuda:0 (18 features, 3443 clusters); this is a
+production refit, not a new held-out performance measurement. Published
+library-selection.v3 at data/library/selection.json and integrated generation
+aad027d2d79db80e504fd3077912d18fe39e9271e4845ad56f3aa9c690e93c57,
+with additive model f69a843cdbb3eafc2718c072dee4a692e7b37879ef884aa150257ece96479b83.
+Command: python -m pclass_dark build-library --offline. Full log:
+work/build-library-recovery-2026-11-10.log. Existing cached feature receipts and
+previous outputs were preserved.
+
+
+End-to-end verification succeeded (exit 0): python -m pclass_dark infer --fasta
+work/seq2.fasta --offline --report-prefix work/seq2-recovered-2026-11-10.
+All 3443 clusters evaluated, none unavailable; 37 PLM-accepted candidates.
+Additive reranking selected accepted cluster_1096 (original rank 4; global
+softmax 0.854). Reports: work/seq2-recovered-2026-11-10-classification.json and
+work/seq2-recovered-2026-11-10-interpretation.md. Log:
+work/infer-recovery-2026-11-10.log. This confirms selector publication and the
+production inference path; the single query is not an accuracy evaluation.
+Final Ruff and git diff --check passed; no source changed during recovery.

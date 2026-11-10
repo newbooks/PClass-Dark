@@ -1,0 +1,1 @@
+{"$id":"pclass-dark.integrated-infer-report.v1","$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"queries":{"items":{"$ref":"pclass-dark.integrated-infer-query.v1"},"type":"array"},"schema":{"const":"pclass-dark.integrated-infer-report.v1"}},"required":["schema","source","execution","coverage","queries","counts"],"type":"object"}

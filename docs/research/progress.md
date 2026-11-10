@@ -3121,3 +3121,258 @@ and interpretation suites. Added read-only mmap regression rejecting dense colum
 selection and checking weighted-score winners, ties, and an inactive label with
 the highest unrestricted score. Ruff and git diff --check passed. No new
 performance experiment or actual GPU execution was performed.
+
+
+### 2026-11-08 — Production integration and combined report contract
+
+Recorded the user-approved scope in [SPEC-0025](../specs/0025-integrated-additive-evidence.md):
+keep standalone ML scripts; exclude exploration from production; train within
+build-library using shared frozen cluster preparation. Reports provide comprehensive
+JSON and human-readable analysis. The opening paragraph combines PClass-Dark
+classification, additive reranking and actual feature support, followed by detailed
+PClass-Dark analysis and additive reranking analysis. Preserve acceptance/window
+formulas and distinguish actual HARD/SIAC configurations. Integration is planned,
+not implemented; explicit remaining interface/schema decisions are recorded.
+Validation: documentation content/link and git diff --check checks only; no code
+changed or new experimental performance measured.
+
+
+### 2026-11-08 — Draft integrated reranking implementation specification
+
+Drafted [SPEC-0026](../specs/0026-integrated-additive-implementation.md) from
+SPEC-0025. Defines frozen reference/recipe ownership, direct full-data fitting
+without exploration artifacts, structural-head → full-sequence feature → additive
+fit dependency order, immutable library publication, accepted-candidate ranking,
+availability policies and selected-class explanations. Defines comprehensive JSON,
+opening human classification paragraph followed by detailed PClass-Dark/additive
+analysis, terminal summaries and recoverable report-file publication. Preserves
+standalone scripts. Proposed default HARD recipe reflects existing evidence;
+configuration identity is explicit. Updated parent and index links.
+
+Documentation-only draft; no integration implemented or performance measured.
+Default frozen matrix source still requires actual provenance/import before
+shipping. Validation: local documentation links and git diff --check.
+
+
+### 2026-11-08 — Integrated reranking specification implementation readiness
+
+Revised [SPEC-0026](../specs/0026-integrated-additive-implementation.md) against the
+current setup/library/inference/fitting/structural code. Replaced unresolved source
+and interface choices with concrete contracts: frozen six-column matrix import,
+recipe validation, setup companion selection, library v2/selection v3 migration,
+full-data fitting without exploration, structural-head/extraction dependencies,
+shared backend ownership, candidate score/rank API, partial coverage/fallback enums,
+selected-class explanations, report schemas and recoverable multi-file publication.
+Defined modules, API arguments, CLI defaults/errors, cache/cleanup ownership,
+dependency boundaries, schema fixtures and implementation acceptance gates.
+Preserved standalone scripts and legacy scientific API. Updated parent and index.
+
+Read-only data audit: work/cluster_dmatrix.tsv SHA-256
+`d934cc904212c9e1d901c937ca818a7a6246386b5e51f97cb6962dc3faa9bd05`,
+354315214 bytes, 6207526 rows, 3524 cluster IDs; every listed medoid matches the
+prepared reference's bound clusters_meta.tsv. Recorded provided-export origin and
+unknown historical generator honestly; full pair/score validation remains an
+implementation gate. Verified actual parser schema and structural window/thread
+caps, and NumPy/SciPy numerical inference dependency boundary. No matrix copied,
+model trained, production code edited or performance improvement measured.
+
+Documentation checks passed: local links, sequential sections, Markdown fences
+and git diff --check. Specification is implementation-ready; implementation and
+all integration acceptance tests remain pending.
+
+
+### 2026-11-08 — Integrated additive workflow implemented and validated
+
+Implemented [SPEC-0026](../specs/0026-integrated-additive-implementation.md): frozen
+reference import in setup-data; explicit-reference final fitting with no exploration
+prerequisite; library-owned portable model/head envelope; accepted-candidate
+reranking; global top-five agreement; selected-class centered feature evidence;
+JSON, human Markdown and terminal summaries; no-overwrite/recoverable publication.
+Standalone scripts and legacy scientific APIs remain available. The CLI enables
+the component by default; legacy Python setup/build APIs use explicit additive=True.
+
+The initial recipe is HARD, reflecting the earlier comparison; SIAC remains an
+explicit recipe. Preserve signature.v2 identities and use a separate integrated
+manifest with library-selection.v3. Feature/model cache identities include the
+scientific/execution contracts needed for valid reuse. Guard publication against
+changed source inventories and selection snapshots; preserve both setup selectors
+on import failure. Keep alias/conflict exclusion audits. Explicit operational limits:
+no integrated force-in-place rebuild, and conservative retention of additive caches.
+
+Frozen raw matrix SHA d934cc904212c9e1d901c937ca818a7a6246386b5e51f97cb6962dc3faa9bd05;
+6207526 source pairs over 3524 clusters. The selected prepared cohort retains
+3443 clusters and 5925403 pairs. Source historical generator is recorded unknown;
+source medoid/member identity and all pair values/coverage were validated.
+
+Code baseline 1ece3d5c, branch issue#42, uncommitted implementation. Full-suite
+snapshot: 811 passed, 5 skipped, one sandbox localhost-socket error. Exact blocked
+worker test passed outside sandbox (1 passed); local GPU agreement checks 3 passed.
+Final core regression selection: 108 passed; final integration/ML/setup selection:
+94 passed. Ruff, diff checks, local links and JSON syntax passed. Source-only
+wheel/sdist and installed numerical/CLI checks passed; no model downloads for
+validation. One packaging invocation was stopped after starting in repository
+context; its generated sdist staging tree was removed and packaging repeated in
+a clean temporary source-only project, avoiding multi-GB development data exports.
+
+The [real GPU parity smoke](notes/2026-11-08-integrated-reranking-smoke.md) uses
+existing work/ml-model weights, the existing read-only C/B signature library and
+129-aa seq2 demonstration input. It accepts 37 clusters and reranks cluster_1096
+from position 4 to 1, with feature evidence and global score 0.85362256. This is
+runtime/interpretation validation, not independent accuracy evidence. Original
+production selection and model weights were unchanged; no full-cohort refit was
+started. Commands and component identities are in the linked note/JSON.
+
+Usage: [integrated classification](../integrated-classification.md). Run the new
+build-library workflow to fit and select a production integrated generation;
+production fitting and independent homology-separated reranking evaluation remain
+operator/research runs rather than automatic side effects of this code change.
+
+
+### 2026-11-08 — ML root registrations retired; scripts/APIs preserved
+
+Per explicit user request, removed explore-ml, train-ml and predict-ml imports and
+registrations from the production root CLI. The three standalone scripts, their
+Typer applications and Python scientific interfaces are unchanged. Updated README,
+operational guides and SPEC-0022/0023/0024/0025/0026 plus index references. Earlier
+progress entries retain their historical root-command descriptions; this entry
+supersedes those interface statements.
+
+Moved former root adapter checks to the actual standalone script applications.
+Added regression checks for missing/rejected root commands and all three script
+entry-point help paths. Validation: 94 passed, 2 GPU tests skipped across CLI,
+exploration, final-model, interpretation and integrated inference/build suites;
+Ruff, local documentation links and git diff --check passed. This interface-only
+change does not alter model/data identities, numerical behavior or production
+acceptance/reranking, and needs no retraining or migration.
+
+
+### 2026-11-09 — Default additive build feature-cache admission repaired
+
+Diagnosed the missing data/library/selection.json after the first production
+rebuild. The integrated builder deliberately defers selection, but its call into
+experimental extraction attempted data/library/additive-features/<id>/features.tsv,
+which the extractor's default-library protection rejected. Reproduced the exact
+protected-directory error without running extraction. Read-only validation verified
+all 3443 saved production signatures, the production-bound relative companion and
+structural-head bundle; no additive model or published library selector exists.
+The earlier mocked extraction fixture did not cover default-root admission.
+
+Implemented [SPEC-0026 section 22](../specs/0026-integrated-additive-implementation.md#22-managed-feature-cache-path-repair--2026-11-09):
+private builder context permits only its exact managed feature family. Standalone
+restrictions, setup/prepared/model/resource protections and link checks remain.
+No scientific formulas, multiprocessing/device policy or artifact schemas changed.
+Updated SPEC-0021, specification index and integrated operational guide, including
+ordinary rerun recovery without --force. Earlier implementation validation entries
+remain historical; this repair closes the untested real-extraction path.
+
+Branch issue#42, baseline HEAD 1ece3d5c plus existing uncommitted implementation.
+Regression data: synthetic 20-sequence/two-cluster library_data fixture; frozen
+synthetic medoid similarity 0.2; HARD default recipe with epochs=2, batch_size=4,
+seed=42; explicit CPU, workers=1. New tests run actual extraction/cache publication,
+cohort loading, fitting, envelope publication, additive-required CLI inference and
+JSON/Markdown completion receipts. Replace PLM inference with deterministic fake
+predictions/states; query inference still executes the real frozen structural
+heads. Test a fresh build and injected extractor failure followed by resume;
+completed feature/model reuse leaves selection bytes unchanged. Initial query
+fixture lacked residue-state/device support; extended only the fixture backend
+and reran successfully. Existing extraction suite also exercises multiprocessing.
+
+Validation: pytest -q tests/test_additive_build.py tests/test_feature_extraction.py
+— 61 passed. Real existing production cache admission and standalone rejection
+both passed without writing cache files. Broader command: pytest -q
+ tests/test_integrated_inference.py tests/test_inference.py tests/test_cli.py
+ tests/test_structural_features.py tests/test_structure.py
+ tests/test_production_library.py — 164 passed (225 passed across both runs).
+Ruff check and format checks, git diff --check, local documentation links and
+Markdown fences passed.
+CUDA unavailable (torch.cuda.is_available() false; nvidia-smi absent), so GPU
+execution was not tested and no full-cohort feature extraction/refit was launched.
+Production selector remains absent until an ordinary build-library rerun completes;
+existing production artifacts, prior work/features and saved model weights were
+not replaced. No commits or pushes. These checks establish runtime correctness,
+not held-out classification performance.
+
+
+### 2026-11-09 — Feature extraction progress counts clarified
+
+Updated [SPEC-0021](../specs/0021-extract-structural-features.md) and extractor logs
+per user feedback: periodic messages now read `Feature extraction complete:
+1,000/380,578`. The numerator counts computed plus reused unique sequences; the
+denominator comes from the sequence inventory, not cluster memberships. Both use
+thousands separators. The final message retains computed/reused counts alongside
+completed/total. Logging interval and scientific behavior are unchanged.
+
+Validation: pytest -q tests/test_feature_extraction.py — 58 passed; newly added
+1,001-sequence periodic-format regression — 1 passed. Tests cover fresh/resumed
+counts and thousands separators using actual SQLite receipts and deterministic
+CPU predictor fixtures. Ruff check/format and git diff --check passed. No production
+job was restarted or artifacts changed; an already running process retains its
+loaded logging code. No commit or push.
+
+
+### 2026-11-10 — Recover completed features after a progress-only code change
+
+Diagnosed an offline library build that cached all 380578 unique sequence features
+but stopped before publication with Extraction code/dependencies changed during
+the run. The saved contract differs only in feature_extraction.py; dependencies
+and ten other module hashes match. Reversing only the newer progress formatting
+and its inventory-count SELECT reproduces the saved source SHA exactly:
+622223dd6288afcd583ece890ff82866e6f5fd790abb00393252dd2344fc1ea7.
+Post-logging source SHA is 18cb0f5cddb55f0af6059abae634369d629de2e150161d8f4b8c5130c4a4b1d6.
+The SQLite cache has 380578 sequences and 380578 receipts. No receipts/contracts
+were edited, deleted or relabeled.
+
+Added an explicit audited extractor whole-file compatibility allowlist. Its
+canonical identity preserves the pre-logging numeric contract for the two reviewed
+progress variants and the lifecycle-only compatibility shim; all unknown changes
+remain strict. Publication records actual raw code hashes separately and drift
+errors identify changed modules/packages. Updated SPEC-0021. Regression validation:
+65 extractor/build tests passed, including known/unknown hash handling, compatible
+in-run logging changes, real source drift rejection and all-receipt recovery with
+prediction forbidden; 102 inference/CLI/model regressions passed. Ruff and diff
+checks passed. The resulting contract ID and managed feature directory key match
+the production d601dfa7a3e2a8164f214caee77d2316a10e464f02aae2e42d50d4eb36d76fd6
+cache exactly.
+
+Resumed python -m pclass_dark build-library --offline with local GPU access and
+all existing artifacts retained. Log: work/build-library-recovery-2026-11-10.log.
+Missing data/library/selection.json was a downstream effect of intentionally
+unpublished incomplete additive stages, not an independent inference failure.
+Production recovery/training and inference results will be recorded on completion.
+
+
+Production recovery completed successfully (exit 0): all 380578 cached sequence
+features reused, zero recomputed; 381627 membership rows yielded 379539 training
+identities after excluding 1039 ambiguous identities (2088 rows). Full-data HARD
+training completed 100 epochs on cuda:0 (18 features, 3443 clusters); this is a
+production refit, not a new held-out performance measurement. Published
+library-selection.v3 at data/library/selection.json and integrated generation
+aad027d2d79db80e504fd3077912d18fe39e9271e4845ad56f3aa9c690e93c57,
+with additive model f69a843cdbb3eafc2718c072dee4a692e7b37879ef884aa150257ece96479b83.
+Command: python -m pclass_dark build-library --offline. Full log:
+work/build-library-recovery-2026-11-10.log. Existing cached feature receipts and
+previous outputs were preserved.
+
+
+End-to-end verification succeeded (exit 0): python -m pclass_dark infer --fasta
+work/seq2.fasta --offline --report-prefix work/seq2-recovered-2026-11-10.
+All 3443 clusters evaluated, none unavailable; 37 PLM-accepted candidates.
+Additive reranking selected accepted cluster_1096 (original rank 4; global
+softmax 0.854). Reports: work/seq2-recovered-2026-11-10-classification.json and
+work/seq2-recovered-2026-11-10-interpretation.md. Log:
+work/infer-recovery-2026-11-10.log. This confirms selector publication and the
+production inference path; the single query is not an accuracy evaluation.
+Final Ruff and git diff --check passed; no source changed during recovery.
+
+
+### 2026-11-10 — Integrated selector support for signature explanations
+
+Fixed both signature explanation readers to accept library-selection.v3,
+retaining existing signature and C/B validation. Default integrated builds can
+now be inspected with explain-signature --cluster and --list, and their Python
+APIs. Extended the integrated build regression to exercise both CLI modes and
+APIs against its published v3 selector, check report contents/JSON parity and
+confirm the selector is unchanged. Updated [SPEC-0026 section 24](../specs/0026-integrated-additive-implementation.md#24-signature-explanations-for-integrated-selections--2026-11-10).
+Validation: pytest -q tests/test_additive_build.py tests/test_explanations.py
+tests/test_signature_summaries.py — 63 passed in 144.54s. Ruff check/format and
+git diff --check passed. No production rebuild or model changes required.
