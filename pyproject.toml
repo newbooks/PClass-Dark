@@ -55,6 +55,8 @@ where = ["src"]
 [tool.setuptools.package-data]
 pclass_dark = [
     "resources/structure/v1/*",
+    "resources/additive-reference/v1/*",
+    "resources/library/integrated/**/*",
     "resources/prepared/*/*.tsv",
     "resources/prepared/*/*.fasta",
     "resources/prepared/*/*.json",

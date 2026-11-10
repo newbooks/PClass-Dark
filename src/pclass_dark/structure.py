@@ -218,6 +218,7 @@ class StructuralPredictor:
         offline=False,
         window_batch_size=8,
         cpu_threads=8,
+        _backend=None,
     ):
         if not isinstance(device, str) or not re.fullmatch(
             r"auto|cpu|cuda(?::\d+)?", device
@@ -234,7 +235,24 @@ class StructuralPredictor:
         self.offline = offline
         self.window_batch_size = window_batch_size
         self.cpu_threads = cpu_threads
-        self._embedder = None
+        self._embedder = _backend
+        if _backend is not None:
+            from .setup_data import MODEL, REVISION
+
+            if (
+                _backend.contract["model"] != MODEL
+                or _backend.contract["revision"] != REVISION
+            ):
+                raise ValueError("Borrowed structural backend contract mismatch")
+            try:
+                self.heads.to(_backend.device)
+            except (RuntimeError, ValueError, AssertionError):
+                if device != "auto" or not _backend.device.startswith("cuda"):
+                    raise
+                _backend.model.to("cpu")
+                _backend.device = "cpu"
+                self.heads.to("cpu")
+                LOG.warning("Borrowed structural heads fell back to CPU")
 
     def _runtime(self):
         if self._embedder is None:

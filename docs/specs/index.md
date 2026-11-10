@@ -41,3 +41,11 @@
 - [0023: Full-cohort additive model and query prediction](0023-final-ml-model.md) — implemented: all-reference refit, portable checked model bundle, raw-sequence/feature query API/scripts/CLI; full HARD model trained and raw-query parity validated on GPU.
 
 - [0024: Human-readable ML prediction interpretations](0024-ml-interpretation.md) — implemented: chosen-cluster support, shortened Markdown write-up and source-bound functional labels; 77 tests passed, 2 GPU tests skipped.
+
+- [0025: Integrated additive classification evidence](0025-integrated-additive-evidence.md) — implemented: shared preparation, library-owned fitting without exploration, accepted-candidate reranking, comprehensive JSON and combined human-readable analysis.
+
+- [0026: Production additive reranking implementation](0026-integrated-additive-implementation.md) — implemented: frozen reference, setup/build/infer integration, direct full-data fit, portable envelope, JSON/Markdown/terminal reporting and recovery; validation and operational limits recorded; default-library managed feature-cache admission repaired in section 22.
+
+Interface revision (2026-11-08): ML exploration/fitting/prediction are script/API
+utilities; the production CLI uses setup-data, build-library and infer. Root ML
+registrations retired as specified in [0026 section 21](0026-integrated-additive-implementation.md#21-root-ml-command-retirement--2026-11-08).

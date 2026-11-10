@@ -766,6 +766,7 @@ def load_selected_library(output_root=None, *, immutable=False, cluster_id=None)
         if selected["schema"] not in {
             "pclass-dark.library-selection.v1",
             "pclass-dark.library-selection.v2",
+            "pclass-dark.library-selection.v3",
         }:
             raise IntegrityError("Unknown library selection schema")
         path = safe_file(root, selected["library"])
@@ -775,7 +776,7 @@ def load_selected_library(output_root=None, *, immutable=False, cluster_id=None)
         if library.library_id != selected["library_id"]:
             raise IntegrityError("Selected production ID mismatch")
         relative = None
-        if selected["schema"].endswith(".v2"):
+        if selected["schema"].endswith((".v2", ".v3")):
             directory = safe_file(root, selected["relative"])
             if (
                 sha256(directory / "manifest.json")

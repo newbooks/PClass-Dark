@@ -12,7 +12,7 @@ from filelock import FileLock, Timeout
 from setuptools.command.build_py import build_py
 from setuptools.command.sdist import sdist
 
-EXTENSIONS = {".json", ".tsv", ".fasta", ".gz", ".npy"}
+EXTENSIONS = {".json", ".tsv", ".fasta", ".gz", ".npy", ".safetensors", ".npz", ".md"}
 NAMESPACES = ("prepared", "embeddings", "library")
 
 
@@ -132,6 +132,7 @@ def inventory(project):
         if s["schema"] not in {
             "pclass-dark.library-selection.v1",
             "pclass-dark.library-selection.v2",
+            "pclass-dark.library-selection.v3",
         }:
             raise ValueError("Invalid library release selector")
         if s["library"] != s["library_id"]:
@@ -151,7 +152,7 @@ def inventory(project):
             raise ValueError(
                 "Setup-data and library differ; update selections before release"
             )
-        if s["schema"].endswith(".v2"):
+        if s["schema"].endswith((".v2", ".v3")):
             if s["relative"] != "relative-scores/" + s["relative_id"]:
                 raise ValueError("Unexpected relative-score release path")
             rm = bundle(
@@ -169,6 +170,17 @@ def inventory(project):
                 raise ValueError(
                     "Relative release is bound to another production manifest"
                 )
+        if s["schema"].endswith(".v3"):
+            if s["integrated"] != "integrated/" + s["integrated_id"]:
+                raise ValueError("Unexpected integrated release path")
+            bundle(
+                library,
+                s["integrated"],
+                s["integrated_id"],
+                s["integrated_manifest_sha256"],
+                {"pclass-dark.integrated-library.v1"},
+                Path("library"),
+            )
         add(library / "selection.json", Path("library/selection.json"))
         if (library / "research-selection.json").is_file():
             r = read(safe(library, "research-selection.json"))

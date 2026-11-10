@@ -185,3 +185,27 @@ def test_evaluation_script_help(script):
     )
     assert result.returncode == 0, result.stderr
     assert "--help" in result.stdout
+
+
+@pytest.mark.parametrize("command", ["explore-ml", "train-ml", "predict-ml"])
+def test_ml_commands_are_script_only(command):
+    help_result = runner.invoke(app, ["--help"])
+    assert help_result.exit_code == 0
+    assert command not in help_result.stdout
+    rejected = runner.invoke(app, [command, "--help"])
+    assert rejected.exit_code == 2
+    assert "No such command" in rejected.output
+
+
+@pytest.mark.parametrize("script", ["explore-ml.py", "train-ml.py", "predict-ml.py"])
+def test_ml_script_entry_points_preserved(script):
+    from pathlib import Path
+
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / script
+    result = subprocess.run(
+        [sys.executable, str(script_path), "--help"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "--help" in result.stdout

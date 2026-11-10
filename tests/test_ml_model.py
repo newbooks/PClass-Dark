@@ -9,11 +9,10 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from typer.testing import CliRunner
 
+from ml_script_cli import invoke_script
 from pclass_dark import ml_model as final
 from pclass_dark.artifacts import IntegrityError, read_json, sha256, write_json
-from pclass_dark.cli import app
 from pclass_dark.explore_ml import ExploreMLConfig, run_exploration
 from pclass_dark.ml_data import FEATURES, PAIR_HEADER
 from pclass_dark.ml_reports import read_dicts, write_tsv
@@ -270,13 +269,11 @@ def test_raw_sequence_contract_and_analytical_feature_parity(model_dir, monkeypa
 
 
 def test_cli_feature_prediction_and_atomic_errors(model_dir, tmp_path):
-    runner = CliRunner()
     for name in ("train-ml", "predict-ml"):
-        assert runner.invoke(app, [name, "--help"]).exit_code == 0
+        assert invoke_script([name, "--help"]).exit_code == 0
     queries = tmp_path / "queries.tsv"
     write_tsv(queries, ("query_id", *FEATURES), [("q", *([0.1] * 18))])
-    result = runner.invoke(
-        app,
+    result = invoke_script(
         [
             "predict-ml",
             "--model-dir",
@@ -285,15 +282,14 @@ def test_cli_feature_prediction_and_atomic_errors(model_dir, tmp_path):
             str(queries),
             "--format",
             "tsv",
-        ],
+        ]
     )
     assert result.exit_code == 0, result.output
     assert (
         result.stdout.splitlines()[0]
         == "query_id\trank\tcluster_id\tlogit\tsoftmax_score"
     )
-    result = runner.invoke(
-        app,
+    result = invoke_script(
         [
             "predict-ml",
             "--model-dir",
@@ -302,7 +298,7 @@ def test_cli_feature_prediction_and_atomic_errors(model_dir, tmp_path):
             str(queries),
             "--format",
             "jsonl",
-        ],
+        ]
     )
     assert result.exit_code == 0, result.output
     row = json.loads(result.stdout)
@@ -317,14 +313,13 @@ def test_cli_feature_prediction_and_atomic_errors(model_dir, tmp_path):
         "--output",
         str(output),
     ]
-    assert runner.invoke(app, args).exit_code == 0
+    assert invoke_script(args).exit_code == 0
     assert output.read_text().startswith("# Prediction interpretation: q")
     before = output.read_bytes()
-    assert runner.invoke(app, args).exit_code == 1
+    assert invoke_script(args).exit_code == 1
     assert output.read_bytes() == before
     assert (
-        runner.invoke(
-            app,
+        invoke_script(
             [
                 "predict-ml",
                 "--model-dir",
@@ -333,11 +328,11 @@ def test_cli_feature_prediction_and_atomic_errors(model_dir, tmp_path):
                 "A",
                 "--features",
                 str(queries),
-            ],
+            ]
         ).exit_code
         == 2
     )
-    assert runner.invoke(app, ["train-ml", "--config", "unknown"]).exit_code == 2
+    assert invoke_script(["train-ml", "--config", "unknown"]).exit_code == 2
 
 
 def test_lazy_imports_and_script_help():
@@ -369,7 +364,6 @@ def test_late_query_error_publishes_no_partial_output(
         raise ValueError("late invalid query")
 
     monkeypatch.setattr(final, "predict_sequences", fail_late)
-    runner = CliRunner()
     args = [
         "predict-ml",
         "--model-dir",
@@ -380,11 +374,11 @@ def test_late_query_error_publishes_no_partial_output(
         format,
         "--stdout",
     ]
-    result = runner.invoke(app, args)
+    result = invoke_script(args)
     assert result.exit_code == 1 and result.stdout == ""
     path = tmp_path / "output.tsv"
-    result = runner.invoke(
-        app, [*[a for a in args if a != "--stdout"], "--output", str(path)]
+    result = invoke_script(
+        [*[a for a in args if a != "--stdout"], "--output", str(path)]
     )
     assert result.exit_code == 1 and not path.exists()
 
@@ -455,20 +449,20 @@ def test_markdown_cli_and_added_json_fields(model_dir, tmp_path):
         [(p.query_id, *X[i]) for i, p in enumerate(predictions)],
     )
     args = ["predict-ml", "--model-dir", str(model_dir), "--features", str(queries)]
-    result = CliRunner().invoke(app, [*args, "--stdout"])
+    result = invoke_script([*args, "--stdout"])
     assert result.exit_code == 0, result.output
     assert result.stdout == "\n---\n\n".join(
         render_interpretation(p) for p in predictions
     )
     from pclass_dark.ml_interpretation import render_top_predictions
 
-    saved = CliRunner().invoke(app, [*args, "--output", str(tmp_path / "report.md")])
+    saved = invoke_script([*args, "--output", str(tmp_path / "report.md")])
     assert saved.exit_code == 0, saved.output
     for p in predictions:
         assert f'Query: "{p.query_id}"' in saved.stdout
         assert render_top_predictions(p) in saved.stdout
     assert "## Plain-language" not in saved.stdout
-    result = CliRunner().invoke(app, [*args, "--format", "jsonl"])
+    result = invoke_script([*args, "--format", "jsonl"])
     rows = [json.loads(line) for line in result.stdout.splitlines()]
     assert (
         rows[0]["chosen_feature_contributions"]
@@ -479,9 +473,8 @@ def test_markdown_cli_and_added_json_fields(model_dir, tmp_path):
 def test_automatic_interpretation_file(model_dir, tmp_path, monkeypatch):
     queries = tmp_path / "seq2.tsv"
     write_tsv(queries, ("query_id", *FEATURES), [("q", *([0.1] * 18))])
-    runner = CliRunner()
     args = ["predict-ml", "--model-dir", str(model_dir), "--features", str(queries)]
-    result = runner.invoke(app, args)
+    result = invoke_script(args)
     report = tmp_path / "seq2-interpretation.md"
     assert result.exit_code == 0, result.output
     assert 'Query: "q"' in result.stdout
@@ -491,14 +484,12 @@ def test_automatic_interpretation_file(model_dir, tmp_path, monkeypatch):
     assert str(report) in result.stderr
     before = report.read_bytes()
     assert before.startswith(b"# Prediction interpretation: q")
-    collision = runner.invoke(app, args)
+    collision = invoke_script(args)
     assert collision.exit_code == 1 and collision.stdout == ""
     assert report.read_bytes() == before
-    assert runner.invoke(app, [*args, "--stdout"]).stdout == before.decode()
+    assert invoke_script([*args, "--stdout"]).stdout == before.decode()
     assert (
-        runner.invoke(
-            app, [*args, "--stdout", "--output", str(tmp_path / "x.md")]
-        ).exit_code
+        invoke_script([*args, "--stdout", "--output", str(tmp_path / "x.md")]).exit_code
         != 0
     )
 
@@ -506,8 +497,7 @@ def test_automatic_interpretation_file(model_dir, tmp_path, monkeypatch):
     p = next(final.predict_features(model, np.zeros((1, 18)), ["q"]))
     monkeypatch.setattr(final, "predict_sequences", lambda *a, **kw: iter([p]))
     monkeypatch.chdir(tmp_path)
-    result = runner.invoke(
-        app,
+    result = invoke_script(
         [
             "predict-ml",
             "--model-dir",
@@ -516,19 +506,19 @@ def test_automatic_interpretation_file(model_dir, tmp_path, monkeypatch):
             "DEKRH",
             "--query-id",
             "../../unsafe/name",
-        ],
+        ]
     )
     assert result.exit_code == 0, result.output
     assert (tmp_path / "unsafe_name-interpretation.md").exists()
     fasta = tmp_path / "seq2.fasta"
-    result = runner.invoke(
-        app, ["predict-ml", "--model-dir", str(model_dir), "--fasta", str(fasta)]
+    result = invoke_script(
+        ["predict-ml", "--model-dir", str(model_dir), "--fasta", str(fasta)]
     )
     # Same default name as the existing TSV report: refuse before inference.
     assert result.exit_code == 1
     fasta = tmp_path / "other.fasta"
-    result = runner.invoke(
-        app, ["predict-ml", "--model-dir", str(model_dir), "--fasta", str(fasta)]
+    result = invoke_script(
+        ["predict-ml", "--model-dir", str(model_dir), "--fasta", str(fasta)]
     )
     assert result.exit_code == 0, result.output
     assert (tmp_path / "other-interpretation.md").exists()

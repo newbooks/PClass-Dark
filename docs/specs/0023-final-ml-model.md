@@ -5,8 +5,8 @@
 - Parent: [SPEC-0022](0022-explore-ml.md).
 - Purpose: fit one reusable classifier using all eligible examples of a completed
   exploration, then predict arbitrary query features or full protein sequences.
-- Interfaces: `scripts/train-ml.py`, `scripts/predict-ml.py`, equivalent
-  `pclass-dark train-ml` / `predict-ml`, and `pclass_dark.ml_model` functions.
+- Interfaces: `scripts/train-ml.py`, `scripts/predict-ml.py`, and
+  `pclass_dark.ml_model` functions. Root registrations retired 2026-11-08.
 
 ## Scientific scope and defaults
 
@@ -136,7 +136,7 @@ python scripts/predict-ml.py --model-dir work/ml-model --seq MDEKRH
 python scripts/predict-ml.py --model-dir work/ml-model --fasta query.fasta --format jsonl
 
 # Precomputed features need only the trained numerical model.
-pclass-dark predict-ml --model-dir work/ml-model --features query_features.tsv
+python scripts/predict-ml.py --model-dir work/ml-model --features query_features.tsv
 ```
 
 Train flags: --experiment PATH, --output-dir PATH, --config hard|siac (hard),
@@ -160,7 +160,7 @@ read_query_features(path)->(IDs,X). No argument parsing, downloads, model loads 
 computation at import. Optional ML/embedding dependencies stay lazy; query features
 can score on CPU without initializing Torch or ESM. API ValueError/IntegrityError,
 OSError and RuntimeError are explicit. Frozen dataclasses, read-only model arrays.
-Script adapters and root commands call the same functions; include scripts/guide
+Script adapters call the same functions; include scripts/guide
 in sdist, synchronize README and API documentation.
 
 ## Acceptance and experiment completion
@@ -185,7 +185,8 @@ in sdist, synchronize README and API documentation.
 
 ## Implementation and actual validation
 
-Implemented ml_model.py, ml_model_cli.py, both scripts/root commands and the
+Initially implemented ml_model.py, ml_model_cli.py, both scripts/root commands
+(root registrations retired 2026-11-08), and the
 [model guide](../ml-model.md). Complete final bundle is `work/ml-model`, trained
 on all 379,539 examples and 3,443 labels from source experiment
 `4683ddea21e305608fc8e81f38c2f71276d83d5e194fe2547890acec98db8163`.

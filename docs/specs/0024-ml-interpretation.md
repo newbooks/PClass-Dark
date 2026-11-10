@@ -5,7 +5,8 @@
 - Parent: [SPEC-0023](0023-final-ml-model.md).
 - User template: the shortened `work/seq2-interpretation.md`, read before changes.
 - Purpose: produce its predicted-function / plain-language / full feature-support
-  write-up directly from predict-ml.py and pclass-dark predict-ml.
+  write-up directly from scripts/predict-ml.py and the importable API.
+- Interface revision 2026-11-08: root predict-ml registration retired; script/API preserved.
 
 ## Interface and compatibility
 

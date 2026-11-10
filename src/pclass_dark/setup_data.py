@@ -98,6 +98,8 @@ class SetupResult:
     counts: dict
     reused_prepared: bool
     reused_embeddings: bool
+    additive_reference_id: str | None = None
+    additive_reference_dir: Path | None = None
 
 
 def write_tsv(path, rows):
@@ -635,6 +637,10 @@ def prepare_data(
     force=False,
     reference_dir=None,
     reference_fasta=None,
+    additive=False,
+    cluster_similarity=None,
+    cluster_similarity_manifest=None,
+    additive_recipe=None,
 ):
     """Prepare references and optionally embed; resume matching inference shards.
 
@@ -643,6 +649,15 @@ def prepare_data(
     override for integrations/tests; the default resolves installed profunc.
     reference_fasta supplies its checksum-matched source dataset FASTA.
     """
+    if type(additive) is not bool:
+        raise ValueError("additive must be boolean")
+    if not additive and any(
+        v is not None
+        for v in (cluster_similarity, cluster_similarity_manifest, additive_recipe)
+    ):
+        raise ValueError("Additive import options require additive preparation")
+    if (cluster_similarity is None) != (cluster_similarity_manifest is None):
+        raise ValueError("Provide both similarity table and source manifest")
     _validate_options(min_clusters, seed, workers, batch_size, model, revision, device)
     from .paths import default_setup_output_dir
 
@@ -722,7 +737,35 @@ def prepare_data(
             if embedding_dir
             else None,
         }
-        write_json(root / "selection.json", selection)
+        additive_path = None
+        companion = root / "additive-selection.json"
+        main_pointer = root / "selection.json"
+        previous_companion = companion.read_bytes() if companion.exists() else None
+        previous_main = main_pointer.read_bytes() if main_pointer.exists() else None
+        try:
+            if additive:
+                from .additive_reference import prepare_additive_reference
+
+                additive_path = prepare_additive_reference(
+                    root,
+                    prepared,
+                    source=cluster_similarity,
+                    source_manifest=cluster_similarity_manifest,
+                    recipe=additive_recipe,
+                )
+            write_json(main_pointer, selection)
+        except BaseException:
+            from .artifacts import write_bytes
+
+            for pointer, previous in (
+                (companion, previous_companion),
+                (main_pointer, previous_main),
+            ):
+                if previous is None:
+                    pointer.unlink(missing_ok=True)
+                else:
+                    write_bytes(pointer, previous)
+            raise
         return SetupResult(
             m["id"],
             prepared,
@@ -731,4 +774,6 @@ def prepare_data(
             m["counts"],
             reused,
             reused_embeddings,
+            additive_path.name if additive_path else None,
+            additive_path,
         )

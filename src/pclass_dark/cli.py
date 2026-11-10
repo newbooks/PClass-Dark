@@ -70,11 +70,25 @@ def setup_data(
         8, min=1, help="Inference batch size; adjustable on resume."
     ),
     force: bool = typer.Option(False, help="Archive and recompute matching bundles."),
+    additive: bool = typer.Option(True, help="Prepare frozen additive reference."),
+    cluster_similarity: Path | None = None,
+    cluster_similarity_manifest: Path | None = None,
+    additive_recipe: Path | None = None,
 ) -> None:
     """Prepare references, C folds, fixed B, and resumable PLM embeddings."""
     import logging
 
     from pclass_dark.setup_data import prepare_data
+
+    if not additive and any(
+        v is not None
+        for v in (cluster_similarity, cluster_similarity_manifest, additive_recipe)
+    ):
+        raise typer.BadParameter("Additive import options require --additive")
+    if (cluster_similarity is None) != (cluster_similarity_manifest is None):
+        raise typer.BadParameter(
+            "Provide both --cluster-similarity and --cluster-similarity-manifest"
+        )
 
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
     try:
@@ -91,6 +105,10 @@ def setup_data(
             device=device,
             batch_size=batch_size,
             force=force,
+            additive=additive,
+            cluster_similarity=cluster_similarity,
+            cluster_similarity_manifest=cluster_similarity_manifest,
+            additive_recipe=additive_recipe,
         )
     except KeyboardInterrupt:
         typer.echo("Interrupted; committed embedding shards can be resumed.", err=True)
@@ -101,6 +119,8 @@ def setup_data(
     typer.echo(f"Prepared: {result.prepared_dir}")
     if result.embedding_dir is not None:
         typer.echo(f"Embeddings: {result.embedding_dir}")
+    if getattr(result, "additive_reference_dir", None) is not None:
+        typer.echo(f"Additive reference: {result.additive_reference_dir}")
 
 
 @app.command("build-library", context_settings={"help_option_names": ["-h", "--help"]})
@@ -113,6 +133,12 @@ def build_library_command(
         False, help="Also run five research folds; use --cluster to limit cost."
     ),
     force: bool = typer.Option(False, help="Archive and recompute this library."),
+    additive: bool = typer.Option(
+        True, help="Fit and publish supplemental additive evidence."
+    ),
+    additive_device: str = "auto",
+    additive_memory_gib: float = 8.0,
+    offline: bool = False,
     clean: bool = typer.Option(
         False,
         help=(
@@ -142,6 +168,10 @@ def build_library_command(
             cluster_ids=cluster,
             cross_validate=cross_validate,
             force=force,
+            additive=additive,
+            additive_device=additive_device,
+            additive_memory_gib=additive_memory_gib,
+            offline=offline,
             **({"clean": True} if clean else {}),
         )
     except KeyboardInterrupt:
@@ -166,6 +196,8 @@ def build_library_command(
     typer.echo(f"Library: {result.library_dir}")
     if getattr(result, "structural_model_dir", None) is not None:
         typer.echo(f"Structural models: {result.structural_model_dir}")
+    if getattr(result, "additive_model_dir", None) is not None:
+        typer.echo(f"Additive model: {result.additive_model_dir}")
     if result.relative_dir is not None:
         typer.echo(f"Relative scores: {result.relative_dir}")
     if result.research_dir is not None:
@@ -262,23 +294,30 @@ def infer_command(
     offline: bool = typer.Option(
         False, help="Require cached pinned model assets; no network."
     ),
-    format: str = typer.Option("text", help="text or json; report goes to stdout."),
+    format: str = typer.Option("text", help="text, json or markdown on stdout."),
+    additive: str = typer.Option("auto", help="auto, off or required."),
+    report_prefix: Path | None = None,
+    reports: bool = typer.Option(True, help="Save combined JSON and Markdown reports."),
 ) -> None:
-    """Report only A=Yes clusters and paired B/C evidence, combined per query.
+    """Classify accepted clusters with supplemental additive ranking and reports.
 
-    Users redirect stdout to save reports. Caps: 1 GiB input, 100,000 queries,
+    Writes JSON and Markdown by default; --no-reports keeps stdout only.
+    Caps: 1 GiB input, 100,000 queries,
     1,000,000 residues/record, 4 KiB FASTA headers, 2 GiB temporary storage.
     """
     import logging
     import re
     import shutil
     import sys
-    import tempfile
 
     if (seq is None) == (fasta is None):
         raise typer.BadParameter("Provide exactly one of --seq or --fasta")
-    if format not in {"text", "json"}:
-        raise typer.BadParameter("Use text or json", param_hint="--format")
+    if format not in {"text", "json", "markdown"}:
+        raise typer.BadParameter("Use text, json or markdown", param_hint="--format")
+    if additive not in {"auto", "off", "required"}:
+        raise typer.BadParameter("Use auto, off or required", param_hint="--additive")
+    if not reports and report_prefix is not None:
+        raise typer.BadParameter("--report-prefix cannot be combined with --no-reports")
     if not re.fullmatch(r"auto|cpu|cuda(?::[0-9]+)?", device):
         raise typer.BadParameter(
             "Use auto, cpu, cuda, or cuda:<index>", param_hint="--device"
@@ -287,22 +326,35 @@ def infer_command(
         raise typer.BadParameter(
             "Use a regular FASTA file, not stdin", param_hint="--fasta"
         )
-    from .inference import (
-        QuerySequence,
-        infer_queries,
-        read_query_fasta,
-        write_inference_report,
-    )
+    from .inference import QuerySequence, read_query_fasta
+    from .integrated_inference import infer_integrated_queries
+    from .integrated_render import write_integrated_reports
+    from .integrated_reports import report_outputs
+    from .paths import default_library_input_dir, default_setup_input_dir
 
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
     queries = (
         (QuerySequence("query", seq),) if seq is not None else read_query_fasta(fasta)
     )
+    prefix = None
+    if reports:
+        prefix = report_prefix or (fasta.with_suffix("") if fasta else Path("query"))
+        resolved = prefix.absolute().resolve()
+        for owned in (
+            Path(library_dir or default_library_input_dir()).resolve(),
+            default_setup_input_dir().resolve(),
+        ):
+            if resolved == owned or owned in resolved.parents:
+                raise typer.BadParameter(
+                    "Reports must be outside owned library/setup roots"
+                )
+    staged_stdout = None
     try:
-        with tempfile.TemporaryFile(mode="w+", encoding="utf-8", newline="") as report:
-            with infer_queries(
+        with report_outputs(prefix) as output:
+            with infer_integrated_queries(
                 queries,
                 library_dir=library_dir,
+                additive=additive,
                 device=device,
                 workers=workers,
                 batch_size=batch_size,
@@ -310,10 +362,16 @@ def infer_command(
                 memory_mib=memory_mib,
                 offline=offline,
             ) as run:
-                write_inference_report(run, report, format=format)
-            report.seek(0)
-            shutil.copyfileobj(report, sys.stdout, length=65536)
-            sys.stdout.flush()
+                output.query_count = run.query_count
+                write_integrated_reports(
+                    run, output.json, output.markdown, terminal_stream=output.text
+                )
+            staged_stdout = output.prepare_stdout(format)
+        shutil.copyfileobj(staged_stdout, sys.stdout, length=65536)
+        sys.stdout.flush()
+        if prefix is not None:
+            typer.echo(f"Saved classification: {prefix}-classification.json", err=True)
+            typer.echo(f"Saved interpretation: {prefix}-interpretation.md", err=True)
     except BrokenPipeError:
         raise
     except KeyboardInterrupt:
@@ -322,25 +380,6 @@ def infer_command(
     except (ValueError, OSError, RuntimeError) as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
-
-
-# The adapter imports neither ML dependencies nor data until invoked.
-from .explore_ml_cli import command as _explore_ml_command  # noqa: E402
-
-app.command("explore-ml", context_settings={"help_option_names": ["-h", "--help"]})(
-    _explore_ml_command
-)
-
-from .ml_model_cli import (  # noqa: E402
-    predict_command as _predict_ml_command,
-)
-from .ml_model_cli import (  # noqa: E402
-    train_command as _train_ml_command,
-)
-
-app.command("train-ml", context_settings={"help_option_names": ["-h", "--help"]})(
-    _train_ml_command
-)
-app.command("predict-ml", context_settings={"help_option_names": ["-h", "--help"]})(
-    _predict_ml_command
-)
+    finally:
+        if staged_stdout is not None:
+            staged_stdout.close()

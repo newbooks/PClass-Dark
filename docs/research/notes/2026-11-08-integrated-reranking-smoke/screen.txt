@@ -1,0 +1,54 @@
+# Classification: seq2
+
+PClass-Dark accepts 37 clusters. Additive reranking places **cluster\_1096 (peptidoglycan muralytic with hydrolase activity)** first (original rank 4). It is also in the classifier’s global top five. Supporting observed features are Protein length (129 amino acids, +2.459), Predicted beta-strand fraction (10.9%, +2.341), Mean hydropathy (-0.472; hydrophilic on average, +2.153), relative to their average training contributions.
+
+| Cluster | Original rank | New rank | B ↓ | C ↑ | Softmax | Top-five agreement |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| cluster\_1096 | 4 | 1 | 0.00229511 | 0.3083 | 0.854 | Yes |
+| cluster\_0463 | 27 | 2 | 0.0338822 | 0.273585 | 0.001 | No |
+| cluster\_0291 | 13 | 3 | 0.00797417 | 0.0954774 | 0.000 | No |
+| cluster\_0073 | 7 | 4 | 0.00449165 | 0.797559 | 0.000 | No |
+| cluster\_0945 | 23 | 5 | 0.0263867 | 0.0502732 | 0.000 | No |
+| cluster\_0369 | 35 | 6 | 0.0837225 | 0.211009 | 0.000 | No |
+| cluster\_0155 | 11 | 7 | 0.00703416 | 0.591195 | 0.000 | No |
+| cluster\_0026 | 29 | 8 | 0.0429254 | 0.0181818 | 0.000 | No |
+| cluster\_0554 | 5 | 9 | 0.00291464 | 0.17619 | 0.000 | No |
+| cluster\_0032 | 36 | 10 | 0.100601 | 0.169619 | 0.000 | No |
+| cluster\_0167 | 22 | 11 | 0.019938 | 0.481352 | 0.000 | No |
+| cluster\_1621 | 37 | 12 | 0.340957 | 0.134328 | 0.000 | No |
+| cluster\_1464 | 26 | 13 | 0.0317075 | 0.0105263 | 0.000 | No |
+| cluster\_0652 | 25 | 14 | 0.0310882 | 0.223404 | 0.000 | No |
+| cluster\_0076 | 14 | 15 | 0.00932225 | 0.0431034 | 0.000 | No |
+| cluster\_1063 | 21 | 16 | 0.0192338 | 0.0745098 | 0.000 | No |
+| cluster\_0422 | 12 | 17 | 0.00793681 | 0.371795 | 0.000 | No |
+| cluster\_2176 | 8 | 18 | 0.0047645 | 0.111111 | 0.000 | No |
+| cluster\_1628 | 10 | 19 | 0.00688957 | 0.365854 | 0.000 | No |
+| cluster\_3180 | 20 | 20 | 0.0182146 | 0.0384615 | 0.000 | No |
+| cluster\_0481 | 6 | 21 | 0.004027 | 0.121622 | 0.000 | No |
+| cluster\_0009 | 32 | 22 | 0.0593587 | 0.145695 | 0.000 | No |
+| cluster\_1396 | 18 | 23 | 0.0178868 | 0.0194175 | 0.000 | No |
+| cluster\_1025 | 34 | 24 | 0.0675231 | 0.0434783 | 0.000 | No |
+| cluster\_1252 | 24 | 25 | 0.0271543 | 0.0410959 | 0.000 | No |
+| cluster\_2196 | 1 | 26 | 0.00144464 | 0.216667 | 0.000 | No |
+| cluster\_1306 | 17 | 27 | 0.0156599 | 0.0714286 | 0.000 | No |
+| cluster\_0072 | 31 | 28 | 0.0587247 | 0.244444 | 0.000 | No |
+| cluster\_2734 | 9 | 29 | 0.00610202 | 0.185185 | 0.000 | No |
+| cluster\_2320 | 3 | 30 | 0.00155357 | 0.0103093 | 0.000 | No |
+| cluster\_2270 | 15 | 31 | 0.0148155 | 0.0560748 | 0.000 | No |
+| cluster\_0431 | 33 | 32 | 0.0597969 | 0.209677 | 0.000 | No |
+| cluster\_0168 | 28 | 33 | 0.0356071 | 0.0675676 | 0.000 | No |
+| cluster\_0782 | 16 | 34 | 0.0150303 | 0.141304 | 0.000 | No |
+| cluster\_0199 | 19 | 35 | 0.017976 | 0.222222 | 0.000 | No |
+| cluster\_3303 | 30 | 36 | 0.0465286 | 0.0588235 | 0.000 | No |
+| cluster\_0088 | 2 | 37 | 0.00151599 | 0.0380952 | 0.000 | No |
+
+## Top 5 additive predictions
+
+| Cluster ID | Short description | Softmax score | Accepted |
+| --- | --- | ---: | --- |
+| cluster\_1096 | peptidoglycan muralytic… | 0.854 | Yes |
+| cluster\_2264 | quinone- and 4 iron, 4 … | 0.037 | No |
+| cluster\_0619 | iron-, quinone-, and 4 … | 0.027 | No |
+| cluster\_1248 | uracil DNA N-glycosylase | 0.017 | No |
+| cluster\_0374 | rRNA-binding structural… | 0.009 | No |
+

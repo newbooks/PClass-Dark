@@ -2,8 +2,8 @@
 
 - Date: 2026-11-07.
 - Status: **Implemented and validated on CPU — experimental; full-data evaluation pending.**
-- Entry point: `scripts/explore-ml.py`; equivalent planned command
-  `pclass-dark explore-ml` and importable `pclass_dark.explore_ml` operations.
+- Entry point: `scripts/explore-ml.py` and importable
+  `pclass_dark.explore_ml` operations; root registration retired 2026-11-08.
 - Inputs: `features.tsv`, `cluster_dmatrix.tsv`, and optional sequence/group identity
   companions. Parent: [SPEC-0021](0021-extract-structural-features.md).
 - Algorithm: **Similarity-Informed Additive Classifier (SIAC)**, an additive
@@ -283,7 +283,7 @@ python scripts/explore-ml.py --features work/features.tsv \
   --output-dir work/explore-ml --device auto
 
 # Explicit exploratory population/split choices for the currently observed conflicts:
-pclass-dark explore-ml --features work/features.tsv \
+python scripts/explore-ml.py --features work/features.tsv \
   --similarities work/cluster_dmatrix.tsv --split-mode accession \
   --conflict-policy exclude --output-dir work/explore-ml-exploratory --device cpu
 ```

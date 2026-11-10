@@ -25,7 +25,8 @@ python scripts/explore-ml.py \
   --output-dir work/explore-ml --device auto
 ```
 
-The equivalent command is `pclass-dark explore-ml`. Use `--help` for all options.
+Use `python scripts/explore-ml.py --help` for all options. Exploration is a
+standalone script/API utility, outside the production root command hierarchy.
 Paths default to `features.tsv`, `cluster_dmatrix.tsv`, and `explore-ml` in the
 launch working directory. Source tables are never reformatted or modified.
 
@@ -58,7 +59,7 @@ unremoved duplicate sequence record or a window/rounding issue.
 A full preflight can be requested before optimization:
 
 ```bash
-pclass-dark explore-ml --features work/features.tsv \
+python scripts/explore-ml.py --features work/features.tsv \
   --similarities work/cluster_dmatrix.tsv --split-mode accession \
   --conflict-policy exclude --output-dir work/explore-ml-pilot \
   --device cpu --validate-only

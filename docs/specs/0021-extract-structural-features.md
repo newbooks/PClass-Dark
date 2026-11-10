@@ -837,3 +837,28 @@ Implemented the early return before work-state creation. Validation: regression
 failed before the fix; extractor, structural-feature and structural-prediction
 suites passed afterward: 116 passed, 1 skipped (GPU unavailable). Ruff checks,
 formatting and whitespace checks passed.
+
+
+### Production-managed cache exception — 2026-11-09
+
+SPEC-0026 section 22 adds private `_library_root` builder context to
+`extract_features` and its path validator. Only the exact
+`<library-root>/additive-features/<64-lowercase-hex-id>/features.tsv` family may
+bypass that library root's experimental-output restriction. Standalone script/API
+calls remain restricted; setup/prepared inputs, model bundles, package resources,
+symlinks and input hardlinks remain protected. No scientific, worker/device,
+publication or artifact-schema contract changes. Validation is recorded in
+[SPEC-0026](0026-integrated-additive-implementation.md#22-managed-feature-cache-path-repair--2026-11-09).
+
+
+### Sequence progress wording — 2026-11-09
+
+Report periodic progress as `Feature extraction complete: 1,000/380,578`,
+counting completed unique sequences (computed plus reused receipts) against the
+SQLite sequence inventory total. Format both counts with thousands separators.
+Keep the 1,000-sequence logging interval; the final message includes completed/total
+and the separate computed/reused counts. This is a logging-only change; calculations,
+publication and resume semantics remain unchanged. Validation: extractor suite
+58 passed, plus the 1,001-sequence periodic-format regression 1 passed. Checks
+include fresh and resumed sequence counts, membership-count distinction and
+thousands separators. Ruff and git diff --check passed.
