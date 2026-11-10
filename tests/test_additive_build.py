@@ -124,6 +124,31 @@ def test_build_and_integrated_infer(additive_data, tmp_path, monkeypatch, fake_m
     assert selected["schema"] == "pclass-dark.library-selection.v3"
     assert not list(tmp_path.glob("**/explore-ml"))
 
+    # Both signature explanation interfaces must read the selector published by
+    # the default integrated builder, while retaining their signature evidence.
+    from pclass_dark.explanations import explain_signature, list_signature_summaries
+
+    report = explain_signature("K0", root).to_dict()
+    assert report["source"]["library_id"] == result.library_id
+    assert report["distributions"]["C"]["n"] > 0
+    listing = list_signature_summaries(root).to_dict()
+    assert {row["cluster_id"] for row in listing["rows"]} == {"K0", "K1"}
+    for options, expected in [(["--cluster", "K0"], report), (["--list"], listing)]:
+        response = CliRunner().invoke(
+            app,
+            [
+                "explain-signature",
+                *options,
+                "--library-dir",
+                str(root),
+                "--format",
+                "json",
+            ],
+        )
+        assert response.exit_code == 0, response.output
+        assert json.loads(response.stdout) == expected
+    assert read_json(root / "selection.json") == selected
+
     class Predictor:
         def __init__(self, *a, _backend=None, **kw):
             assert _backend is not None

@@ -211,6 +211,7 @@ def _load_rows(root, immutable):
         in {
             "pclass-dark.library-selection.v1",
             "pclass-dark.library-selection.v2",
+            "pclass-dark.library-selection.v3",
         },
         "unknown selection schema",
     )

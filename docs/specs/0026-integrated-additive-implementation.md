@@ -953,3 +953,17 @@ work/seq2-recovered-2026-11-10-interpretation.md. Log:
 work/infer-recovery-2026-11-10.log. This confirms selector publication and the
 production inference path; the single query is not an accuracy evaluation.
 Final Ruff and git diff --check passed; no source changed during recovery.
+
+
+## 24. Signature explanations for integrated selections — 2026-11-10
+
+The per-cluster explanation and summary-list readers must accept
+library-selection.v3 as well as v1/v2. Integrated builds retain the existing
+v2 production signatures and C/B companion; explanations continue to describe
+those signatures, using the same manifest, identity and artifact checks. No
+additive model loading or training is needed for signature explanation.
+Implemented and verified both Python APIs and both explain-signature CLI modes
+against an actual integrated build. The regression checks signature/C/B evidence,
+CLI/API JSON parity, cluster inventory and unchanged selector. Unknown schemas
+remain rejected. Validation: 63 additive-build, explanation and summary tests
+passed; Ruff check/format and git diff --check passed.
