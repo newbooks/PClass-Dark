@@ -914,3 +914,42 @@ local documentation links and Markdown fences passed. CUDA is unavailable in
 this environment, so no GPU or full-cohort refit was run. The production selector
 remains absent until the corrected ordinary build is resumed; this change does
 not substitute previously fitted research weights for a production model.
+
+
+## 23. Logging-only feature-cache recovery — 2026-11-10
+
+Follow SPEC-0021's finite audited extractor-hash equivalence for the verified
+progress-only change. It restores the existing feature contract/cache key without
+changing sequence receipts, feature values or execution fingerprint. No force or
+cache deletion is needed. The builder still checks code/dependencies, receipt
+checksums, snapshots and runtime identity; only reviewed nonnumerical revisions
+share a canonical code identity. Unknown source/dependency changes remain strict.
+
+Validation: 65 extractor/additive-build tests and 102 inference/CLI/model tests
+passed, plus production read-only confirmation of all 380578 saved receipts and
+an exact cache-key match. The offline production build is being resumed from that
+cache; training/publication completion and query results follow after execution.
+
+
+Production recovery completed successfully (exit 0): all 380578 cached sequence
+features reused, zero recomputed; 381627 membership rows yielded 379539 training
+identities after excluding 1039 ambiguous identities (2088 rows). Full-data HARD
+training completed 100 epochs on cuda:0 (18 features, 3443 clusters); this is a
+production refit, not a new held-out performance measurement. Published
+library-selection.v3 at data/library/selection.json and integrated generation
+aad027d2d79db80e504fd3077912d18fe39e9271e4845ad56f3aa9c690e93c57,
+with additive model f69a843cdbb3eafc2718c072dee4a692e7b37879ef884aa150257ece96479b83.
+Command: python -m pclass_dark build-library --offline. Full log:
+work/build-library-recovery-2026-11-10.log. Existing cached feature receipts and
+previous outputs were preserved.
+
+
+End-to-end verification succeeded (exit 0): python -m pclass_dark infer --fasta
+work/seq2.fasta --offline --report-prefix work/seq2-recovered-2026-11-10.
+All 3443 clusters evaluated, none unavailable; 37 PLM-accepted candidates.
+Additive reranking selected accepted cluster_1096 (original rank 4; global
+softmax 0.854). Reports: work/seq2-recovered-2026-11-10-classification.json and
+work/seq2-recovered-2026-11-10-interpretation.md. Log:
+work/infer-recovery-2026-11-10.log. This confirms selector publication and the
+production inference path; the single query is not an accuracy evaluation.
+Final Ruff and git diff --check passed; no source changed during recovery.

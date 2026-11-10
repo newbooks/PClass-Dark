@@ -73,7 +73,7 @@ def _versions():
     return result
 
 
-def _code_hashes():
+def _raw_code_hashes():
     modules = (
         "feature_extraction",
         "feature_store",
@@ -88,6 +88,15 @@ def _code_hashes():
         "paths",
     )
     code = {name: sha256(Path(__file__).with_name(name + ".py")) for name in modules}
+    return code
+
+
+def _code_hashes():
+    """Return strict code identities, with audited lifecycle-only equivalence."""
+    from .feature_code_compat import canonical_extractor_hash
+
+    code = _raw_code_hashes()
+    code["feature_extraction"] = canonical_extractor_hash(code["feature_extraction"])
     return code
 
 
@@ -814,8 +823,25 @@ def _extract(
             "reused_sequences": reused,
             "warnings": ["oversized_serial"] if plan["oversized_sequences"] else [],
         }
-        if _code_hashes() != contract["code"] or _versions() != contract["versions"]:
-            raise IntegrityError("Extraction code/dependencies changed during the run")
+        current_code, current_versions = _code_hashes(), _versions()
+        changed_code = sorted(
+            k
+            for k in set(current_code) | set(contract["code"])
+            if current_code.get(k) != contract["code"].get(k)
+        )
+        changed_versions = sorted(
+            k
+            for k in set(current_versions) | set(contract["versions"])
+            if current_versions.get(k) != contract["versions"].get(k)
+        )
+        if changed_code or changed_versions:
+            raise IntegrityError(
+                "Extraction code/dependencies changed during the run "
+                f"(code: {', '.join(changed_code) or 'none'}; "
+                f"dependencies: {', '.join(changed_versions) or 'none'})"
+            )
+        execution["publication_code"] = _raw_code_hashes()
+        execution["code_identity_policy"] = "audited-extractor-lifecycle-equivalence-v1"
         if store.snapshot_hashes(db) != run["snapshot_hashes"]:
             raise IntegrityError("Feature snapshot changed during the run")
         _stage(db, run, family, execution)

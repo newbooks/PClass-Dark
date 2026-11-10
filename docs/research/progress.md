@@ -3308,3 +3308,58 @@ counts and thousands separators using actual SQLite receipts and deterministic
 CPU predictor fixtures. Ruff check/format and git diff --check passed. No production
 job was restarted or artifacts changed; an already running process retains its
 loaded logging code. No commit or push.
+
+
+### 2026-11-10 — Recover completed features after a progress-only code change
+
+Diagnosed an offline library build that cached all 380578 unique sequence features
+but stopped before publication with Extraction code/dependencies changed during
+the run. The saved contract differs only in feature_extraction.py; dependencies
+and ten other module hashes match. Reversing only the newer progress formatting
+and its inventory-count SELECT reproduces the saved source SHA exactly:
+622223dd6288afcd583ece890ff82866e6f5fd790abb00393252dd2344fc1ea7.
+Post-logging source SHA is 18cb0f5cddb55f0af6059abae634369d629de2e150161d8f4b8c5130c4a4b1d6.
+The SQLite cache has 380578 sequences and 380578 receipts. No receipts/contracts
+were edited, deleted or relabeled.
+
+Added an explicit audited extractor whole-file compatibility allowlist. Its
+canonical identity preserves the pre-logging numeric contract for the two reviewed
+progress variants and the lifecycle-only compatibility shim; all unknown changes
+remain strict. Publication records actual raw code hashes separately and drift
+errors identify changed modules/packages. Updated SPEC-0021. Regression validation:
+65 extractor/build tests passed, including known/unknown hash handling, compatible
+in-run logging changes, real source drift rejection and all-receipt recovery with
+prediction forbidden; 102 inference/CLI/model regressions passed. Ruff and diff
+checks passed. The resulting contract ID and managed feature directory key match
+the production d601dfa7a3e2a8164f214caee77d2316a10e464f02aae2e42d50d4eb36d76fd6
+cache exactly.
+
+Resumed python -m pclass_dark build-library --offline with local GPU access and
+all existing artifacts retained. Log: work/build-library-recovery-2026-11-10.log.
+Missing data/library/selection.json was a downstream effect of intentionally
+unpublished incomplete additive stages, not an independent inference failure.
+Production recovery/training and inference results will be recorded on completion.
+
+
+Production recovery completed successfully (exit 0): all 380578 cached sequence
+features reused, zero recomputed; 381627 membership rows yielded 379539 training
+identities after excluding 1039 ambiguous identities (2088 rows). Full-data HARD
+training completed 100 epochs on cuda:0 (18 features, 3443 clusters); this is a
+production refit, not a new held-out performance measurement. Published
+library-selection.v3 at data/library/selection.json and integrated generation
+aad027d2d79db80e504fd3077912d18fe39e9271e4845ad56f3aa9c690e93c57,
+with additive model f69a843cdbb3eafc2718c072dee4a692e7b37879ef884aa150257ece96479b83.
+Command: python -m pclass_dark build-library --offline. Full log:
+work/build-library-recovery-2026-11-10.log. Existing cached feature receipts and
+previous outputs were preserved.
+
+
+End-to-end verification succeeded (exit 0): python -m pclass_dark infer --fasta
+work/seq2.fasta --offline --report-prefix work/seq2-recovered-2026-11-10.
+All 3443 clusters evaluated, none unavailable; 37 PLM-accepted candidates.
+Additive reranking selected accepted cluster_1096 (original rank 4; global
+softmax 0.854). Reports: work/seq2-recovered-2026-11-10-classification.json and
+work/seq2-recovered-2026-11-10-interpretation.md. Log:
+work/infer-recovery-2026-11-10.log. This confirms selector publication and the
+production inference path; the single query is not an accuracy evaluation.
+Final Ruff and git diff --check passed; no source changed during recovery.

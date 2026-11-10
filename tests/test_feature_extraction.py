@@ -883,3 +883,96 @@ def test_sequence_progress_thousands_and_total(tmp_path, fake_predictor, caplog)
         )
     finally:
         db.close()
+
+
+def test_audited_logging_hashes_and_unknown_source_rejected(monkeypatch):
+    from pclass_dark.artifacts import sha256
+    from pclass_dark.feature_code_compat import (
+        CANONICAL_EXTRACTOR,
+        canonical_extractor_hash,
+    )
+
+    current = sha256(Path(extraction.__file__))
+    for raw in (
+        CANONICAL_EXTRACTOR,
+        "18cb0f5cddb55f0af6059abae634369d629de2e150161d8f4b8c5130c4a4b1d6",
+        current,
+    ):
+        assert canonical_extractor_hash(raw) == CANONICAL_EXTRACTOR
+    assert (
+        canonical_extractor_hash("unknown-scientific-revision")
+        == "unknown-scientific-revision"
+    )
+    raw = extraction._raw_code_hashes()
+    raw["feature_extraction"] = "unknown-scientific-revision"
+    monkeypatch.setattr(extraction, "_raw_code_hashes", lambda: dict(raw))
+    assert (
+        extraction._code_hashes()["feature_extraction"] == "unknown-scientific-revision"
+    )
+    assert (
+        extraction._code_hashes()["structural_features"] == raw["structural_features"]
+    )
+
+
+def test_logging_change_during_extraction_preserves_contract(
+    cohort, fake_predictor, monkeypatch
+):
+    from pclass_dark.feature_code_compat import CANONICAL_EXTRACTOR
+
+    prepared, output = cohort
+    raw = extraction._raw_code_hashes
+    compute = extraction._compute
+    revision = [CANONICAL_EXTRACTOR]
+
+    def code():
+        values = raw()
+        values["feature_extraction"] = revision[0]
+        return values
+
+    def complete(*args, **kwargs):
+        result = compute(*args, **kwargs)
+        revision[0] = "18cb0f5cddb55f0af6059abae634369d629de2e150161d8f4b8c5130c4a4b1d6"
+        return result
+
+    monkeypatch.setattr(extraction, "_raw_code_hashes", code)
+    monkeypatch.setattr(extraction, "_compute", complete)
+    result = extraction.extract_features(prepared, output)
+    manifest = read_json(result.manifest_path)
+    assert (
+        manifest["identity_inputs"]["contract_inputs"]["code"]["feature_extraction"]
+        == CANONICAL_EXTRACTOR
+    )
+    assert (
+        manifest["execution"]["publication_code"]["feature_extraction"] == revision[0]
+    )
+    assert result.computed_sequences == 4
+
+
+def test_publish_after_code_drift_reuses_all_receipts(
+    cohort, fake_predictor, monkeypatch
+):
+    prepared, output = cohort
+    original = extraction._code_hashes
+    calls = 0
+
+    def drift():
+        nonlocal calls
+        calls += 1
+        code = original()
+        if calls > 1:
+            code["feature_extraction"] = "unreviewed-change"
+        return code
+
+    monkeypatch.setattr(extraction, "_code_hashes", drift)
+    with pytest.raises(IntegrityError, match="code: feature_extraction"):
+        extraction.extract_features(prepared, output)
+    assert not output.exists()
+    monkeypatch.setattr(extraction, "_code_hashes", original)
+    monkeypatch.setattr(
+        fake_predictor,
+        "predict",
+        lambda *args: pytest.fail("recomputed completed feature"),
+    )
+    result = extraction.extract_features(prepared, output, resume=True)
+    assert result.computed_sequences == 0 and result.reused_sequences == 4
+    assert reports.verify_family(reports.Family(output))["status"] == "complete"
